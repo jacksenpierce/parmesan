@@ -1,0 +1,3352 @@
+[
+  {
+    "name": "pgx.context.build",
+    "profile": "core",
+    "status": "active",
+    "description": "Build a bounded traversal context pack from references and optional triples.",
+    "database_required": true,
+    "mutates": false,
+    "idempotency": "read-only",
+    "transaction_boundary": "none",
+    "preconditions": [],
+    "postconditions": [],
+    "error_codes": [],
+    "maximum_output": "hard bounded by max_nodes and max_chars",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "pointer": {
+          "title": "Pointer",
+          "type": "string"
+        },
+        "max_nodes": {
+          "default": 20,
+          "maximum": 50,
+          "minimum": 1,
+          "title": "Max Nodes",
+          "type": "integer"
+        },
+        "max_chars": {
+          "default": 12000,
+          "maximum": 100000,
+          "minimum": 1000,
+          "title": "Max Chars",
+          "type": "integer"
+        },
+        "include_triples": {
+          "default": true,
+          "title": "Include Triples",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "pointer"
+      ],
+      "title": "ContextArgs",
+      "type": "object"
+    },
+    "result_schema": {
+      "type": "object",
+      "required": [
+        "root_pointer",
+        "node_count",
+        "character_count",
+        "truncated",
+        "nodes"
+      ],
+      "properties": {
+        "root_pointer": {
+          "type": "string"
+        },
+        "node_count": {
+          "type": "integer"
+        },
+        "character_count": {
+          "type": "integer"
+        },
+        "truncated": {
+          "type": "boolean"
+        },
+        "nodes": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "output_schema": {
+      "type": "object",
+      "required": [
+        "ok",
+        "tool",
+        "request_id",
+        "result",
+        "error",
+        "warnings",
+        "database_sequence",
+        "idempotent_replay"
+      ],
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "request_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "result": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "root_pointer",
+                "node_count",
+                "character_count",
+                "truncated",
+                "nodes"
+              ],
+              "properties": {
+                "root_pointer": {
+                  "type": "string"
+                },
+                "node_count": {
+                  "type": "integer"
+                },
+                "character_count": {
+                  "type": "integer"
+                },
+                "truncated": {
+                  "type": "boolean"
+                },
+                "nodes": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              },
+              "additionalProperties": true
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "database_sequence": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "idempotent_replay": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "contract_level": "guaranteed",
+    "success_example": {
+      "request": {
+        "tool": "pgx.context.build",
+        "arguments": {
+          "pointer": "CB2",
+          "max_nodes": 20,
+          "max_chars": 12000
+        },
+        "database": "knowledge.sqlite"
+      },
+      "result_excerpt": {
+        "root_pointer": "CB2",
+        "node_count": 2,
+        "truncated": false
+      }
+    },
+    "failure_example": {},
+    "likely_next_tools": [
+      "pgx.node.get",
+      "pgx.reference.list"
+    ]
+  },
+  {
+    "name": "pgx.database.describe",
+    "profile": "core",
+    "status": "active",
+    "description": "Orient the operating LLM to an existing corpus: counts, graphs, pointer grammar, reserved seed pointers, and next actions.",
+    "database_required": true,
+    "mutates": false,
+    "idempotency": "read-only",
+    "transaction_boundary": "none",
+    "preconditions": [],
+    "postconditions": [],
+    "error_codes": [],
+    "maximum_output": "one compact corpus orientation report",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {},
+      "title": "EmptyArgs",
+      "type": "object"
+    },
+    "result_schema": {
+      "type": "object",
+      "required": [
+        "database",
+        "parmesan_version",
+        "valid",
+        "counts",
+        "graphs",
+        "pointer_pattern",
+        "canonical_reference",
+        "reserved_seed_pointers",
+        "next_actions"
+      ],
+      "properties": {
+        "database": {
+          "type": "string"
+        },
+        "product": {
+          "type": "string"
+        },
+        "parmesan_version": {
+          "type": "string"
+        },
+        "schema_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "valid": {
+          "type": "boolean"
+        },
+        "counts": {
+          "type": "object"
+        },
+        "graphs": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "pointer_pattern": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "canonical_reference": {
+          "const": "[natural-language anchor](POINTER)"
+        },
+        "reference_scope": {
+          "type": "string"
+        },
+        "network_behavior": {
+          "type": "string"
+        },
+        "reserved_seed_pointers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "next_actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "output_schema": {
+      "type": "object",
+      "required": [
+        "ok",
+        "tool",
+        "request_id",
+        "result",
+        "error",
+        "warnings",
+        "database_sequence",
+        "idempotent_replay"
+      ],
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "request_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "result": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "database",
+                "parmesan_version",
+                "valid",
+                "counts",
+                "graphs",
+                "pointer_pattern",
+                "canonical_reference",
+                "reserved_seed_pointers",
+                "next_actions"
+              ],
+              "properties": {
+                "database": {
+                  "type": "string"
+                },
+                "product": {
+                  "type": "string"
+                },
+                "parmesan_version": {
+                  "type": "string"
+                },
+                "schema_version": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "valid": {
+                  "type": "boolean"
+                },
+                "counts": {
+                  "type": "object"
+                },
+                "graphs": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                },
+                "pointer_pattern": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "canonical_reference": {
+                  "const": "[natural-language anchor](POINTER)"
+                },
+                "reference_scope": {
+                  "type": "string"
+                },
+                "network_behavior": {
+                  "type": "string"
+                },
+                "reserved_seed_pointers": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "next_actions": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "additionalProperties": true
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "database_sequence": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "idempotent_replay": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "contract_level": "guaranteed",
+    "success_example": {
+      "request": {
+        "tool": "pgx.database.describe",
+        "arguments": {},
+        "database": "knowledge.sqlite"
+      },
+      "result_excerpt": {
+        "valid": true,
+        "canonical_reference": "[natural-language anchor](POINTER)",
+        "reserved_seed_pointers": [
+          "N0",
+          "N1",
+          "N2",
+          "N3",
+          "N4"
+        ]
+      }
+    },
+    "failure_example": {},
+    "likely_next_tools": [
+      "pgx.node.search",
+      "pgx.graph.create",
+      "pgx.database.validate"
+    ]
+  },
+  {
+    "name": "pgx.database.initialize",
+    "profile": "core",
+    "status": "active",
+    "description": "Create a fresh Parmesan SQLite knowledge base and return its first operating instructions.",
+    "database_required": false,
+    "mutates": true,
+    "idempotency": "filesystem create; overwrite must be explicit",
+    "transaction_boundary": "single schema/seed transaction",
+    "preconditions": [
+      "uri_template contains exactly one {pointer}"
+    ],
+    "postconditions": [
+      "database validates"
+    ],
+    "error_codes": [
+      "input_validation",
+      "contract_error",
+      "conflict"
+    ],
+    "maximum_output": "bounded object",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "uri_template": {
+          "default": "{pointer}",
+          "title": "Uri Template",
+          "type": "string"
+        },
+        "resolver_status": {
+          "default": "resolved",
+          "pattern": "^(resolved|unresolved)$",
+          "title": "Resolver Status",
+          "type": "string"
+        },
+        "overwrite": {
+          "default": false,
+          "title": "Overwrite",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "title": "InitArgs",
+      "type": "object"
+    },
+    "result_schema": {
+      "type": "object",
+      "required": [
+        "database",
+        "validation",
+        "description"
+      ],
+      "properties": {
+        "database": {
+          "type": "string"
+        },
+        "validation": {
+          "type": "object",
+          "required": [
+            "valid",
+            "checks",
+            "errors",
+            "warnings"
+          ],
+          "properties": {
+            "valid": {
+              "type": "boolean"
+            },
+            "checks": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "errors": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              }
+            },
+            "warnings": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              }
+            }
+          },
+          "additionalProperties": true
+        },
+        "description": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": true
+    },
+    "output_schema": {
+      "type": "object",
+      "required": [
+        "ok",
+        "tool",
+        "request_id",
+        "result",
+        "error",
+        "warnings",
+        "database_sequence",
+        "idempotent_replay"
+      ],
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "request_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "result": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "database",
+                "validation",
+                "description"
+              ],
+              "properties": {
+                "database": {
+                  "type": "string"
+                },
+                "validation": {
+                  "type": "object",
+                  "required": [
+                    "valid",
+                    "checks",
+                    "errors",
+                    "warnings"
+                  ],
+                  "properties": {
+                    "valid": {
+                      "type": "boolean"
+                    },
+                    "checks": {
+                      "type": "object",
+                      "additionalProperties": true
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    },
+                    "warnings": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    }
+                  },
+                  "additionalProperties": true
+                },
+                "description": {
+                  "type": "object"
+                }
+              },
+              "additionalProperties": true
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "database_sequence": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "idempotent_replay": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "contract_level": "guaranteed",
+    "success_example": {
+      "request": {
+        "tool": "pgx.database.initialize",
+        "arguments": {
+          "path": "knowledge.sqlite"
+        },
+        "request_id": "11111111-1111-4111-8111-111111111111"
+      },
+      "result_excerpt": {
+        "database": "knowledge.sqlite",
+        "validation": {
+          "valid": true
+        },
+        "description": {
+          "canonical_reference": "[natural-language anchor](POINTER)"
+        }
+      }
+    },
+    "failure_example": {
+      "condition": "The destination already exists and overwrite is false.",
+      "error_excerpt": {
+        "code": "conflict",
+        "retryable": false
+      }
+    },
+    "likely_next_tools": [
+      "pgx.graph.create",
+      "pgx.database.describe"
+    ]
+  },
+  {
+    "name": "pgx.database.validate",
+    "profile": "core",
+    "status": "active",
+    "description": "Prove SQLite, identity, revision, graph, reference, registry, triple, FTS, and PGX round-trip invariants.",
+    "database_required": true,
+    "mutates": false,
+    "idempotency": "read-only",
+    "transaction_boundary": "none",
+    "preconditions": [],
+    "postconditions": [],
+    "error_codes": [],
+    "maximum_output": "bounded validation report",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {},
+      "title": "EmptyArgs",
+      "type": "object"
+    },
+    "result_schema": {
+      "type": "object",
+      "required": [
+        "valid",
+        "checks",
+        "errors",
+        "warnings"
+      ],
+      "properties": {
+        "valid": {
+          "type": "boolean"
+        },
+        "checks": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "output_schema": {
+      "type": "object",
+      "required": [
+        "ok",
+        "tool",
+        "request_id",
+        "result",
+        "error",
+        "warnings",
+        "database_sequence",
+        "idempotent_replay"
+      ],
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "request_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "result": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "valid",
+                "checks",
+                "errors",
+                "warnings"
+              ],
+              "properties": {
+                "valid": {
+                  "type": "boolean"
+                },
+                "checks": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
+                "errors": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                },
+                "warnings": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              },
+              "additionalProperties": true
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "database_sequence": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "idempotent_replay": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "contract_level": "guaranteed",
+    "success_example": {
+      "request": {
+        "tool": "pgx.database.validate",
+        "arguments": {},
+        "database": "knowledge.sqlite"
+      },
+      "result_excerpt": {
+        "valid": true,
+        "errors": [],
+        "warnings": []
+      }
+    },
+    "failure_example": {},
+    "likely_next_tools": []
+  },
+  {
+    "name": "pgx.graph.create",
+    "profile": "core",
+    "status": "active",
+    "description": "Create a graph and its permanent declaration node.",
+    "database_required": true,
+    "mutates": true,
+    "idempotency": "request_id replay returns the previously committed result; reuse with different input is rejected",
+    "transaction_boundary": "single BEGIN IMMEDIATE transaction; all effects commit or all effects roll back",
+    "preconditions": [
+      "graph key, prefix, and pointer are unused"
+    ],
+    "postconditions": [
+      "declaration is promoted and ordinal zero"
+    ],
+    "error_codes": [
+      "input_validation",
+      "contract_error",
+      "conflict",
+      "stale_write",
+      "validation_failure"
+    ],
+    "maximum_output": "bounded object",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "graph_key": {
+          "title": "Graph Key",
+          "type": "string"
+        },
+        "pointer_prefix": {
+          "title": "Pointer Prefix",
+          "type": "string"
+        },
+        "declaration_pointer": {
+          "title": "Declaration Pointer",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        }
+      },
+      "required": [
+        "graph_key",
+        "pointer_prefix",
+        "declaration_pointer",
+        "title",
+        "description"
+      ],
+      "title": "GraphCreateArgs",
+      "type": "object"
+    },
+    "result_schema": {
+      "type": "object",
+      "required": [
+        "graph_key",
+        "pointer",
+        "uuid",
+        "revision_uuid",
+        "request_id",
+        "database_sequence",
+        "idempotent_replay"
+      ],
+      "properties": {
+        "graph_key": {
+          "type": "string"
+        },
+        "pointer": {
+          "type": "string"
+        },
+        "uuid": {
+          "type": "string"
+        },
+        "revision_uuid": {
+          "type": "string"
+        },
+        "request_id": {
+          "type": "string",
+          "description": "Idempotency UUID supplied by the caller."
+        },
+        "database_sequence": {
+          "type": "integer"
+        },
+        "idempotent_replay": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": true
+    },
+    "output_schema": {
+      "type": "object",
+      "required": [
+        "ok",
+        "tool",
+        "request_id",
+        "result",
+        "error",
+        "warnings",
+        "database_sequence",
+        "idempotent_replay"
+      ],
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "request_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "result": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "graph_key",
+                "pointer",
+                "uuid",
+                "revision_uuid",
+                "request_id",
+                "database_sequence",
+                "idempotent_replay"
+              ],
+              "properties": {
+                "graph_key": {
+                  "type": "string"
+                },
+                "pointer": {
+                  "type": "string"
+                },
+                "uuid": {
+                  "type": "string"
+                },
+                "revision_uuid": {
+                  "type": "string"
+                },
+                "request_id": {
+                  "type": "string",
+                  "description": "Idempotency UUID supplied by the caller."
+                },
+                "database_sequence": {
+                  "type": "integer"
+                },
+                "idempotent_replay": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": true
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "database_sequence": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "idempotent_replay": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "contract_level": "guaranteed",
+    "success_example": {
+      "request": {
+        "tool": "pgx.graph.create",
+        "arguments": {
+          "graph_key": "cell-biology",
+          "pointer_prefix": "CB",
+          "declaration_pointer": "CB0",
+          "title": "Cell biology",
+          "description": "Domain graph for cell biology."
+        },
+        "database": "knowledge.sqlite",
+        "request_id": "22222222-2222-4222-8222-222222222222"
+      },
+      "result_excerpt": {
+        "graph_key": "cell-biology",
+        "pointer": "CB0",
+        "database_sequence": 1
+      }
+    },
+    "failure_example": {
+      "condition": "The graph key, prefix, or declaration pointer is already used.",
+      "error_excerpt": {
+        "code": "conflict",
+        "retryable": true
+      }
+    },
+    "likely_next_tools": [
+      "pgx.node.create"
+    ]
+  },
+  {
+    "name": "pgx.manifest.build",
+    "profile": "core",
+    "status": "active",
+    "description": "Generate JSON and optional Markdown manifests from authoritative SQLite state.",
+    "database_required": true,
+    "mutates": false,
+    "idempotency": "read-only",
+    "transaction_boundary": "none",
+    "preconditions": [],
+    "postconditions": [],
+    "error_codes": [],
+    "maximum_output": "metadata and graph summaries",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "output_json": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Output Json"
+        },
+        "output_markdown": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Output Markdown"
+        }
+      },
+      "title": "ManifestArgs",
+      "type": "object"
+    },
+    "result_schema": {
+      "type": "object",
+      "required": [
+        "product",
+        "version",
+        "generated_at",
+        "database",
+        "database_sha256",
+        "metadata",
+        "counts",
+        "graphs",
+        "validation"
+      ],
+      "properties": {
+        "product": {
+          "const": "Parmesan"
+        },
+        "version": {
+          "type": "string"
+        },
+        "generated_at": {
+          "type": "string"
+        },
+        "database": {
+          "type": "string"
+        },
+        "database_sha256": {
+          "type": "string"
+        },
+        "metadata": {
+          "type": "object"
+        },
+        "counts": {
+          "type": "object"
+        },
+        "graphs": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "validation": {
+          "type": "object",
+          "required": [
+            "valid",
+            "checks",
+            "errors",
+            "warnings"
+          ],
+          "properties": {
+            "valid": {
+              "type": "boolean"
+            },
+            "checks": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "errors": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              }
+            },
+            "warnings": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              }
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "output_schema": {
+      "type": "object",
+      "required": [
+        "ok",
+        "tool",
+        "request_id",
+        "result",
+        "error",
+        "warnings",
+        "database_sequence",
+        "idempotent_replay"
+      ],
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "request_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "result": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "product",
+                "version",
+                "generated_at",
+                "database",
+                "database_sha256",
+                "metadata",
+                "counts",
+                "graphs",
+                "validation"
+              ],
+              "properties": {
+                "product": {
+                  "const": "Parmesan"
+                },
+                "version": {
+                  "type": "string"
+                },
+                "generated_at": {
+                  "type": "string"
+                },
+                "database": {
+                  "type": "string"
+                },
+                "database_sha256": {
+                  "type": "string"
+                },
+                "metadata": {
+                  "type": "object"
+                },
+                "counts": {
+                  "type": "object"
+                },
+                "graphs": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                },
+                "validation": {
+                  "type": "object",
+                  "required": [
+                    "valid",
+                    "checks",
+                    "errors",
+                    "warnings"
+                  ],
+                  "properties": {
+                    "valid": {
+                      "type": "boolean"
+                    },
+                    "checks": {
+                      "type": "object",
+                      "additionalProperties": true
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    },
+                    "warnings": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    }
+                  },
+                  "additionalProperties": true
+                }
+              },
+              "additionalProperties": true
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "database_sequence": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "idempotent_replay": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "contract_level": "guaranteed",
+    "success_example": {
+      "request": {
+        "tool": "pgx.manifest.build",
+        "arguments": {},
+        "database": "knowledge.sqlite"
+      },
+      "result_excerpt": {
+        "product": "Parmesan",
+        "version": "2.4.1",
+        "counts": {
+          "graphs": 6
+        },
+        "validation": {
+          "valid": true
+        }
+      }
+    },
+    "failure_example": {},
+    "likely_next_tools": [
+      "pgx.database.validate"
+    ]
+  },
+  {
+    "name": "pgx.node.create",
+    "profile": "core",
+    "status": "active",
+    "description": "Atomically create, validate, index, and assign a promoted PGX node.",
+    "database_required": true,
+    "mutates": true,
+    "idempotency": "request_id replay returns the previously committed result; reuse with different input is rejected",
+    "transaction_boundary": "single BEGIN IMMEDIATE transaction; all effects commit or all effects roll back",
+    "preconditions": [
+      "pointer is globally unused",
+      "description satisfies the active bare-pointer link contract"
+    ],
+    "postconditions": [
+      "one identity, one initial revision, one graph membership, rebuilt references and FTS"
+    ],
+    "error_codes": [
+      "input_validation",
+      "contract_error",
+      "conflict",
+      "stale_write",
+      "validation_failure"
+    ],
+    "maximum_output": "bounded object",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "pointer": {
+          "title": "Pointer",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "graph_key": {
+          "title": "Graph Key",
+          "type": "string"
+        }
+      },
+      "required": [
+        "pointer",
+        "title",
+        "description",
+        "graph_key"
+      ],
+      "title": "NodeCreateArgs",
+      "type": "object"
+    },
+    "result_schema": {
+      "type": "object",
+      "required": [
+        "pointer",
+        "uuid",
+        "revision_uuid",
+        "graph_key",
+        "reference_count",
+        "request_id",
+        "database_sequence",
+        "idempotent_replay"
+      ],
+      "properties": {
+        "pointer": {
+          "type": "string"
+        },
+        "uuid": {
+          "type": "string"
+        },
+        "revision_uuid": {
+          "type": "string"
+        },
+        "graph_key": {
+          "type": "string"
+        },
+        "reference_count": {
+          "type": "integer"
+        },
+        "request_id": {
+          "type": "string",
+          "description": "Idempotency UUID supplied by the caller."
+        },
+        "database_sequence": {
+          "type": "integer"
+        },
+        "idempotent_replay": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": true
+    },
+    "output_schema": {
+      "type": "object",
+      "required": [
+        "ok",
+        "tool",
+        "request_id",
+        "result",
+        "error",
+        "warnings",
+        "database_sequence",
+        "idempotent_replay"
+      ],
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "request_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "result": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "pointer",
+                "uuid",
+                "revision_uuid",
+                "graph_key",
+                "reference_count",
+                "request_id",
+                "database_sequence",
+                "idempotent_replay"
+              ],
+              "properties": {
+                "pointer": {
+                  "type": "string"
+                },
+                "uuid": {
+                  "type": "string"
+                },
+                "revision_uuid": {
+                  "type": "string"
+                },
+                "graph_key": {
+                  "type": "string"
+                },
+                "reference_count": {
+                  "type": "integer"
+                },
+                "request_id": {
+                  "type": "string",
+                  "description": "Idempotency UUID supplied by the caller."
+                },
+                "database_sequence": {
+                  "type": "integer"
+                },
+                "idempotent_replay": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": true
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "database_sequence": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "idempotent_replay": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "contract_level": "guaranteed",
+    "success_example": {
+      "request": {
+        "tool": "pgx.node.create",
+        "arguments": {
+          "pointer": "CB1",
+          "title": "Cell membrane",
+          "description": "A selectively permeable boundary.",
+          "graph_key": "cell-biology"
+        },
+        "database": "knowledge.sqlite",
+        "request_id": "33333333-3333-4333-8333-333333333333"
+      },
+      "result_excerpt": {
+        "pointer": "CB1",
+        "graph_key": "cell-biology",
+        "reference_count": 0
+      }
+    },
+    "failure_example": {
+      "condition": "The description links to a pointer that does not exist in the active corpus.",
+      "error_excerpt": {
+        "code": "validation_failure",
+        "suggested_tool": "pgx.reference.validate"
+      }
+    },
+    "likely_next_tools": [
+      "pgx.node.create",
+      "pgx.reference.validate",
+      "pgx.database.validate"
+    ]
+  },
+  {
+    "name": "pgx.node.get",
+    "profile": "core",
+    "status": "active",
+    "description": "Resolve one pointer to its current revision, graph, and tags.",
+    "database_required": true,
+    "mutates": false,
+    "idempotency": "read-only",
+    "transaction_boundary": "none",
+    "preconditions": [],
+    "postconditions": [],
+    "error_codes": [],
+    "maximum_output": "one node",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "pointer": {
+          "title": "Pointer",
+          "type": "string"
+        }
+      },
+      "required": [
+        "pointer"
+      ],
+      "title": "NodeGetArgs",
+      "type": "object"
+    },
+    "result_schema": {
+      "type": "object",
+      "required": [
+        "sigil",
+        "pointer",
+        "title",
+        "description",
+        "uuid",
+        "lifecycle_state",
+        "revision_uuid",
+        "graph",
+        "tags"
+      ],
+      "properties": {
+        "sigil": {
+          "const": "pgx:"
+        },
+        "pointer": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "data_one": {
+          "type": "string"
+        },
+        "uuid": {
+          "type": "string"
+        },
+        "lifecycle_state": {
+          "type": "string"
+        },
+        "revision_uuid": {
+          "type": "string"
+        },
+        "revision_created_at": {
+          "type": "string"
+        },
+        "content_hash": {
+          "type": "string"
+        },
+        "graph": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "output_schema": {
+      "type": "object",
+      "required": [
+        "ok",
+        "tool",
+        "request_id",
+        "result",
+        "error",
+        "warnings",
+        "database_sequence",
+        "idempotent_replay"
+      ],
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "request_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "result": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "sigil",
+                "pointer",
+                "title",
+                "description",
+                "uuid",
+                "lifecycle_state",
+                "revision_uuid",
+                "graph",
+                "tags"
+              ],
+              "properties": {
+                "sigil": {
+                  "const": "pgx:"
+                },
+                "pointer": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "data_one": {
+                  "type": "string"
+                },
+                "uuid": {
+                  "type": "string"
+                },
+                "lifecycle_state": {
+                  "type": "string"
+                },
+                "revision_uuid": {
+                  "type": "string"
+                },
+                "revision_created_at": {
+                  "type": "string"
+                },
+                "content_hash": {
+                  "type": "string"
+                },
+                "graph": {
+                  "type": [
+                    "object",
+                    "null"
+                  ]
+                },
+                "tags": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              },
+              "additionalProperties": true
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "database_sequence": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "idempotent_replay": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "contract_level": "guaranteed",
+    "success_example": {
+      "request": {
+        "tool": "pgx.node.get",
+        "arguments": {
+          "pointer": "CB1"
+        },
+        "database": "knowledge.sqlite"
+      },
+      "result_excerpt": {
+        "pointer": "CB1",
+        "title": "Cell membrane",
+        "lifecycle_state": "promoted"
+      }
+    },
+    "failure_example": {
+      "condition": "The pointer does not exist.",
+      "error_excerpt": {
+        "code": "not_found",
+        "suggested_tool": "pgx.node.search"
+      }
+    },
+    "likely_next_tools": [
+      "pgx.node.update",
+      "pgx.context.build",
+      "pgx.reference.list"
+    ]
+  },
+  {
+    "name": "pgx.node.history",
+    "profile": "core",
+    "status": "active",
+    "description": "List bounded append-only revision history.",
+    "database_required": true,
+    "mutates": false,
+    "idempotency": "read-only",
+    "transaction_boundary": "none",
+    "preconditions": [],
+    "postconditions": [],
+    "error_codes": [],
+    "maximum_output": "at most 100 revisions",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "pointer": {
+          "title": "Pointer",
+          "type": "string"
+        },
+        "limit": {
+          "default": 50,
+          "maximum": 100,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        },
+        "cursor": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Cursor",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "pointer"
+      ],
+      "title": "NodeHistoryArgs",
+      "type": "object"
+    },
+    "result_schema": {
+      "type": "object",
+      "required": [
+        "pointer",
+        "current_revision_uuid",
+        "total",
+        "cursor",
+        "next_cursor",
+        "revisions"
+      ],
+      "properties": {
+        "pointer": {
+          "type": "string"
+        },
+        "current_revision_uuid": {
+          "type": "string"
+        },
+        "total": {
+          "type": "integer"
+        },
+        "cursor": {
+          "type": "integer"
+        },
+        "next_cursor": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "revisions": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "output_schema": {
+      "type": "object",
+      "required": [
+        "ok",
+        "tool",
+        "request_id",
+        "result",
+        "error",
+        "warnings",
+        "database_sequence",
+        "idempotent_replay"
+      ],
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "request_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "result": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "pointer",
+                "current_revision_uuid",
+                "total",
+                "cursor",
+                "next_cursor",
+                "revisions"
+              ],
+              "properties": {
+                "pointer": {
+                  "type": "string"
+                },
+                "current_revision_uuid": {
+                  "type": "string"
+                },
+                "total": {
+                  "type": "integer"
+                },
+                "cursor": {
+                  "type": "integer"
+                },
+                "next_cursor": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "revisions": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              },
+              "additionalProperties": true
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "database_sequence": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "idempotent_replay": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "contract_level": "guaranteed",
+    "success_example": {
+      "request": {
+        "tool": "pgx.node.history",
+        "arguments": {
+          "pointer": "CB1",
+          "limit": 20
+        },
+        "database": "knowledge.sqlite"
+      },
+      "result_excerpt": {
+        "pointer": "CB1",
+        "total": 2,
+        "revisions": [
+          {
+            "reason": "clarify definition"
+          }
+        ]
+      }
+    },
+    "failure_example": {},
+    "likely_next_tools": []
+  },
+  {
+    "name": "pgx.node.search",
+    "profile": "core",
+    "status": "active",
+    "description": "Run bounded SQLite FTS5 search over current promoted nodes.",
+    "database_required": true,
+    "mutates": false,
+    "idempotency": "read-only",
+    "transaction_boundary": "none",
+    "preconditions": [],
+    "postconditions": [],
+    "error_codes": [],
+    "maximum_output": "at most 100 hits",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "query": {
+          "title": "Query",
+          "type": "string"
+        },
+        "limit": {
+          "default": 20,
+          "maximum": 100,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        },
+        "cursor": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Cursor",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "query"
+      ],
+      "title": "SearchArgs",
+      "type": "object"
+    },
+    "result_schema": {
+      "type": "object",
+      "required": [
+        "query",
+        "total",
+        "cursor",
+        "next_cursor",
+        "results"
+      ],
+      "properties": {
+        "query": {
+          "type": "string"
+        },
+        "total": {
+          "type": "integer"
+        },
+        "cursor": {
+          "type": "integer"
+        },
+        "next_cursor": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "results": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "output_schema": {
+      "type": "object",
+      "required": [
+        "ok",
+        "tool",
+        "request_id",
+        "result",
+        "error",
+        "warnings",
+        "database_sequence",
+        "idempotent_replay"
+      ],
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "request_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "result": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "query",
+                "total",
+                "cursor",
+                "next_cursor",
+                "results"
+              ],
+              "properties": {
+                "query": {
+                  "type": "string"
+                },
+                "total": {
+                  "type": "integer"
+                },
+                "cursor": {
+                  "type": "integer"
+                },
+                "next_cursor": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "results": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              },
+              "additionalProperties": true
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "database_sequence": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "idempotent_replay": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "contract_level": "guaranteed",
+    "success_example": {
+      "request": {
+        "tool": "pgx.node.search",
+        "arguments": {
+          "query": "membrane",
+          "limit": 10
+        },
+        "database": "knowledge.sqlite"
+      },
+      "result_excerpt": {
+        "query": "membrane",
+        "total": 1,
+        "results": [
+          {
+            "pointer": "CB1",
+            "title": "Cell membrane"
+          }
+        ]
+      }
+    },
+    "failure_example": {},
+    "likely_next_tools": [
+      "pgx.node.get",
+      "pgx.context.build"
+    ]
+  },
+  {
+    "name": "pgx.node.update",
+    "profile": "core",
+    "status": "active",
+    "description": "Create a new immutable revision with optimistic concurrency and atomic reference reindexing.",
+    "database_required": true,
+    "mutates": true,
+    "idempotency": "request_id replay returns the previously committed result; reuse with different input is rejected",
+    "transaction_boundary": "single BEGIN IMMEDIATE transaction; all effects commit or all effects roll back",
+    "preconditions": [
+      "expected_revision_uuid matches when supplied"
+    ],
+    "postconditions": [
+      "old revision remains append-only",
+      "current revision and derived state agree"
+    ],
+    "error_codes": [
+      "input_validation",
+      "contract_error",
+      "conflict",
+      "stale_write",
+      "validation_failure"
+    ],
+    "maximum_output": "bounded object",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "pointer": {
+          "title": "Pointer",
+          "type": "string"
+        },
+        "title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Title"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "expected_revision_uuid": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expected Revision Uuid"
+        },
+        "reason": {
+          "default": "",
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "pointer"
+      ],
+      "title": "NodeUpdateArgs",
+      "type": "object"
+    },
+    "result_schema": {
+      "type": "object",
+      "required": [
+        "pointer",
+        "uuid",
+        "previous_revision_uuid",
+        "revision_uuid",
+        "reference_count",
+        "warnings",
+        "request_id",
+        "database_sequence",
+        "idempotent_replay"
+      ],
+      "properties": {
+        "pointer": {
+          "type": "string"
+        },
+        "uuid": {
+          "type": "string"
+        },
+        "previous_revision_uuid": {
+          "type": "string"
+        },
+        "revision_uuid": {
+          "type": "string"
+        },
+        "reference_count": {
+          "type": "integer"
+        },
+        "warnings": {
+          "type": "array"
+        },
+        "request_id": {
+          "type": "string",
+          "description": "Idempotency UUID supplied by the caller."
+        },
+        "database_sequence": {
+          "type": "integer"
+        },
+        "idempotent_replay": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": true
+    },
+    "output_schema": {
+      "type": "object",
+      "required": [
+        "ok",
+        "tool",
+        "request_id",
+        "result",
+        "error",
+        "warnings",
+        "database_sequence",
+        "idempotent_replay"
+      ],
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "request_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "result": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "pointer",
+                "uuid",
+                "previous_revision_uuid",
+                "revision_uuid",
+                "reference_count",
+                "warnings",
+                "request_id",
+                "database_sequence",
+                "idempotent_replay"
+              ],
+              "properties": {
+                "pointer": {
+                  "type": "string"
+                },
+                "uuid": {
+                  "type": "string"
+                },
+                "previous_revision_uuid": {
+                  "type": "string"
+                },
+                "revision_uuid": {
+                  "type": "string"
+                },
+                "reference_count": {
+                  "type": "integer"
+                },
+                "warnings": {
+                  "type": "array"
+                },
+                "request_id": {
+                  "type": "string",
+                  "description": "Idempotency UUID supplied by the caller."
+                },
+                "database_sequence": {
+                  "type": "integer"
+                },
+                "idempotent_replay": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": true
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "database_sequence": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "idempotent_replay": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "contract_level": "guaranteed",
+    "success_example": {
+      "request": {
+        "tool": "pgx.node.update",
+        "arguments": {
+          "pointer": "CB1",
+          "description": "A selectively permeable boundary surrounding a cell.",
+          "expected_revision_uuid": "<current-revision-uuid>",
+          "reason": "clarify definition"
+        },
+        "database": "knowledge.sqlite",
+        "request_id": "44444444-4444-4444-8444-444444444444"
+      },
+      "result_excerpt": {
+        "pointer": "CB1",
+        "previous_revision_uuid": "<old>",
+        "revision_uuid": "<new>"
+      }
+    },
+    "failure_example": {
+      "condition": "expected_revision_uuid is not the current revision.",
+      "error_excerpt": {
+        "code": "stale_write",
+        "suggested_tool": "pgx.node.get"
+      }
+    },
+    "likely_next_tools": [
+      "pgx.node.get",
+      "pgx.database.validate"
+    ]
+  },
+  {
+    "name": "pgx.reference.list",
+    "profile": "core",
+    "status": "active",
+    "description": "List bounded outgoing or incoming natural-language reference occurrences.",
+    "database_required": true,
+    "mutates": false,
+    "idempotency": "read-only",
+    "transaction_boundary": "none",
+    "preconditions": [],
+    "postconditions": [],
+    "error_codes": [],
+    "maximum_output": "at most 100 occurrences",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "pointer": {
+          "title": "Pointer",
+          "type": "string"
+        },
+        "direction": {
+          "default": "outgoing",
+          "pattern": "^(outgoing|incoming)$",
+          "title": "Direction",
+          "type": "string"
+        },
+        "limit": {
+          "default": 50,
+          "maximum": 100,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        },
+        "cursor": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Cursor",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "pointer"
+      ],
+      "title": "ReferenceListArgs",
+      "type": "object"
+    },
+    "result_schema": {
+      "type": "object",
+      "required": [
+        "pointer",
+        "direction",
+        "total",
+        "cursor",
+        "next_cursor",
+        "references"
+      ],
+      "properties": {
+        "pointer": {
+          "type": "string"
+        },
+        "direction": {
+          "enum": [
+            "outgoing",
+            "incoming"
+          ]
+        },
+        "total": {
+          "type": "integer"
+        },
+        "cursor": {
+          "type": "integer"
+        },
+        "next_cursor": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "references": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "output_schema": {
+      "type": "object",
+      "required": [
+        "ok",
+        "tool",
+        "request_id",
+        "result",
+        "error",
+        "warnings",
+        "database_sequence",
+        "idempotent_replay"
+      ],
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "request_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "result": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "pointer",
+                "direction",
+                "total",
+                "cursor",
+                "next_cursor",
+                "references"
+              ],
+              "properties": {
+                "pointer": {
+                  "type": "string"
+                },
+                "direction": {
+                  "enum": [
+                    "outgoing",
+                    "incoming"
+                  ]
+                },
+                "total": {
+                  "type": "integer"
+                },
+                "cursor": {
+                  "type": "integer"
+                },
+                "next_cursor": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "references": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              },
+              "additionalProperties": true
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "database_sequence": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "idempotent_replay": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "contract_level": "guaranteed",
+    "success_example": {
+      "request": {
+        "tool": "pgx.reference.list",
+        "arguments": {
+          "pointer": "CB2",
+          "direction": "outgoing"
+        },
+        "database": "knowledge.sqlite"
+      },
+      "result_excerpt": {
+        "pointer": "CB2",
+        "direction": "outgoing",
+        "total": 1,
+        "references": [
+          {
+            "target_pointer": "CB1"
+          }
+        ]
+      }
+    },
+    "failure_example": {},
+    "likely_next_tools": []
+  },
+  {
+    "name": "pgx.reference.make",
+    "profile": "core",
+    "status": "active",
+    "description": "Generate canonical natural-language Markdown whose raw destination is the exact PGX pointer.",
+    "database_required": true,
+    "mutates": false,
+    "idempotency": "read-only",
+    "transaction_boundary": "none",
+    "preconditions": [],
+    "postconditions": [],
+    "error_codes": [],
+    "maximum_output": "one link",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "anchor_text": {
+          "title": "Anchor Text",
+          "type": "string"
+        },
+        "pointer": {
+          "title": "Pointer",
+          "type": "string"
+        },
+        "profile_key": {
+          "default": "pgx-default",
+          "title": "Profile Key",
+          "type": "string"
+        },
+        "verify_target": {
+          "default": true,
+          "title": "Verify Target",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "anchor_text",
+        "pointer"
+      ],
+      "title": "ReferenceMakeArgs",
+      "type": "object"
+    },
+    "result_schema": {
+      "type": "object",
+      "required": [
+        "markdown",
+        "pointer",
+        "destination",
+        "target_uuid",
+        "visible_text",
+        "resolution_scope",
+        "network_behavior",
+        "resolver_status"
+      ],
+      "properties": {
+        "markdown": {
+          "type": "string"
+        },
+        "pointer": {
+          "type": "string"
+        },
+        "destination": {
+          "type": "string"
+        },
+        "target_uuid": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "visible_text": {
+          "type": "string"
+        },
+        "resolution_scope": {
+          "const": "active_corpus"
+        },
+        "network_behavior": {
+          "const": "none"
+        },
+        "resolver_status": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "output_schema": {
+      "type": "object",
+      "required": [
+        "ok",
+        "tool",
+        "request_id",
+        "result",
+        "error",
+        "warnings",
+        "database_sequence",
+        "idempotent_replay"
+      ],
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "request_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "result": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "markdown",
+                "pointer",
+                "destination",
+                "target_uuid",
+                "visible_text",
+                "resolution_scope",
+                "network_behavior",
+                "resolver_status"
+              ],
+              "properties": {
+                "markdown": {
+                  "type": "string"
+                },
+                "pointer": {
+                  "type": "string"
+                },
+                "destination": {
+                  "type": "string"
+                },
+                "target_uuid": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "visible_text": {
+                  "type": "string"
+                },
+                "resolution_scope": {
+                  "const": "active_corpus"
+                },
+                "network_behavior": {
+                  "const": "none"
+                },
+                "resolver_status": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": true
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "database_sequence": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "idempotent_replay": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "contract_level": "guaranteed",
+    "success_example": {
+      "request": {
+        "tool": "pgx.reference.make",
+        "arguments": {
+          "anchor_text": "cell membrane",
+          "pointer": "CB1"
+        },
+        "database": "knowledge.sqlite"
+      },
+      "result_excerpt": {
+        "markdown": "[cell membrane](CB1)",
+        "network_behavior": "none"
+      }
+    },
+    "failure_example": {
+      "condition": "verify_target is true and the pointer does not exist.",
+      "error_excerpt": {
+        "code": "not_found",
+        "suggested_tool": "pgx.node.search"
+      }
+    },
+    "likely_next_tools": [
+      "pgx.reference.validate",
+      "pgx.node.create",
+      "pgx.node.update"
+    ]
+  },
+  {
+    "name": "pgx.reference.validate",
+    "profile": "core",
+    "status": "active",
+    "description": "Parse and validate bare-pointer Markdown links, exact source positions, and active-corpus targets.",
+    "database_required": true,
+    "mutates": false,
+    "idempotency": "read-only",
+    "transaction_boundary": "none",
+    "preconditions": [],
+    "postconditions": [],
+    "error_codes": [],
+    "maximum_output": "bounded by references in supplied description",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "profile_key": {
+          "default": "pgx-default",
+          "title": "Profile Key",
+          "type": "string"
+        },
+        "verify_targets": {
+          "default": true,
+          "title": "Verify Targets",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "description"
+      ],
+      "title": "ReferenceValidateArgs",
+      "type": "object"
+    },
+    "result_schema": {
+      "type": "object",
+      "required": [
+        "valid",
+        "occurrences",
+        "errors",
+        "warnings",
+        "visible_text"
+      ],
+      "properties": {
+        "valid": {
+          "type": "boolean"
+        },
+        "occurrences": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "visible_text": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "output_schema": {
+      "type": "object",
+      "required": [
+        "ok",
+        "tool",
+        "request_id",
+        "result",
+        "error",
+        "warnings",
+        "database_sequence",
+        "idempotent_replay"
+      ],
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "request_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "result": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "valid",
+                "occurrences",
+                "errors",
+                "warnings",
+                "visible_text"
+              ],
+              "properties": {
+                "valid": {
+                  "type": "boolean"
+                },
+                "occurrences": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                },
+                "errors": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                },
+                "warnings": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                },
+                "visible_text": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": true
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "database_sequence": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "idempotent_replay": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "contract_level": "guaranteed",
+    "success_example": {
+      "request": {
+        "tool": "pgx.reference.validate",
+        "arguments": {
+          "description": "The [cell membrane](CB1) bounds the cell."
+        },
+        "database": "knowledge.sqlite"
+      },
+      "result_excerpt": {
+        "valid": true,
+        "visible_text": "The cell membrane bounds the cell."
+      }
+    },
+    "failure_example": {
+      "condition": "A bare-pointer destination is malformed or unresolved.",
+      "error_excerpt": {
+        "code": "validation_failure",
+        "suggested_tool": "pgx.reference.validate"
+      }
+    },
+    "likely_next_tools": [
+      "pgx.node.create",
+      "pgx.node.update"
+    ]
+  },
+  {
+    "name": "pgx.serialize.graph",
+    "profile": "core",
+    "status": "active",
+    "description": "Serialize one graph through the reversible escaped PGX grammar.",
+    "database_required": true,
+    "mutates": false,
+    "idempotency": "read-only",
+    "transaction_boundary": "none",
+    "preconditions": [],
+    "postconditions": [],
+    "error_codes": [],
+    "maximum_output": "bounded by selected graph",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "graph_key": {
+          "title": "Graph Key",
+          "type": "string"
+        }
+      },
+      "required": [
+        "graph_key"
+      ],
+      "title": "SerializeArgs",
+      "type": "object"
+    },
+    "result_schema": {
+      "type": "object",
+      "required": [
+        "graph_key",
+        "pgx"
+      ],
+      "properties": {
+        "graph_key": {
+          "type": "string"
+        },
+        "pgx": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "output_schema": {
+      "type": "object",
+      "required": [
+        "ok",
+        "tool",
+        "request_id",
+        "result",
+        "error",
+        "warnings",
+        "database_sequence",
+        "idempotent_replay"
+      ],
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "request_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "result": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "graph_key",
+                "pgx"
+              ],
+              "properties": {
+                "graph_key": {
+                  "type": "string"
+                },
+                "pgx": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": true
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "database_sequence": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "idempotent_replay": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "contract_level": "guaranteed",
+    "success_example": {
+      "request": {
+        "tool": "pgx.serialize.graph",
+        "arguments": {
+          "graph_key": "cell-biology"
+        },
+        "database": "knowledge.sqlite"
+      },
+      "result_excerpt": {
+        "graph_key": "cell-biology",
+        "pgx": "- pgx: || CB0 || Cell biology || ... ||"
+      }
+    },
+    "failure_example": {},
+    "likely_next_tools": [
+      "pgx.database.validate"
+    ]
+  },
+  {
+    "name": "pgx.system.doctor",
+    "profile": "core",
+    "status": "active",
+    "description": "Check whether this conversation environment and an optional corpus are ready for Parmesan.",
+    "database_required": false,
+    "mutates": false,
+    "idempotency": "read-only",
+    "transaction_boundary": "none",
+    "preconditions": [],
+    "postconditions": [],
+    "error_codes": [],
+    "maximum_output": "one readiness report",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {},
+      "title": "EmptyArgs",
+      "type": "object"
+    },
+    "result_schema": {
+      "type": "object",
+      "required": [
+        "ready",
+        "operator",
+        "parmesan_version",
+        "python",
+        "dependencies",
+        "filesystem",
+        "next_action"
+      ],
+      "properties": {
+        "ready": {
+          "type": "boolean"
+        },
+        "operator": {
+          "const": "conversational_llm"
+        },
+        "parmesan_version": {
+          "type": "string"
+        },
+        "python": {
+          "type": "object"
+        },
+        "dependencies": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "filesystem": {
+          "type": "object"
+        },
+        "corpus": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "canonical_reference": {
+          "const": "[natural-language anchor](POINTER)"
+        },
+        "network_required_for_corpus_operation": {
+          "const": false
+        },
+        "default_catalog_profile": {
+          "const": "core"
+        },
+        "next_action": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "output_schema": {
+      "type": "object",
+      "required": [
+        "ok",
+        "tool",
+        "request_id",
+        "result",
+        "error",
+        "warnings",
+        "database_sequence",
+        "idempotent_replay"
+      ],
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "request_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "result": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "ready",
+                "operator",
+                "parmesan_version",
+                "python",
+                "dependencies",
+                "filesystem",
+                "next_action"
+              ],
+              "properties": {
+                "ready": {
+                  "type": "boolean"
+                },
+                "operator": {
+                  "const": "conversational_llm"
+                },
+                "parmesan_version": {
+                  "type": "string"
+                },
+                "python": {
+                  "type": "object"
+                },
+                "dependencies": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                },
+                "filesystem": {
+                  "type": "object"
+                },
+                "corpus": {
+                  "type": [
+                    "object",
+                    "null"
+                  ]
+                },
+                "canonical_reference": {
+                  "const": "[natural-language anchor](POINTER)"
+                },
+                "network_required_for_corpus_operation": {
+                  "const": false
+                },
+                "default_catalog_profile": {
+                  "const": "core"
+                },
+                "next_action": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": true
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "database_sequence": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "idempotent_replay": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "contract_level": "guaranteed",
+    "success_example": {
+      "request": {
+        "tool": "pgx.system.doctor",
+        "arguments": {}
+      },
+      "result_excerpt": {
+        "ready": true,
+        "operator": "conversational_llm",
+        "default_catalog_profile": "core"
+      }
+    },
+    "failure_example": {},
+    "likely_next_tools": [
+      "pgx.database.initialize",
+      "pgx.database.describe"
+    ]
+  }
+]

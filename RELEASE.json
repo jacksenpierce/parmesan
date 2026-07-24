@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "product": "Parmesan",
+  "artifact_kind": "conversational_llm_software",
+  "version": "2.4.1",
+  "release_id": "0b2b2603-afbf-4517-9c1b-1c0f28b0eb6b",
+  "artifact_filename": "PARMESAN_v2_4_1.zip",
+  "root_directory": "PARMESAN_v2_4_1",
+  "built_at_utc": "2026-07-24T21:46:22Z",
+  "supersedes": "2.4.0",
+  "operator": "conversational_llm",
+  "amazon_corpus_bundled": false,
+  "version_policy": {
+    "major": "incompatible PGX, database, or core tool-contract change",
+    "minor": "backward-compatible capability or substantial workflow addition",
+    "patch": "backward-compatible correction, clarification, or release hardening"
+  },
+  "identity_policy": {
+    "human_filename": "PARMESAN_vMAJOR_MINOR_PATCH.zip",
+    "immutable_release_identity": "release_id UUID stored inside the artifact",
+    "byte_identity": "SHA-256 of the delivered ZIP, reported at handoff",
+    "uuid_in_filename": false,
+    "same_version_rebuilds": "forbidden after delivery; change any byte only under a new version and release_id"
+  }
+}

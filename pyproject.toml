@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "parmesan"
+version = "2.4.1"
+description = "Local SQLite-first PGX knowledge tools for conversational LLMs"
+requires-python = ">=3.11"
+dependencies = [
+  "pydantic>=2.10,<3",
+  "markdown-it-py>=4,<5",
+  "typer>=0.12,<1",
+]
+
+[project.scripts]
+parmesan = "parmesan.cli:app"
+pgx-pasta = "parmesan.cli:legacy_app"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+addopts = "-q"

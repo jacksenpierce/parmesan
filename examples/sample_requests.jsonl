@@ -1,0 +1,3 @@
+{"tool": "pgx.node.get", "database": "examples/PARMESAN_SAMPLE.sqlite", "arguments": {"pointer": "E2"}}
+{"tool": "pgx.reference.list", "database": "examples/PARMESAN_SAMPLE.sqlite", "arguments": {"pointer": "E2", "direction": "outgoing", "limit": 10, "cursor": 0}}
+{"tool": "pgx.context.build", "database": "examples/PARMESAN_SAMPLE.sqlite", "arguments": {"pointer": "E2", "max_nodes": 5, "max_chars": 5000, "include_triples": true}}

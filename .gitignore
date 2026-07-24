@@ -1,0 +1,49 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Build and distribution output. The checked-in wheel is an authoritative
+# release-manifest artifact and is deliberately retained.
+build/
+dist/*
+!dist/parmesan-2.4.1-py3-none-any.whl
+*.egg-info/
+
+# Test and coverage caches
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+
+# Editor and operating-system metadata
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# SQLite transient files (authoritative .sqlite files remain tracked)
+*-wal
+*-shm
+*.journal
+
+# Local environment and secret files
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+credentials*.json
+secrets*.json

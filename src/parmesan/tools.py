@@ -1,0 +1,444 @@
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from typing import Any, Callable
+
+from pydantic import BaseModel, ConfigDict, Field
+
+from .manifest import build_manifest
+from .runtime import describe_corpus, doctor
+from .store import SQLitePGXStore
+from .tool_contracts import FAILURE_EXAMPLES, NEXT_TOOLS, RESULT_SCHEMAS, SUCCESS_EXAMPLES, response_schema
+
+
+class ToolArgs(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+
+class EmptyArgs(ToolArgs):
+    pass
+
+
+class InitArgs(ToolArgs):
+    path: str
+    uri_template: str = "{pointer}"
+    resolver_status: str = Field(default="resolved", pattern="^(resolved|unresolved)$")
+    overwrite: bool = False
+
+
+class GraphCreateArgs(ToolArgs):
+    graph_key: str
+    pointer_prefix: str
+    declaration_pointer: str
+    title: str
+    description: str
+
+
+class NodeCreateArgs(ToolArgs):
+    pointer: str
+    title: str
+    description: str
+    graph_key: str
+
+
+class NodeStageArgs(ToolArgs):
+    pointer: str
+    title: str
+    description: str
+    intended_graph_key: str | None = None
+    tracking_note: str = ""
+
+
+class NodePromoteArgs(ToolArgs):
+    pointer: str
+    graph_key: str | None = None
+
+
+class NodeGetArgs(ToolArgs):
+    pointer: str
+
+
+class NodeUpdateArgs(ToolArgs):
+    pointer: str
+    title: str | None = None
+    description: str | None = None
+    expected_revision_uuid: str | None = None
+    reason: str = ""
+
+
+class NodeHistoryArgs(ToolArgs):
+    pointer: str
+    limit: int = Field(default=50, ge=1, le=100)
+    cursor: int = Field(default=0, ge=0)
+
+
+class NodeRevertArgs(ToolArgs):
+    pointer: str
+    target_revision_uuid: str
+    expected_revision_uuid: str | None = None
+    reason: str = "revert"
+
+
+class SearchArgs(ToolArgs):
+    query: str
+    limit: int = Field(default=20, ge=1, le=100)
+    cursor: int = Field(default=0, ge=0)
+
+
+class ReferenceMakeArgs(ToolArgs):
+    anchor_text: str
+    pointer: str
+    profile_key: str = "pgx-default"
+    verify_target: bool = True
+
+
+class ReferenceValidateArgs(ToolArgs):
+    description: str
+    profile_key: str = "pgx-default"
+    verify_targets: bool = True
+
+
+class ReferenceListArgs(ToolArgs):
+    pointer: str
+    direction: str = Field(default="outgoing", pattern="^(outgoing|incoming)$")
+    limit: int = Field(default=50, ge=1, le=100)
+    cursor: int = Field(default=0, ge=0)
+
+
+class VisibleTextArgs(ToolArgs):
+    description: str
+    profile_key: str = "pgx-default"
+
+
+class LegacyReferencePlanArgs(ToolArgs):
+    include_staged: bool = True
+
+
+class LegacyReferenceMigrationArgs(ToolArgs):
+    include_staged: bool = True
+    reason: str = "convert explicit legacy PGX citations to canonical bare-pointer Markdown links"
+
+
+class BarePointerMigrationPlanArgs(ToolArgs):
+    include_staged: bool = True
+
+
+class BarePointerMigrationArgs(ToolArgs):
+    include_staged: bool = True
+    reason: str = "adopt the bare-pointer Markdown reference discipline"
+
+
+class URIResolveArgs(ToolArgs):
+    uri: str
+
+
+class URIInspectArgs(ToolArgs):
+    uri: str
+
+
+class DestinationResolveArgs(ToolArgs):
+    destination: str
+
+
+class DestinationInspectArgs(ToolArgs):
+    destination: str
+
+
+class TripleAddArgs(ToolArgs):
+    subject_pointer: str
+    predicate_pointer: str = "PRN001"
+    object_pointer: str
+
+
+class TripleListArgs(ToolArgs):
+    pointer: str
+    direction: str = Field(default="outgoing", pattern="^(outgoing|incoming)$")
+    limit: int = Field(default=50, ge=1, le=100)
+    cursor: int = Field(default=0, ge=0)
+
+
+class TagCreateArgs(ToolArgs):
+    pointer: str
+    title: str
+    description: str
+
+
+class TagAssignArgs(ToolArgs):
+    subject_pointer: str
+    tag_pointer: str
+
+
+class SerializeArgs(ToolArgs):
+    graph_key: str
+
+
+class ParseArgs(ToolArgs):
+    line: str
+
+
+class ContextArgs(ToolArgs):
+    pointer: str
+    max_nodes: int = Field(default=20, ge=1, le=50)
+    max_chars: int = Field(default=12000, ge=1000, le=100000)
+    include_triples: bool = True
+
+
+class ManifestArgs(ToolArgs):
+    output_json: str | None = None
+    output_markdown: str | None = None
+
+
+@dataclass(frozen=True)
+class ToolDefinition:
+    name: str
+    description: str
+    input_model: type[BaseModel]
+    handler: Callable[[SQLitePGXStore | None, BaseModel, dict[str, Any]], Any]
+    database_required: bool = True
+    mutates: bool = False
+    idempotency: str = "read-only"
+    transaction: str = "none"
+    preconditions: tuple[str, ...] = ()
+    postconditions: tuple[str, ...] = ()
+    error_codes: tuple[str, ...] = ()
+    max_output: str = "bounded object"
+    success_example: dict[str, Any] = field(default_factory=dict)
+    failure_example: dict[str, Any] = field(default_factory=dict)
+    profile: str = "core"
+    status: str = "active"
+
+
+TOOLS: dict[str, ToolDefinition] = {}
+
+
+def register(name: str, description: str, input_model: type[BaseModel], **meta):
+    def decorator(handler):
+        TOOLS[name] = ToolDefinition(name, description, input_model, handler, **meta)
+        return handler
+    return decorator
+
+
+MUTATION_META = {
+    "mutates": True,
+    "idempotency": "request_id replay returns the previously committed result; reuse with different input is rejected",
+    "transaction": "single BEGIN IMMEDIATE transaction; all effects commit or all effects roll back",
+    "error_codes": ("input_validation", "contract_error", "conflict", "stale_write", "validation_failure"),
+}
+
+
+@register("pgx.system.doctor", "Check whether this conversation environment and an optional corpus are ready for Parmesan.", EmptyArgs, database_required=False, max_output="one readiness report")
+def _doctor(store, args, ctx):
+    return doctor(ctx.get("database"))
+
+
+@register("pgx.database.initialize", "Create a fresh Parmesan SQLite knowledge base and return its first operating instructions.", InitArgs, database_required=False, mutates=True, idempotency="filesystem create; overwrite must be explicit", transaction="single schema/seed transaction", preconditions=("uri_template contains exactly one {pointer}",), postconditions=("database validates",), error_codes=("input_validation", "contract_error", "conflict"))
+def _init(_, args: InitArgs, ctx):
+    store = SQLitePGXStore.initialize(args.path, overwrite=args.overwrite, uri_template=args.uri_template, resolver_status=args.resolver_status)
+    return {
+        "database": str(store.path),
+        "validation": store.validate_database(full=True),
+        "description": describe_corpus(store.path),
+    }
+
+
+@register("pgx.database.describe", "Orient the operating LLM to an existing corpus: counts, graphs, pointer grammar, reserved seed pointers, and next actions.", EmptyArgs, max_output="one compact corpus orientation report")
+def _describe(store, args, ctx):
+    return describe_corpus(store.path)
+
+
+@register("pgx.database.validate", "Prove SQLite, identity, revision, graph, reference, registry, triple, FTS, and PGX round-trip invariants.", EmptyArgs, max_output="bounded validation report")
+def _validate(store, args, ctx):
+    return store.validate_database(full=True)
+
+
+@register("pgx.database.rebuild_derived", "Rebuild reference occurrences and FTS from current node revisions.", EmptyArgs, **MUTATION_META, postconditions=("derived reference and search state exactly matches authoritative descriptions",), profile="maintenance")
+def _rebuild(store, args, ctx):
+    return store.rebuild_derived(request_id=ctx["request_id"])
+
+
+@register("pgx.graph.create", "Create a graph and its permanent declaration node.", GraphCreateArgs, **MUTATION_META, preconditions=("graph key, prefix, and pointer are unused",), postconditions=("declaration is promoted and ordinal zero",))
+def _graph(store, args, ctx):
+    return store.create_graph(request_id=ctx["request_id"], **args.model_dump())
+
+
+@register("pgx.node.create", "Atomically create, validate, index, and assign a promoted PGX node.", NodeCreateArgs, **MUTATION_META, preconditions=("pointer is globally unused", "description satisfies the active bare-pointer link contract"), postconditions=("one identity, one initial revision, one graph membership, rebuilt references and FTS",))
+def _create(store, args, ctx):
+    return store.create_node(request_id=ctx["request_id"], **args.model_dump())
+
+
+@register("pgx.node.stage", "Create one globally unique staged identity and record validation issues without promotion.", NodeStageArgs, **MUTATION_META, postconditions=("staged identity exists exactly once",), profile="advanced")
+def _stage(store, args, ctx):
+    return store.stage_node(request_id=ctx["request_id"], **args.model_dump())
+
+
+@register("pgx.node.promote", "Atomically validate and promote a staged node into one graph.", NodePromoteArgs, **MUTATION_META, preconditions=("node is staged", "all required references resolve"), postconditions=("node is promoted, indexed, and no longer queued",), profile="advanced")
+def _promote(store, args, ctx):
+    return store.promote_node(request_id=ctx["request_id"], **args.model_dump())
+
+
+@register("pgx.node.get", "Resolve one pointer to its current revision, graph, and tags.", NodeGetArgs, max_output="one node")
+def _get(store, args, ctx):
+    return store.get_node(args.pointer)
+
+
+@register("pgx.node.update", "Create a new immutable revision with optimistic concurrency and atomic reference reindexing.", NodeUpdateArgs, **MUTATION_META, preconditions=("expected_revision_uuid matches when supplied",), postconditions=("old revision remains append-only", "current revision and derived state agree",))
+def _update(store, args, ctx):
+    return store.update_node(request_id=ctx["request_id"], **args.model_dump())
+
+
+@register("pgx.node.history", "List bounded append-only revision history.", NodeHistoryArgs, max_output="at most 100 revisions")
+def _history(store, args, ctx):
+    return store.node_history(**args.model_dump())
+
+
+@register("pgx.node.revert", "Create a new current revision from an older revision without deleting history.", NodeRevertArgs, **MUTATION_META, profile="advanced")
+def _revert(store, args, ctx):
+    return store.revert_node(request_id=ctx["request_id"], **args.model_dump())
+
+
+@register("pgx.node.search", "Run bounded SQLite FTS5 search over current promoted nodes.", SearchArgs, max_output="at most 100 hits")
+def _search(store, args, ctx):
+    return store.search_nodes(**args.model_dump())
+
+
+@register("pgx.reference.make", "Generate canonical natural-language Markdown whose raw destination is the exact PGX pointer.", ReferenceMakeArgs, max_output="one link")
+def _make_ref(store, args, ctx):
+    return store.make_reference(**args.model_dump())
+
+
+@register("pgx.reference.validate", "Parse and validate bare-pointer Markdown links, exact source positions, and active-corpus targets.", ReferenceValidateArgs, max_output="bounded by references in supplied description")
+def _validate_ref(store, args, ctx):
+    return store.validate_description(**args.model_dump())
+
+
+@register("pgx.reference.list", "List bounded outgoing or incoming natural-language reference occurrences.", ReferenceListArgs, max_output="at most 100 occurrences")
+def _list_ref(store, args, ctx):
+    return store.list_references(**args.model_dump())
+
+
+@register("pgx.reference.visible_text", "Render the human-visible natural-language text with Markdown destinations removed.", VisibleTextArgs, max_output="one transformed description", profile="advanced")
+def _visible(store, args, ctx):
+    return store.visible_text(**args.model_dump())
+
+
+@register("pgx.reference.plan_legacy_migration", "Plan a conservative corpus-wide conversion of explicit legacy PGX citations without changing SQLite.", LegacyReferencePlanArgs, max_output="at most one record per changed current node", profile="maintenance")
+def _plan_legacy(store, args, ctx):
+    return store.plan_legacy_reference_migration(**args.model_dump())
+
+
+@register("pgx.reference.migrate_legacy", "Atomically convert explicit legacy PGX citations into the active canonical link discipline.", LegacyReferenceMigrationArgs, **MUTATION_META, preconditions=("legacy targets resolve in the active corpus",), postconditions=("every converted link validates and is indexed", "previous revisions remain append-only"), profile="maintenance")
+def _migrate_legacy(store, args, ctx):
+    return store.migrate_legacy_references(request_id=ctx["request_id"], **args.model_dump())
+
+
+@register("pgx.reference.plan_bare_pointer_migration", "Preview corpus-wide conversion from the active URI-shaped profile to [anchor](POINTER).", BarePointerMigrationPlanArgs, max_output="at most one record per changed current node", profile="maintenance")
+def _plan_bare_pointer(store, args, ctx):
+    return store.plan_bare_pointer_migration(**args.model_dump())
+
+
+@register("pgx.reference.migrate_bare_pointer", "Atomically adopt [natural-language anchor](POINTER), revise affected notes append-only, and rebuild the reference index.", BarePointerMigrationArgs, **MUTATION_META, preconditions=("all current canonical references validate and resolve",), postconditions=("default profile is {pointer}", "all current references are bare-pointer links", "previous revisions remain append-only"), profile="maintenance")
+def _migrate_bare_pointer(store, args, ctx):
+    return store.migrate_bare_pointer_references(request_id=ctx["request_id"], **args.model_dump())
+
+
+@register("pgx.reference.inspect_destination", "Validate one raw Markdown destination as an exact PGX pointer without URI parsing or network behavior.", DestinationInspectArgs, max_output="one parsed destination", profile="advanced")
+def _destination_inspect(store, args, ctx):
+    return store.inspect_destination(args.destination)
+
+
+@register("pgx.reference.resolve_destination", "Resolve one exact pointer destination against the active SQLite corpus.", DestinationResolveArgs, max_output="one node", profile="advanced")
+def _destination_resolve(store, args, ctx):
+    return store.resolve_destination(args.destination)
+
+
+@register("pgx.uri.inspect", "Compatibility alias: inspect one canonical reference destination without network behavior.", URIInspectArgs, max_output="one parsed address", profile="compatibility", status="deprecated")
+def _uri_inspect(store, args, ctx):
+    return store.inspect_uri(args.uri)
+
+
+@register("pgx.uri.resolve", "Compatibility alias: resolve one canonical reference destination against the active SQLite corpus.", URIResolveArgs, max_output="one node", profile="compatibility", status="deprecated")
+def _uri_resolve(store, args, ctx):
+    return store.resolve_uri(args.uri)
+
+
+@register("pgx.triple.add", "Idempotently add one UUID-linked RDF-style triple.", TripleAddArgs, **MUTATION_META, profile="advanced")
+def _triple_add(store, args, ctx):
+    return store.add_triple(request_id=ctx["request_id"], **args.model_dump())
+
+
+@register("pgx.triple.list", "List bounded incoming or outgoing triples.", TripleListArgs, max_output="at most 100 triples", profile="advanced")
+def _triple_list(store, args, ctx):
+    return store.list_triples(**args.model_dump())
+
+
+@register("pgx.tag.create", "Atomically create and register one PGX tag node.", TagCreateArgs, **MUTATION_META, profile="advanced")
+def _tag_create(store, args, ctx):
+    return store.create_tag(request_id=ctx["request_id"], **args.model_dump())
+
+
+@register("pgx.tag.assign", "Idempotently assign a registered PGX tag.", TagAssignArgs, **MUTATION_META, profile="advanced")
+def _tag_assign(store, args, ctx):
+    return store.assign_tag(request_id=ctx["request_id"], **args.model_dump())
+
+
+@register("pgx.serialize.graph", "Serialize one graph through the reversible escaped PGX grammar.", SerializeArgs, max_output="bounded by selected graph")
+def _serialize(store, args, ctx):
+    return {"graph_key": args.graph_key, "pgx": store.serialize_graph(args.graph_key)}
+
+
+@register("pgx.parse.node", "Parse one canonical or legacy PGX node line into structured fields.", ParseArgs, database_required=False, max_output="one parsed node", profile="advanced")
+def _parse(store, args, ctx):
+    if store:
+        return store.parse_pgx(args.line)
+    from .pgx import parse_node
+    return parse_node(args.line).__dict__
+
+
+@register("pgx.context.build", "Build a bounded traversal context pack from references and optional triples.", ContextArgs, max_output="hard bounded by max_nodes and max_chars")
+def _context(store, args, ctx):
+    return store.context_pack(**args.model_dump())
+
+
+@register("pgx.manifest.build", "Generate JSON and optional Markdown manifests from authoritative SQLite state.", ManifestArgs, max_output="metadata and graph summaries")
+def _manifest(store, args, ctx):
+    return build_manifest(store.path, args.output_json, args.output_markdown)
+
+
+def catalog(profile: str = "core") -> list[dict[str, Any]]:
+    valid_profiles = {"core", "advanced", "maintenance", "compatibility", "all"}
+    if profile not in valid_profiles:
+        raise ValueError(f"unknown catalog profile {profile!r}; choose one of {sorted(valid_profiles)}")
+
+    output = []
+    generic_result_schema = {
+        "type": "object",
+        "additionalProperties": True,
+        "description": "Bounded tool-specific result object. Read the tool description and examples for guaranteed behavior.",
+    }
+    for name in sorted(TOOLS):
+        d = TOOLS[name]
+        if profile != "all" and d.profile != profile:
+            continue
+        result_schema = RESULT_SCHEMAS.get(name, generic_result_schema)
+        output.append({
+            "name": d.name,
+            "profile": d.profile,
+            "status": d.status,
+            "description": d.description,
+            "database_required": d.database_required,
+            "mutates": d.mutates,
+            "idempotency": d.idempotency,
+            "transaction_boundary": d.transaction,
+            "preconditions": list(d.preconditions),
+            "postconditions": list(d.postconditions),
+            "error_codes": list(d.error_codes),
+            "maximum_output": d.max_output,
+            "input_schema": d.input_model.model_json_schema(),
+            "result_schema": result_schema,
+            "output_schema": response_schema(result_schema),
+            "contract_level": "guaranteed" if name in RESULT_SCHEMAS else "bounded",
+            "success_example": SUCCESS_EXAMPLES.get(name, d.success_example),
+            "failure_example": FAILURE_EXAMPLES.get(name, d.failure_example),
+            "likely_next_tools": NEXT_TOOLS.get(name, []),
+        })
+    return output
