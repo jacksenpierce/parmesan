@@ -176,6 +176,27 @@ class ParseArgs(ToolArgs):
     line: str
 
 
+class TraversalPointerArgs(ToolArgs):
+    pointer: str
+
+
+class TraversalTreeArgs(ToolArgs):
+    left: TraversalPointerArgs | TraversalTreeArgs
+    operator: str
+    right: TraversalPointerArgs | TraversalTreeArgs
+
+
+TraversalTreeArgs.model_rebuild()
+
+
+class TraversalEmbedArgs(ToolArgs):
+    node_pointer: str
+    expression: TraversalTreeArgs
+    read: str | None = None
+    expected_revision_uuid: str | None = None
+    reason: str = "embed lawful PGX traversal expression"
+
+
 class ContextArgs(ToolArgs):
     pointer: str
     max_nodes: int = Field(default=20, ge=1, le=50)
@@ -394,7 +415,20 @@ def _parse(store, args, ctx):
     return parse_node(args.line).__dict__
 
 
-@register("pgx.context.build", "Build a bounded traversal context pack from references and optional triples.", ContextArgs, max_output="hard bounded by max_nodes and max_chars")
+@register(
+    "pgx.traversal.embed",
+    "Compose a lawful pointer-only PGX traversal expression and append its canonical notation to one node description.",
+    TraversalEmbedArgs,
+    **MUTATION_META,
+    preconditions=("the target node and every expression pointer exist in the active corpus",),
+    postconditions=("notation has exactly one outer square-bracket boundary", "nested composition preserves branch geometry", "the node receives one immutable appended revision"),
+    max_output="one canonical traversal expression and one updated node revision",
+)
+def _traversal_embed(store, args, ctx):
+    return store.embed_traversal(request_id=ctx["request_id"], **args.model_dump())
+
+
+@register("pgx.context.build", "Build a bounded reference-and-triple context pack from one pointer.", ContextArgs, max_output="hard bounded by max_nodes and max_chars")
 def _context(store, args, ctx):
     return store.context_pack(**args.model_dump())
 

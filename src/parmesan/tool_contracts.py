@@ -184,6 +184,21 @@ RESULT_SCHEMAS: dict[str, dict[str, Any]] = {
             "references": {"type": "array", "items": {"type": "object"}},
         },
     ),
+    "pgx.traversal.embed": _object(
+        ["node_pointer", "uuid", "previous_revision_uuid", "revision_uuid", "notation", "markdown", "resolved_pointers", "reference_count", "warnings", *MUTATION_FIELDS],
+        {
+            "node_pointer": _string(),
+            "uuid": _string(),
+            "previous_revision_uuid": _string(),
+            "revision_uuid": _string(),
+            "notation": _string("Canonical traversal notation with exactly one outer square-bracket boundary."),
+            "markdown": _string("Canonical Markdown block appended to the node description."),
+            "resolved_pointers": {"type": "array", "items": {"type": "object"}},
+            "reference_count": {"type": "integer"},
+            "warnings": {"type": "array"},
+            **MUTATION_FIELDS,
+        },
+    ),
     "pgx.context.build": _object(
         ["root_pointer", "node_count", "character_count", "truncated", "nodes"],
         {
@@ -277,6 +292,32 @@ SUCCESS_EXAMPLES: dict[str, dict[str, Any]] = {
         "request": _request("pgx.reference.list", {"pointer": "CB2", "direction": "outgoing"}, database="knowledge.sqlite"),
         "result_excerpt": {"pointer": "CB2", "direction": "outgoing", "total": 1, "references": [{"target_pointer": "CB1"}]},
     },
+    "pgx.traversal.embed": {
+        "request": _request(
+            "pgx.traversal.embed",
+            {
+                "node_pointer": "CB4",
+                "expression": {
+                    "left": {
+                        "left": {"pointer": "CB1"},
+                        "operator": "OP2",
+                        "right": {"pointer": "CB2"},
+                    },
+                    "operator": "OP3",
+                    "right": {"pointer": "CB3"},
+                },
+                "read": "Cell membrane as boundary through transport.",
+                "expected_revision_uuid": "<current-revision-uuid>",
+            },
+            database="knowledge.sqlite",
+            request_id="55555555-5555-4555-8555-555555555555",
+        ),
+        "result_excerpt": {
+            "node_pointer": "CB4",
+            "notation": "[((CB1):(OP2):(CB2)):(OP3):(CB3)]",
+            "resolved_pointers": [{"pointer": "OP2", "roles": ["operator"]}],
+        },
+    },
     "pgx.context.build": {
         "request": _request("pgx.context.build", {"pointer": "CB2", "max_nodes": 20, "max_chars": 12000}, database="knowledge.sqlite"),
         "result_excerpt": {"root_pointer": "CB2", "node_count": 2, "truncated": False},
@@ -287,7 +328,7 @@ SUCCESS_EXAMPLES: dict[str, dict[str, Any]] = {
     },
     "pgx.manifest.build": {
         "request": _request("pgx.manifest.build", {}, database="knowledge.sqlite"),
-        "result_excerpt": {"product": "Parmesan", "version": "2.4.1", "counts": {"graphs": 6}, "validation": {"valid": True}},
+        "result_excerpt": {"product": "Parmesan", "version": "2.5.0", "counts": {"graphs": 6}, "validation": {"valid": True}},
     },
 }
 
@@ -320,6 +361,10 @@ FAILURE_EXAMPLES: dict[str, dict[str, Any]] = {
         "condition": "A bare-pointer destination is malformed or unresolved.",
         "error_excerpt": {"code": "validation_failure", "suggested_tool": "pgx.reference.validate"},
     },
+    "pgx.traversal.embed": {
+        "condition": "The target node or any operand/operator pointer does not exist in the active corpus.",
+        "error_excerpt": {"code": "not_found", "suggested_tool": "pgx.node.search"},
+    },
 }
 
 NEXT_TOOLS: dict[str, list[str]] = {
@@ -327,12 +372,13 @@ NEXT_TOOLS: dict[str, list[str]] = {
     "pgx.database.initialize": ["pgx.graph.create", "pgx.database.describe"],
     "pgx.database.describe": ["pgx.node.search", "pgx.graph.create", "pgx.database.validate"],
     "pgx.graph.create": ["pgx.node.create"],
-    "pgx.node.create": ["pgx.node.create", "pgx.reference.validate", "pgx.database.validate"],
-    "pgx.node.get": ["pgx.node.update", "pgx.context.build", "pgx.reference.list"],
+    "pgx.node.create": ["pgx.node.create", "pgx.traversal.embed", "pgx.reference.validate", "pgx.database.validate"],
+    "pgx.node.get": ["pgx.node.update", "pgx.traversal.embed", "pgx.context.build", "pgx.reference.list"],
     "pgx.node.update": ["pgx.node.get", "pgx.database.validate"],
     "pgx.node.search": ["pgx.node.get", "pgx.context.build"],
     "pgx.reference.make": ["pgx.reference.validate", "pgx.node.create", "pgx.node.update"],
     "pgx.reference.validate": ["pgx.node.create", "pgx.node.update"],
+    "pgx.traversal.embed": ["pgx.node.get", "pgx.database.validate"],
     "pgx.context.build": ["pgx.node.get", "pgx.reference.list"],
     "pgx.serialize.graph": ["pgx.database.validate"],
     "pgx.manifest.build": ["pgx.database.validate"],

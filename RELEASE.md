@@ -1,10 +1,10 @@
 # Parmesan release and delivery convention
 
-This artifact is **Parmesan 2.4.1**.
+This artifact is **Parmesan 2.5.4**.
 
-- Human filename: `PARMESAN_v2_4_1.zip`
-- Root directory after unpacking: `PARMESAN_v2_4_1/`
-- Immutable release ID: `0b2b2603-afbf-4517-9c1b-1c0f28b0eb6b`
+- Human filename: `PARMESAN_v2_5_4.zip`
+- Root directory after unpacking: `PARMESAN_v2_5_4/`
+- Immutable release ID: `9b81cc9f-4f19-4834-99e3-9cb39ac82418`
 - Artifact type: conversational-LLM software; no corpus is bundled
 
 ## Versioning
@@ -23,6 +23,14 @@ The archive name stays readable: `PARMESAN_vMAJOR_MINOR_PATCH.zip`. The UUID doe
 
 The final ZIP SHA-256 is the identity of the delivered bytes. It is reported alongside the single download link at handoff. Internal files are covered by `PACKAGE_MANIFEST.json` and `SHA256SUMS.txt`.
 
+## Single source of truth
+
+`RELEASE_MANIFEST.json` is the only authored release-identity record. `RELEASE.json`, this file, the runtime version module, and package metadata are generated or checked from it. Run `python scripts/generate_release_metadata.py` after changing the source manifest; never edit generated release identity by hand.
+
 ## Standard handoff
 
 A normal Parmesan release is delivered as exactly one primary ZIP. The final response should state the version, release ID, ZIP SHA-256, and validation result, then provide one link whose text is the exact filename. Additional report links are included only when specifically useful or requested.
+
+## Traversal documentation
+
+This release preserves the supplied `PGX_Traversal_4C_Guide` documents verbatim under `docs/PGX_Traversal_4C_Guide/`. They are part of the required operating path and their source hashes are enforced by release validation.

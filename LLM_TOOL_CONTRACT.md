@@ -41,6 +41,14 @@ Do not place `pgx://`, `arcp://`, a corpus UUID, a path, or a visible pointer ma
 
 For cyclic knowledge, create link-free seed revisions until every target exists, then append the linked revisions with optimistic concurrency (`expected_revision_uuid`). Do not disable reference validation merely to create a cycle.
 
+## Traversal-expression authoring
+
+The conceptual and notational context is mandatory and preserved in `docs/PGX_Traversal_4C_Guide/`; begin with `docs/README.md`. The guide files retain their original shape and are release-validated.
+
+`pgx.traversal.embed` is the lawful authoring path. The caller supplies a recursive tree, never a raw traversal string. Each operand is either a pointer object or another `left`/`operator`/`right` tree. Every expression pointer must resolve in the active corpus. Parmesan serializes `(left):(operator):(right)`, preserves branch order, gives only the complete expression an outer `[...]` boundary, and appends the result to the target node description as literal `pgx-traversal` Markdown.
+
+This preserves the intended freedom boundary: the LLM controls composition and reading; Parmesan controls punctuation, nesting syntax, pointer resolution, revision creation, and embedding.
+
 ## Catalog contract
 
 Every core catalog entry includes:

@@ -16,6 +16,7 @@ from .reference import BARE_POINTER_TEMPLATE, ReferenceEngine, ReferenceProfile
 from .reference_discipline import bare_pointer_profile, rewrite_to_bare_pointer_links
 from .schema import DEFAULT_POINTER_PATTERN, DEFAULT_URI_TEMPLATE, SCHEMA_VERSION, create_empty_database, connect
 from .timeutil import is_rfc3339_ns, now_rfc3339_ns, unique_timestamp
+from .traversal import pointer_roles, render_embedding, serialize_expression, tree_from_mapping
 
 
 def _canonical_json(value: Any) -> str:
@@ -582,6 +583,114 @@ class SQLitePGXStore:
             self._audit(con, request_uuid=req, operation_type="node.update", node_uuid_value=current["uuid"], previous_revision_uuid=current["revision_uuid"], new_revision_uuid=rev, details={"reason": reason, "reference_count": len(report.occurrences)})
             return {"pointer": pointer, "uuid": current["uuid"], "previous_revision_uuid": current["revision_uuid"], "revision_uuid": rev, "reference_count": len(report.occurrences), "warnings": report.warnings}
         return self._mutate("pgx.node.update", request_id, payload, action)
+
+    def embed_traversal(
+        self,
+        *,
+        request_id: str | None,
+        node_pointer: str,
+        expression: dict[str, Any],
+        read: str | None = None,
+        expected_revision_uuid: str | None = None,
+        reason: str = "embed lawful PGX traversal expression",
+    ) -> dict[str, Any]:
+        tree = tree_from_mapping(expression)
+        notation = serialize_expression(tree)
+        roles = pointer_roles(tree)
+        block = render_embedding(notation, read)
+        payload = {
+            "node_pointer": node_pointer,
+            "expression": expression,
+            "read": read,
+            "expected_revision_uuid": expected_revision_uuid,
+            "reason": reason,
+        }
+
+        def action(con: sqlite3.Connection, req: str) -> dict[str, Any]:
+            current = self._current(con, node_pointer)
+            if expected_revision_uuid and current["revision_uuid"] != expected_revision_uuid:
+                raise StaleWriteError(
+                    "expected revision is not current",
+                    {"expected": expected_revision_uuid, "current": current["revision_uuid"]},
+                )
+
+            pointer_pattern = self._pointer_pattern(con)
+            resolved = []
+            for pointer in sorted(roles):
+                validate_pointer(pointer, pointer_pattern)
+                row = self._current(con, pointer)
+                resolved.append({
+                    "pointer": pointer,
+                    "title": row["title"],
+                    "roles": sorted(roles[pointer]),
+                })
+
+            separator = "" if not current["description"].strip() else "\n\n"
+            new_description = current["description"].rstrip() + separator + block
+            rev = self._new_revision(
+                con,
+                node_uuid_value=current["uuid"],
+                title=current["title"],
+                description=new_description,
+                previous_revision_uuid=current["revision_uuid"],
+                request_uuid=req,
+                reason=reason,
+            )
+            strict = current["lifecycle_state"] == "promoted"
+            report = self._replace_references(
+                con,
+                source_node_uuid=current["uuid"],
+                source_revision_uuid=rev,
+                description=new_description,
+                strict=strict,
+            )
+            con.execute(
+                "UPDATE node_identity SET current_revision_uuid=? WHERE uuid=?",
+                (rev, current["uuid"]),
+            )
+            if strict:
+                self._refresh_fts(con, current["uuid"])
+            else:
+                con.execute("DELETE FROM staging_issues WHERE node_uuid=?", (current["uuid"],))
+                status = "pending"
+                if report.errors:
+                    status = "blocked"
+                    namespace = self._namespace(con)
+                    for idx, issue in enumerate(report.errors):
+                        timestamp = unique_timestamp(con, "staging_issues")
+                        issue_uuid = derived_uuid(
+                            namespace,
+                            "staging-issue",
+                            f"{current['uuid']}|{rev}|{idx}|{timestamp}",
+                        )
+                        con.execute(
+                            "INSERT INTO staging_issues(issue_uuid,node_uuid,issue_code,details_json,created_at,resolved_at) VALUES (?,?,?,?,?,NULL)",
+                            (issue_uuid, current["uuid"], issue.get("code", "reference_error"), _canonical_json(issue), timestamp),
+                        )
+                con.execute("UPDATE staging_queue SET status=? WHERE node_uuid=?", (status, current["uuid"]))
+
+            self._audit(
+                con,
+                request_uuid=req,
+                operation_type="traversal.embed",
+                node_uuid_value=current["uuid"],
+                previous_revision_uuid=current["revision_uuid"],
+                new_revision_uuid=rev,
+                details={"notation": notation, "resolved_pointers": [item["pointer"] for item in resolved]},
+            )
+            return {
+                "node_pointer": node_pointer,
+                "uuid": current["uuid"],
+                "previous_revision_uuid": current["revision_uuid"],
+                "revision_uuid": rev,
+                "notation": notation,
+                "markdown": block,
+                "resolved_pointers": resolved,
+                "reference_count": len(report.occurrences),
+                "warnings": report.warnings,
+            }
+
+        return self._mutate("pgx.traversal.embed", request_id, payload, action)
 
     def revert_node(self, *, request_id: str | None, pointer: str, target_revision_uuid: str, expected_revision_uuid: str | None = None, reason: str = "revert") -> dict[str, Any]:
         with connect(self.path, readonly=True) as read:

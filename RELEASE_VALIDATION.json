@@ -1,28 +1,48 @@
 {
   "valid": true,
-  "version": "2.4.1",
-  "release_id": "0b2b2603-afbf-4517-9c1b-1c0f28b0eb6b",
-  "artifact_filename": "PARMESAN_v2_4_1.zip",
+  "version": "2.5.4",
+  "release_id": "9b81cc9f-4f19-4834-99e3-9cb39ac82418",
+  "artifact_filename": "PARMESAN_v2_5_4.zip",
   "checks": {
     "required_files": true,
+    "release_metadata_consistency": {
+      "release_json_equals_source": true,
+      "release_md_version": true,
+      "release_md_release_id": true,
+      "release_md_filename": true,
+      "release_md_root": true,
+      "runtime_version": true,
+      "runtime_release_id": true,
+      "runtime_filename": true,
+      "pyproject_version": true,
+      "declared_root_directory": true
+    },
     "release_identity": {
       "version_matches": true,
       "release_id_matches": true,
       "artifact_filename_matches": true,
-      "root_directory_matches": true,
+      "root_directory_declares_expected_name": true,
       "filename_convention": true
+    },
+    "traversal_guide_integrity": {
+      "4c_source_sha256": true,
+      "usage_source_sha256": true,
+      "start_here_links_4c": true,
+      "start_here_links_usage": true,
+      "docs_index_links_both": true
     },
     "zero_context_hardening_docs": {
       "cyclic_authoring": true,
       "serialize_result_path": true,
-      "clean_sqlite_handoff": true
+      "clean_sqlite_handoff": true,
+      "traversal_expression_authoring": true
     },
     "release_tree_hygiene": {
       "no_sqlite_transients": true,
-      "no_build_artifacts": true
+      "package_excludes_build_artifacts": true
     },
-    "core_tool_count": 16,
-    "all_tool_count": 34,
+    "core_tool_count": 17,
+    "all_tool_count": 35,
     "core_contracts_guaranteed": true,
     "doctor_ready": true,
     "bundled_database_validation": {
@@ -36,12 +56,12 @@
     },
     "wheel_exists": true,
     "wheel_import": {
-      "version": "2.4.1",
-      "release_id": "0b2b2603-afbf-4517-9c1b-1c0f28b0eb6b",
-      "artifact_filename": "PARMESAN_v2_4_1.zip",
-      "core_tool_count": 16,
+      "version": "2.5.4",
+      "release_id": "9b81cc9f-4f19-4834-99e3-9cb39ac82418",
+      "artifact_filename": "PARMESAN_v2_5_4.zip",
+      "core_tool_count": 17,
       "doctor_ready": true
     },
-    "tests": "................................                                         [100%]"
+    "tests": ".......................................                                  [100%]"
   }
 }

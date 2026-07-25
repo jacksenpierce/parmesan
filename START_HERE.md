@@ -20,6 +20,15 @@ python PARMESAN_LLM.py doctor /path/to/CORPUS.sqlite
 
 A ready result means the environment can operate Parmesan. If a dependency is missing, the launcher prints the exact corrective command. Do not edit SQLite directly.
 
+## Required traversal reading
+
+Before creating or interpreting traversal expressions, read [`docs/README.md`](docs/README.md), then read the two preserved source documents it indexes:
+
+1. [`docs/PGX_Traversal_4C_Guide/4C_MODEL_CONTEXT.md`](docs/PGX_Traversal_4C_Guide/4C_MODEL_CONTEXT.md)
+2. [`docs/PGX_Traversal_4C_Guide/USING_PGX_TRAVERSAL_NOTATION_AND_EXPRESSIONS.md`](docs/PGX_Traversal_4C_Guide/USING_PGX_TRAVERSAL_NOTATION_AND_EXPRESSIONS.md)
+
+These documents define how to write and think about traversal notation. They are packaged as required context, not supplemental reading.
+
 ## Discover the working tools
 
 The normal tool surface is intentionally small:
@@ -62,6 +71,29 @@ Mutation requests require a unique UUIDv4 `request_id`. Replaying the same reque
 
 A complete executable example is in `examples/zero_context_build.py`.
 
+## Author a traversal expression inside a node
+
+Read the required traversal documents above first. Use `pgx.traversal.embed`. Do not hand-build traversal punctuation. Supply a recursive expression tree whose operands are either `{"pointer": "..."}` objects or nested trees with `left`, `operator`, and `right`. Parmesan resolves every pointer, writes all parentheses and colons, applies exactly one outer square-bracket boundary, and appends the canonical notation to the chosen node description in a fenced `pgx-traversal` block.
+
+```json
+{
+  "node_pointer": "K200",
+  "expression": {
+    "left": {
+      "left": {"pointer": "K3"},
+      "operator": "O2",
+      "right": {"pointer": "K12"}
+    },
+    "operator": "O3",
+    "right": {"pointer": "K143"}
+  },
+  "read": "Eleanor as CEO through risk.",
+  "expected_revision_uuid": "<current revision UUID>"
+}
+```
+
+The result notation is `[((K3):(O2):(K12)):(O3):(K143)]`. Inside traversal notation, pointers are bare tokens. Ordinary prose references remain `[natural-language anchor](POINTER)`. The model chooses pointers, operators, left/right order, nesting, and the optional read; Parmesan owns the syntax and embedding.
+
 ## Finalize a clean corpus handoff
 
 Before returning a created or modified corpus:
@@ -86,7 +118,7 @@ Before returning a created or modified corpus:
 - Treat revisions as append-only history.
 - Use Parmesan operations for writes; never improvise direct SQL mutations.
 - Keep reads bounded. Use context packs rather than dumping an entire corpus into the conversation.
-- Prefer the 16 core tools. Escalate to other catalog profiles deliberately.
+- Prefer the 17 core tools. Escalate to other catalog profiles deliberately.
 - Do not invent a protocol, server, plugin, or framework around Parmesan unless the user explicitly asks for one.
 - Do not confuse the software with any corpus it creates or operates.
 

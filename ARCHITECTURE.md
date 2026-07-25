@@ -43,3 +43,12 @@ The serializer escapes backslashes, pipes, newlines, and carriage returns. The p
 ## Artifact release identity
 
 Parmesan software releases use semantic versions for compatibility, a readable `PARMESAN_vMAJOR_MINOR_PATCH.zip` archive name, and an immutable UUID stored in `RELEASE.json` and exposed by the doctor result. The delivered ZIP SHA-256 identifies exact bytes. A delivered version is not rebuilt in place.
+
+
+## Traversal-expression documentation boundary
+
+The original `PGX_Traversal_4C_Guide` documents are preserved verbatim under `docs/PGX_Traversal_4C_Guide/` and surfaced through `START_HERE.md`, `README.md`, `docs/README.md`, and release validation. The conceptual guide remains distinct from the narrower pointer-first authoring profile implemented by the current tool.
+
+## Traversal-expression authoring boundary
+
+The LLM supplies only a recursive tree of pointer operands and operator pointers. `parmesan.traversal` owns canonical notation; `pgx.traversal.embed` resolves all pointers and appends the generated fenced block through the normal immutable-revision transaction. No database schema change is required because traversal notation remains authored node description content.

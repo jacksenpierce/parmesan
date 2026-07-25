@@ -20,6 +20,5 @@
     "byte_identity": "SHA-256 of the delivered ZIP, reported at handoff",
     "uuid_in_filename": false,
     "same_version_rebuilds": "forbidden after delivery; change any byte only under a new version and release_id"
-  },
-  "artifact_filename": "PARMESAN_v2_5_4.zip"
+  }
 }

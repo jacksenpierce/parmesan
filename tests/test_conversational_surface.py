@@ -10,14 +10,14 @@ import parmesan
 
 
 def test_root_entry_surface_is_small_and_operational():
-    assert parmesan.__version__ == "2.4.1"
+    assert parmesan.__version__ == "2.5.4"
     assert callable(parmesan.dispatch)
     assert callable(parmesan.catalog)
     assert callable(parmesan.doctor)
     assert callable(parmesan.initialize_corpus)
     assert callable(parmesan.open_corpus)
-    assert parmesan.__release_id__ == "0b2b2603-afbf-4517-9c1b-1c0f28b0eb6b"
-    assert parmesan.__artifact_filename__ == "PARMESAN_v2_4_1.zip"
+    assert parmesan.__release_id__ == "9b81cc9f-4f19-4834-99e3-9cb39ac82418"
+    assert parmesan.__artifact_filename__ == "PARMESAN_v2_5_4.zip"
 
 
 def test_catalog_profiles_hide_secondary_tools_by_default():
@@ -25,8 +25,8 @@ def test_catalog_profiles_hide_secondary_tools_by_default():
     all_tools = parmesan.catalog("all")
     compatibility = parmesan.catalog("compatibility")
 
-    assert len(core) == 16
-    assert len(all_tools) == 34
+    assert len(core) == 17
+    assert len(all_tools) == 35
     assert all(item["profile"] == "core" for item in core)
     assert all(item["contract_level"] == "guaranteed" for item in core)
     assert all(item["success_example"] for item in core)
@@ -37,6 +37,7 @@ def test_catalog_profiles_hide_secondary_tools_by_default():
         "pgx.graph.create",
         "pgx.node.create",
         "pgx.database.validate",
+        "pgx.traversal.embed",
     }
     assert all(item["status"] == "deprecated" for item in compatibility)
 
@@ -79,9 +80,9 @@ def test_self_locating_launcher_doctor(package_root: Path = Path(__file__).resol
     report = json.loads(completed.stdout)
     assert report["ready"] is True
     assert report["operator"] == "conversational_llm"
-    assert report["parmesan_version"] == "2.4.1"
-    assert report["release_id"] == "0b2b2603-afbf-4517-9c1b-1c0f28b0eb6b"
-    assert report["artifact_filename"] == "PARMESAN_v2_4_1.zip"
+    assert report["parmesan_version"] == "2.5.4"
+    assert report["release_id"] == "9b81cc9f-4f19-4834-99e3-9cb39ac82418"
+    assert report["artifact_filename"] == "PARMESAN_v2_5_4.zip"
 
 
 def test_zero_context_documented_workflow(tmp_path: Path):
@@ -113,4 +114,4 @@ def test_zero_context_docs_cover_observed_handoff_failures():
     assert release["version"] == parmesan.__version__
     assert release["release_id"] == parmesan.__release_id__
     assert release["artifact_filename"] == parmesan.__artifact_filename__
-    assert release["root_directory"] == package_root.name
+    assert release["root_directory"] == f"PARMESAN_v{release['version'].replace('.', '_')}"

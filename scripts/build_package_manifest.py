@@ -7,16 +7,20 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 EXCLUDED_NAMES = {"PACKAGE_MANIFEST.json", "PACKAGE_MANIFEST.md", "SHA256SUMS.txt"}
-EXCLUDED_PARTS = {"__pycache__", ".pytest_cache", "build", "parmesan.egg-info"}
+EXCLUDED_PARTS = {".git", "__pycache__", ".pytest_cache", "build", "parmesan.egg-info"}
 
 
 def inventory() -> list[dict[str, object]]:
+    release = json.loads((ROOT / "RELEASE_MANIFEST.json").read_text(encoding="utf-8"))
+    expected_wheel = f"parmesan-{release['version']}-py3-none-any.whl"
     files = []
     for path in sorted(ROOT.rglob("*")):
         if not path.is_file():
             continue
         rel = path.relative_to(ROOT)
         if path.name in EXCLUDED_NAMES or any(part in EXCLUDED_PARTS for part in rel.parts):
+            continue
+        if path.suffix == ".whl" and path.name != expected_wheel:
             continue
         data = path.read_bytes()
         files.append({
@@ -30,7 +34,7 @@ def inventory() -> list[dict[str, object]]:
 def main() -> None:
     from parmesan import __artifact_filename__, __release_id__, __version__, catalog
 
-    release = json.loads((ROOT / "RELEASE.json").read_text(encoding="utf-8"))
+    release = json.loads((ROOT / "RELEASE_MANIFEST.json").read_text(encoding="utf-8"))
     files = inventory()
     wheel = f"dist/parmesan-{__version__}-py3-none-any.whl"
     manifest = {

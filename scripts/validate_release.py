@@ -2,10 +2,14 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
+import argparse
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -14,9 +18,14 @@ sys.path.insert(0, str(SRC))
 
 import parmesan  # noqa: E402
 from parmesan.store import SQLitePGXStore  # noqa: E402
+from build_release_archive import release_files  # noqa: E402
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Validate a Parmesan release.")
+    parser.add_argument("--metadata-only", action="store_true", help="Check release identity only; used before archive creation.")
+    parser.add_argument("--require-artifact-root", action="store_true", help="Require this directory to match the ZIP root directory.")
+    args = parser.parse_args()
     checks: dict[str, object] = {}
 
     required = [
@@ -27,30 +36,72 @@ def main() -> None:
         ROOT / "TOOL_CATALOG.json",
         ROOT / "maintenance" / "TOOL_CATALOG.json",
         ROOT / "examples" / "zero_context_build.py",
+        ROOT / "docs" / "README.md",
+        ROOT / "docs" / "PGX_Traversal_4C_Guide" / "4C_MODEL_CONTEXT.md",
+        ROOT / "docs" / "PGX_Traversal_4C_Guide" / "USING_PGX_TRAVERSAL_NOTATION_AND_EXPRESSIONS.md",
     ]
     checks["required_files"] = all(path.exists() for path in required)
 
+    source_release = json.loads((ROOT / "RELEASE_MANIFEST.json").read_text(encoding="utf-8"))
     release = json.loads((ROOT / "RELEASE.json").read_text(encoding="utf-8"))
+    release_md = (ROOT / "RELEASE.md").read_text(encoding="utf-8")
+    pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    expected_filename = f"PARMESAN_v{source_release['version'].replace('.', '_')}.zip"
+    expected_root = f"PARMESAN_v{source_release['version'].replace('.', '_')}"
+    checks["release_metadata_consistency"] = {
+        "release_json_equals_source": release == {**source_release, "artifact_filename": expected_filename},
+        "release_md_version": f"Parmesan {source_release['version']}" in release_md,
+        "release_md_release_id": str(source_release["release_id"]) in release_md,
+        "release_md_filename": expected_filename in release_md,
+        "release_md_root": f"`{expected_root}/`" in release_md,
+        "runtime_version": parmesan.__version__ == source_release["version"],
+        "runtime_release_id": parmesan.__release_id__ == source_release["release_id"],
+        "runtime_filename": parmesan.__artifact_filename__ == expected_filename,
+        "pyproject_version": re.search(r'^version = "([^"]+)"', pyproject, re.MULTILINE).group(1) == source_release["version"],
+        "declared_root_directory": source_release["root_directory"] == expected_root == release["root_directory"],
+    }
     checks["release_identity"] = {
         "version_matches": release["version"] == parmesan.__version__,
         "release_id_matches": release["release_id"] == parmesan.__release_id__,
         "artifact_filename_matches": release["artifact_filename"] == parmesan.__artifact_filename__,
-        "root_directory_matches": release["root_directory"] == ROOT.name,
+        "root_directory_declares_expected_name": release["root_directory"] == expected_root,
         "filename_convention": release["artifact_filename"] == f"PARMESAN_v{parmesan.__version__.replace('.', '_')}.zip",
     }
+    if args.require_artifact_root:
+        checks["artifact_root_directory_matches"] = ROOT.name == expected_root
+    if args.metadata_only:
+        valid = checks["required_files"] is True and all(checks["release_metadata_consistency"].values()) and all(checks["release_identity"].values()) and checks.get("artifact_root_directory_matches", True)
+        print(json.dumps({"valid": valid, "checks": checks}, indent=2))
+        if not valid:
+            raise SystemExit(1)
+        return
     start_here = (ROOT / "START_HERE.md").read_text(encoding="utf-8")
     contract = (ROOT / "LLM_TOOL_CONTRACT.md").read_text(encoding="utf-8")
+    guide_4c = ROOT / "docs" / "PGX_Traversal_4C_Guide" / "4C_MODEL_CONTEXT.md"
+    guide_usage = ROOT / "docs" / "PGX_Traversal_4C_Guide" / "USING_PGX_TRAVERSAL_NOTATION_AND_EXPRESSIONS.md"
+    docs_index = (ROOT / "docs" / "README.md").read_text(encoding="utf-8")
+    checks["traversal_guide_integrity"] = {
+        "4c_source_sha256": hashlib.sha256(guide_4c.read_bytes()).hexdigest() == "be950503973777c3cde374b7ba4d496968933910b523e044fe1710ea1069b9c3",
+        "usage_source_sha256": hashlib.sha256(guide_usage.read_bytes()).hexdigest() == "08dfc944923b0141672971776b999c2a9578b8a36fea36f44fe1f338297cebe7",
+        "start_here_links_4c": "docs/PGX_Traversal_4C_Guide/4C_MODEL_CONTEXT.md" in start_here,
+        "start_here_links_usage": "docs/PGX_Traversal_4C_Guide/USING_PGX_TRAVERSAL_NOTATION_AND_EXPRESSIONS.md" in start_here,
+        "docs_index_links_both": "4C_MODEL_CONTEXT.md" in docs_index and "USING_PGX_TRAVERSAL_NOTATION_AND_EXPRESSIONS.md" in docs_index,
+    }
     checks["zero_context_hardening_docs"] = {
         "cyclic_authoring": "expected_revision_uuid" in start_here,
         "serialize_result_path": 'response["result"]["pgx"]' in start_here and 'response["result"]["pgx"]' in contract,
         "clean_sqlite_handoff": "-wal" in start_here and "-shm" in start_here,
+        "traversal_expression_authoring": "pgx.traversal.embed" in start_here and "exactly one outer square-bracket" in start_here and "pgx.traversal.embed" in contract,
     }
     checks["release_tree_hygiene"] = {
         "no_sqlite_transients": not any(
             path.is_file() and path.name.endswith(("-wal", "-shm", "-journal"))
             for path in ROOT.rglob("*")
         ),
-        "no_build_artifacts": not (ROOT / "build").exists() and not (ROOT / "src" / "parmesan.egg-info").exists(),
+        "package_excludes_build_artifacts": all(
+            "parmesan.egg-info" not in path.parts and "build" not in path.parts and ".git" not in path.parts
+            for path in release_files()
+        ),
     }
 
     core = parmesan.catalog("core")
@@ -67,9 +118,13 @@ def main() -> None:
     checks["doctor_ready"] = parmesan.doctor()["ready"]
 
     database_reports = {}
-    for path in sorted((ROOT / "examples").glob("*.sqlite")):
-        report = SQLitePGXStore(path).validate_database(full=True)
-        database_reports[path.name] = report["valid"]
+    with tempfile.TemporaryDirectory() as tmp:
+        validation_root = Path(tmp)
+        for path in sorted((ROOT / "examples").glob("*.sqlite")):
+            validation_copy = validation_root / path.name
+            shutil.copy2(path, validation_copy)
+            report = SQLitePGXStore(validation_copy).validate_database(full=True)
+            database_reports[path.name] = report["valid"]
     checks["bundled_database_validation"] = database_reports
 
     with tempfile.TemporaryDirectory() as tmp:
@@ -127,11 +182,14 @@ def main() -> None:
 
     valid = (
         checks["required_files"] is True
+        and all(checks["release_metadata_consistency"].values())
         and all(checks["release_identity"].values())
+        and checks.get("artifact_root_directory_matches", True)
         and all(checks["zero_context_hardening_docs"].values())
+        and all(checks["traversal_guide_integrity"].values())
         and all(checks["release_tree_hygiene"].values())
-        and checks["core_tool_count"] == 16
-        and checks["all_tool_count"] == 34
+        and checks["core_tool_count"] == 17
+        and checks["all_tool_count"] == 35
         and checks["core_contracts_guaranteed"] is True
         and checks["doctor_ready"] is True
         and all(database_reports.values())
@@ -140,7 +198,7 @@ def main() -> None:
         and checks["wheel_import"]["version"] == parmesan.__version__
         and checks["wheel_import"]["release_id"] == parmesan.__release_id__
         and checks["wheel_import"]["artifact_filename"] == parmesan.__artifact_filename__
-        and checks["wheel_import"]["core_tool_count"] == 16
+        and checks["wheel_import"]["core_tool_count"] == 17
         and checks["wheel_import"]["doctor_ready"] is True
     )
     output = {
