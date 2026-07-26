@@ -6,6 +6,8 @@ Before operating an unfamiliar corpus, read [`docs/OPERATIONAL_PHILOSOPHY.md`](d
 
 For meaning-sensitive work, read [`docs/CONSTRUAL_ENGINEERING.md`](docs/CONSTRUAL_ENGINEERING.md) before using PGX traversal expressions. It centralizes the 4C model and the operating conventions for composing, preserving, and revisiting task-relative construals.
 
+The extended agent-facing guide is [`docs/CONSTRUAL_ENGINEERING_WITH_PARMESAN.md`](docs/CONSTRUAL_ENGINEERING_WITH_PARMESAN.md). It is required context when the task involves ambiguity, lexical senses, frame dependence, semantic routing, occurrence-level interpretation, retrieval policy, terminology migration, or semantic refactoring.
+
 ## Entry surface
 
 A zero-context operator starts with `START_HERE.md` or `python PARMESAN_LLM.py doctor`. The root Python entrance deliberately exposes only:

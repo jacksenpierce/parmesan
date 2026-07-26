@@ -39,6 +39,7 @@ def main() -> None:
         ROOT / "docs" / "README.md",
         ROOT / "docs" / "OPERATIONAL_PHILOSOPHY.md",
         ROOT / "docs" / "CONSTRUAL_ENGINEERING.md",
+        ROOT / "docs" / "CONSTRUAL_ENGINEERING_WITH_PARMESAN.md",
         ROOT / "docs" / "CORPUS_OPERATIONS.md",
         ROOT / "examples" / "CORPUS.toml",
         ROOT / "docs" / "PGX_Traversal_4C_Guide" / "4C_MODEL_CONTEXT.md",
@@ -83,6 +84,7 @@ def main() -> None:
     contract = (ROOT / "LLM_TOOL_CONTRACT.md").read_text(encoding="utf-8")
     philosophy = (ROOT / "docs" / "OPERATIONAL_PHILOSOPHY.md").read_text(encoding="utf-8")
     construal_engineering = (ROOT / "docs" / "CONSTRUAL_ENGINEERING.md").read_text(encoding="utf-8")
+    construal_engineering_guide = (ROOT / "docs" / "CONSTRUAL_ENGINEERING_WITH_PARMESAN.md").read_text(encoding="utf-8")
     guide_4c = ROOT / "docs" / "PGX_Traversal_4C_Guide" / "4C_MODEL_CONTEXT.md"
     guide_usage = ROOT / "docs" / "PGX_Traversal_4C_Guide" / "USING_PGX_TRAVERSAL_NOTATION_AND_EXPRESSIONS.md"
     docs_index = (ROOT / "docs" / "README.md").read_text(encoding="utf-8")
@@ -115,6 +117,8 @@ def main() -> None:
         "source_documents": "4C_MODEL_CONTEXT.md" in construal_engineering and "USING_PGX_TRAVERSAL_NOTATION_AND_EXPRESSIONS.md" in construal_engineering,
         "pgx_traversal_guidance": "pgx.traversal.embed" in construal_engineering,
         "interpretation_boundary": "can determine the one construal every reader must adopt" in construal_engineering,
+        "extended_guide_linked": "CONSTRUAL_ENGINEERING_WITH_PARMESAN.md" in start_here and "CONSTRUAL_ENGINEERING_WITH_PARMESAN.md" in contract and "CONSTRUAL_ENGINEERING_WITH_PARMESAN.md" in construal_engineering,
+        "extended_guide_content": "Traversal expressions are connotative scaffolds, not executable theology." in construal_engineering_guide,
     }
     checks["release_tree_hygiene"] = {
         "no_sqlite_transients": not any(

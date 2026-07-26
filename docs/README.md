@@ -6,7 +6,7 @@ Before operating an unfamiliar corpus, read [`OPERATIONAL_PHILOSOPHY.md`](OPERAT
 
 ## Construal Engineering
 
-For meaning-sensitive knowledge work, read [`CONSTRUAL_ENGINEERING.md`](CONSTRUAL_ENGINEERING.md). It centralizes the 4C model with PGX operating conventions for nodes, links, triples, traversal expressions, situated readings, and preserving alternative construals.
+For meaning-sensitive knowledge work, read [`CONSTRUAL_ENGINEERING.md`](CONSTRUAL_ENGINEERING.md). It centralizes the 4C model with PGX operating conventions for nodes, links, triples, traversal expressions, situated readings, and preserving alternative construals. Then read the complete agent-facing guide, [`CONSTRUAL_ENGINEERING_WITH_PARMESAN.md`](CONSTRUAL_ENGINEERING_WITH_PARMESAN.md), when the task involves semantic routing, ambiguity, lexical senses, occurrence resolution, retrieval, terminology migration, or semantic refactoring.
 
 ## Required traversal context
 

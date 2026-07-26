@@ -11,6 +11,8 @@ Use this document as the central operating reference for Construal Engineering. 
 
 The source documents define the theory. This document turns it into an operating discipline for the conversational LLM.
 
+For the complete agent-facing working guide, read [`CONSTRUAL_ENGINEERING_WITH_PARMESAN.md`](CONSTRUAL_ENGINEERING_WITH_PARMESAN.md). It develops the same discipline further, including semantic routing, ambiguity, occurrence-level resolution, structural traversal indexing, nonconclusions, retrieval, terminology migration, and semantic refactoring.
+
 ## The 4C model
 
 The 4C model distinguishes four things that should not be collapsed:

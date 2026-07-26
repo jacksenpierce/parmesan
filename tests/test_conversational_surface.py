@@ -109,6 +109,7 @@ def test_zero_context_docs_cover_observed_handoff_failures():
     contract = (package_root / "LLM_TOOL_CONTRACT.md").read_text(encoding="utf-8")
     philosophy = (package_root / "docs" / "OPERATIONAL_PHILOSOPHY.md").read_text(encoding="utf-8")
     construal_engineering = (package_root / "docs" / "CONSTRUAL_ENGINEERING.md").read_text(encoding="utf-8")
+    construal_engineering_guide = (package_root / "docs" / "CONSTRUAL_ENGINEERING_WITH_PARMESAN.md").read_text(encoding="utf-8")
     release = json.loads((package_root / "RELEASE.json").read_text(encoding="utf-8"))
 
     assert "expected_revision_uuid" in start
@@ -125,6 +126,9 @@ def test_zero_context_docs_cover_observed_handoff_failures():
     assert "The 4C model" in construal_engineering
     assert "pgx.traversal.embed" in construal_engineering
     assert "can determine the one construal every reader must adopt" in construal_engineering
+    assert "CONSTRUAL_ENGINEERING_WITH_PARMESAN.md" in start
+    assert "CONSTRUAL_ENGINEERING_WITH_PARMESAN.md" in contract
+    assert "Traversal expressions are connotative scaffolds, not executable theology." in construal_engineering_guide
     assert release["version"] == parmesan.__version__
     assert release["release_id"] == parmesan.__release_id__
     assert release["artifact_filename"] == parmesan.__artifact_filename__
