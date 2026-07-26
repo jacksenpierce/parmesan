@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Documented the small-branch, pull-request, and periodic-release workflow for maintainers.
+- Added the complete agent-facing “Construal Engineering with Parmesan” guide verbatim to the required operating context.
 
 ## 2.7.1
 

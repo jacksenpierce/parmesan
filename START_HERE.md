@@ -8,6 +8,8 @@ Before operating an unfamiliar corpus, read [`docs/OPERATIONAL_PHILOSOPHY.md`](d
 
 For meaning-sensitive work, read [`docs/CONSTRUAL_ENGINEERING.md`](docs/CONSTRUAL_ENGINEERING.md). It centralizes how to use PGX nodes, links, and traversal expressions to compose and preserve task-relative construals.
 
+For the complete agent-facing Construal Engineering guide, then read [`docs/CONSTRUAL_ENGINEERING_WITH_PARMESAN.md`](docs/CONSTRUAL_ENGINEERING_WITH_PARMESAN.md). It expands the 4C model into practical guidance on ambiguity, occurrence-level resolution, retrieval, terminology migration, semantic refactoring, and the boundary with executable machinery.
+
 ## First action
 
 From this directory, run:
