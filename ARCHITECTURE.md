@@ -52,3 +52,7 @@ The original `PGX_Traversal_4C_Guide` documents are preserved verbatim under `do
 ## Traversal-expression authoring boundary
 
 The LLM supplies only a recursive tree of pointer operands and operator pointers. `parmesan.traversal` owns canonical notation; `pgx.traversal.embed` resolves all pointers and appends the generated fenced block through the normal immutable-revision transaction. No database schema change is required because traversal notation remains authored node description content.
+
+## Optional corpus operations plane
+
+`parmesan.corpus` is an intentionally small lifecycle layer outside the authoritative PGX store. It reads one root `CORPUS.toml`, composes existing database validation with file manifests, exhaustive FTS coverage checks, declared projection checks, release cleanliness, tests, semantic-version updates, sterile staging, deterministic ZIP construction, and post-extraction artifact validation. Corpus-specific policy remains data in `CORPUS.toml`; Parmesan does not embed one corpus's layout or graph families.

@@ -1,4 +1,4 @@
-# Parmesan 2.5.2
+# Parmesan 2.6.1
 
 Parmesan is a rugged, local PGX knowledge-base instrument designed to be handed directly to a capable conversational LLM. It creates and maintains SQLite-backed corpora with permanent pointers, append-only revisions, exact bare-pointer Markdown links, bounded context expansion, lawful traversal-expression embedding, full-text search, validation, transactions, and audit history.
 
@@ -18,12 +18,23 @@ Canonical PGX references look like:
 
 The raw destination is the exact pointer in the active SQLite corpus. Resolution is case-sensitive and local; no network or URI resolver participates.
 
+## Corpus checks and releases
+
+Parmesan 2.6 adds a compact corpus-operations harness. A corpus declares its release promises in one root `CORPUS.toml`, then uses:
+
+```bash
+parmesan corpus check /path/to/corpus
+parmesan corpus release /path/to/corpus --patch --output-dir /path/to/releases
+```
+
+The release command works from a sterile staged copy, bumps the staged version, removes transients, runs declared tests, regenerates the root manifest, builds a deterministic ZIP, extracts it, and validates the delivered artifact again. The source corpus remains untouched. See [`docs/CORPUS_OPERATIONS.md`](docs/CORPUS_OPERATIONS.md).
+
 ## Optional installation
 
 The source artifact can be used through `PARMESAN_LLM.py`. Installing the wheel is optional:
 
 ```bash
-python -m pip install dist/parmesan-2.5.2-py3-none-any.whl
+python -m pip install dist/parmesan-2.6.1-py3-none-any.whl
 parmesan doctor
 ```
 

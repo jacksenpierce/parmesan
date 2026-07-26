@@ -1,0 +1,34 @@
+schema_version = 1
+transient_globs = ["**/.cache/**"]
+
+[version]
+file = "VERSION"
+prefix = "v"
+
+[[version.json]]
+path = "CORPUS_VERSION.json"
+key = "version"
+previous_key = "previous_version"
+message_key = "mutation"
+
+[[version.text]]
+path = "README.md"
+pattern = 'Current corpus version: `v\d+\.\d+\.\d+`\.'
+replacement = 'Current corpus version: `{version}`.'
+
+[manifest]
+path = "MANIFEST.json"
+count_includes_manifest = true
+
+[parmesan]
+database = "knowledge.sqlite"
+full_validation = true
+
+[search]
+exhaustive_pointers = true
+exhaustive_titles = true
+
+[release]
+name = "my-corpus"
+archive = "{name}-v{semver}.zip"
+root = "{name}"

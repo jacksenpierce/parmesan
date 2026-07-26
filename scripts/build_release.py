@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -16,10 +17,20 @@ def run(script: str, *arguments: str) -> None:
 
 
 def main() -> None:
-    # All release-facing identity is generated before any validator or archive sees it.
     run("generate_release_metadata.py")
-    run("build_package_manifest.py")
+    run("build_catalogs.py")
+    shutil.rmtree(ROOT / "dist", ignore_errors=True)
+    subprocess.run(
+        [sys.executable, "-m", "pip", "wheel", ".", "--no-deps", "--no-build-isolation", "--wheel-dir", "dist"],
+        cwd=ROOT,
+        env={**os.environ, "PIP_DISABLE_PIP_VERSION_CHECK": "1"},
+        check=True,
+    )
     run("validate_release.py")
+    # validate_release.py writes RELEASE_VALIDATION.json.  Generate the
+    # package manifest afterward so its recorded hash reflects that final
+    # validation report.
+    run("build_package_manifest.py")
     run("build_release_archive.py", "--output-dir", str(ROOT.parent))
 
 

@@ -135,3 +135,7 @@ These are the intended package-root entrances. They are local conveniences for t
 ## Release identity
 
 Read `RELEASE.json` when exact artifact identity matters. Parmesan uses a readable semantic-version filename and stores an immutable release UUID inside the artifact. The UUID is not part of the filename. See `RELEASE.md`.
+
+## Corpus lifecycle operations
+
+For a directory that contains an authoritative Parmesan database plus projections and resources, read [`docs/CORPUS_OPERATIONS.md`](docs/CORPUS_OPERATIONS.md). The root `CORPUS.toml` contract enables `parmesan corpus check` and transactional `parmesan corpus release`. These commands are separate from normal PGX node mutation and do not require bundling the corpus with Parmesan.

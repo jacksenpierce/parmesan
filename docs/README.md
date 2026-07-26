@@ -8,3 +8,7 @@ The traversal-expression tool is intentionally small, but its notation and inter
 2. [`PGX_Traversal_4C_Guide/USING_PGX_TRAVERSAL_NOTATION_AND_EXPRESSIONS.md`](PGX_Traversal_4C_Guide/USING_PGX_TRAVERSAL_NOTATION_AND_EXPRESSIONS.md)
 
 The files above are preserved verbatim from the supplied `PGX_Traversal_4C_Guide` package. Parmesan's current `pgx.traversal.embed` tool implements a pointer-first safe authoring profile: it accepts resolved pointers and nested expression trees, while the guide describes the broader notation and its open conceptual vocabulary.
+
+## Corpus lifecycle operations
+
+For corpus-independent validation, manifests, staged semantic-version releases, and post-extraction artifact checks, read [`CORPUS_OPERATIONS.md`](CORPUS_OPERATIONS.md).

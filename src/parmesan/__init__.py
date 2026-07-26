@@ -29,6 +29,20 @@ def doctor(database: str | Path | None = None) -> dict[str, Any]:
     return _doctor(database)
 
 
+def check_corpus(root: str | Path, **kwargs: Any):
+    """Validate a corpus directory from its CORPUS.toml contract."""
+    from .corpus import check_corpus as _check_corpus
+
+    return _check_corpus(root, **kwargs)
+
+
+def release_corpus(source: str | Path, **kwargs: Any):
+    """Build a checked versioned corpus ZIP from a sterile staged copy."""
+    from .corpus import release_corpus as _release_corpus
+
+    return _release_corpus(source, **kwargs)
+
+
 def open_corpus(path: str | Path):
     """Open an existing SQLite PGX corpus through Parmesan's authoritative store."""
     from .store import SQLitePGXStore
@@ -59,8 +73,10 @@ __all__ = [
     "__release_id__",
     "__version__",
     "catalog",
+    "check_corpus",
     "dispatch",
     "doctor",
     "initialize_corpus",
     "open_corpus",
+    "release_corpus",
 ]

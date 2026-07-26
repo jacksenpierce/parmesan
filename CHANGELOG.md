@@ -1,5 +1,22 @@
 # Changelog
 
+## 2.6.1
+
+Release-integrity repair.
+
+- Corrected the release build sequence so package manifests and checksums are generated after the final validation report is written.
+- Regenerated the release with a new immutable identity after the 2.6.0 artifact's `RELEASE_VALIDATION.json` did not match its published package manifest.
+
+## 2.6.0
+
+- Added the optional `parmesan.corpus` lifecycle layer for corpus-independent validation and release packaging.
+- Added `parmesan corpus check`, `parmesan corpus manifest`, and transactional `parmesan corpus release`.
+- Added the root `CORPUS.toml` contract for version surfaces, manifests, authoritative databases, exhaustive FTS checks, projections, tests, transient-file policy, and intentionally unlinked resources.
+- Added sterile staging, semantic-version bumping, deterministic ZIP construction, post-extraction validation, and source-tree immutability during corpus release.
+- Added focused corpus-operation tests, documentation, a generic example contract, and a small GitHub Actions test workflow.
+- Made the Parmesan software release script build its wheel as part of the release sequence instead of relying on a pre-existing artifact.
+
+
 ## 2.5.4
 
 - Excluded Git metadata from release manifests and release archives when building from a normal clone.

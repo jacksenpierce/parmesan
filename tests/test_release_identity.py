@@ -23,7 +23,8 @@ def test_validator_rejects_mismatched_release_markdown(tmp_path: Path):
     copy = tmp_path / ROOT.name
     shutil.copytree(ROOT, copy, ignore=shutil.ignore_patterns("__pycache__", ".pytest_cache", "build", "*.whl"))
     release_md = copy / "RELEASE.md"
-    release_md.write_text(release_md.read_text(encoding="utf-8").replace("Parmesan 2.5.4", "Parmesan 9.9.9", 1), encoding="utf-8")
+    version = json.loads((copy / "RELEASE_MANIFEST.json").read_text(encoding="utf-8"))["version"]
+    release_md.write_text(release_md.read_text(encoding="utf-8").replace(f"Parmesan {version}", "Parmesan 9.9.9", 1), encoding="utf-8")
     completed = subprocess.run(
         [sys.executable, str(copy / "scripts" / "validate_release.py"), "--metadata-only"],
         cwd=copy,
@@ -39,7 +40,8 @@ def test_validator_rejects_mismatched_runtime_release_id(tmp_path: Path):
     copy = tmp_path / ROOT.name
     shutil.copytree(ROOT, copy, ignore=shutil.ignore_patterns("__pycache__", ".pytest_cache", "build", "*.whl"))
     version_file = copy / "src" / "parmesan" / "version.py"
-    version_file.write_text(version_file.read_text(encoding="utf-8").replace("9b81cc9f-4f19-4834-99e3-9cb39ac82418", "00000000-0000-0000-0000-000000000000"), encoding="utf-8")
+    release_id = json.loads((copy / "RELEASE_MANIFEST.json").read_text(encoding="utf-8"))["release_id"]
+    version_file.write_text(version_file.read_text(encoding="utf-8").replace(release_id, "00000000-0000-0000-0000-000000000000"), encoding="utf-8")
     completed = subprocess.run(
         [sys.executable, str(copy / "scripts" / "validate_release.py"), "--metadata-only"],
         cwd=copy,

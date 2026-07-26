@@ -77,6 +77,17 @@ def main() -> None:
         f"__artifact_filename__ = {release['artifact_filename']!r}\n",
         encoding="utf-8",
     )
+    pyproject = ROOT / "pyproject.toml"
+    text = pyproject.read_text(encoding="utf-8")
+    updated, count = __import__("re").subn(
+        r'(?m)^version = "[^"]+"$',
+        f'version = "{release["version"]}"',
+        text,
+        count=1,
+    )
+    if count != 1:
+        raise ValueError("pyproject.toml must contain exactly one project version line")
+    pyproject.write_text(updated, encoding="utf-8")
     print(json.dumps({key: release[key] for key in ("version", "release_id", "artifact_filename", "root_directory")}, indent=2))
 
 

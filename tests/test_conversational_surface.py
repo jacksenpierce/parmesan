@@ -10,14 +10,15 @@ import parmesan
 
 
 def test_root_entry_surface_is_small_and_operational():
-    assert parmesan.__version__ == "2.5.4"
+    release = json.loads((Path(__file__).resolve().parents[1] / "RELEASE_MANIFEST.json").read_text(encoding="utf-8"))
+    assert parmesan.__version__ == release["version"]
     assert callable(parmesan.dispatch)
     assert callable(parmesan.catalog)
     assert callable(parmesan.doctor)
     assert callable(parmesan.initialize_corpus)
     assert callable(parmesan.open_corpus)
-    assert parmesan.__release_id__ == "9b81cc9f-4f19-4834-99e3-9cb39ac82418"
-    assert parmesan.__artifact_filename__ == "PARMESAN_v2_5_4.zip"
+    assert parmesan.__release_id__ == release["release_id"]
+    assert parmesan.__artifact_filename__ == f"PARMESAN_v{release['version'].replace('.', '_')}.zip"
 
 
 def test_catalog_profiles_hide_secondary_tools_by_default():
@@ -80,9 +81,10 @@ def test_self_locating_launcher_doctor(package_root: Path = Path(__file__).resol
     report = json.loads(completed.stdout)
     assert report["ready"] is True
     assert report["operator"] == "conversational_llm"
-    assert report["parmesan_version"] == "2.5.4"
-    assert report["release_id"] == "9b81cc9f-4f19-4834-99e3-9cb39ac82418"
-    assert report["artifact_filename"] == "PARMESAN_v2_5_4.zip"
+    release = json.loads((package_root / "RELEASE_MANIFEST.json").read_text(encoding="utf-8"))
+    assert report["parmesan_version"] == release["version"]
+    assert report["release_id"] == release["release_id"]
+    assert report["artifact_filename"] == f"PARMESAN_v{release['version'].replace('.', '_')}.zip"
 
 
 def test_zero_context_documented_workflow(tmp_path: Path):

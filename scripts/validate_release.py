@@ -37,6 +37,8 @@ def main() -> None:
         ROOT / "maintenance" / "TOOL_CATALOG.json",
         ROOT / "examples" / "zero_context_build.py",
         ROOT / "docs" / "README.md",
+        ROOT / "docs" / "CORPUS_OPERATIONS.md",
+        ROOT / "examples" / "CORPUS.toml",
         ROOT / "docs" / "PGX_Traversal_4C_Guide" / "4C_MODEL_CONTEXT.md",
         ROOT / "docs" / "PGX_Traversal_4C_Guide" / "USING_PGX_TRAVERSAL_NOTATION_AND_EXPRESSIONS.md",
     ]
@@ -116,6 +118,14 @@ def main() -> None:
     )
 
     checks["doctor_ready"] = parmesan.doctor()["ready"]
+    corpus_docs = (ROOT / "docs" / "CORPUS_OPERATIONS.md").read_text(encoding="utf-8")
+    checks["corpus_operations"] = {
+        "public_check_api": callable(parmesan.check_corpus),
+        "public_release_api": callable(parmesan.release_corpus),
+        "check_command_documented": "parmesan corpus check" in corpus_docs,
+        "release_command_documented": "parmesan corpus release" in corpus_docs,
+        "contract_example_present": (ROOT / "examples" / "CORPUS.toml").is_file(),
+    }
 
     database_reports = {}
     with tempfile.TemporaryDirectory() as tmp:
@@ -192,6 +202,7 @@ def main() -> None:
         and checks["all_tool_count"] == 35
         and checks["core_contracts_guaranteed"] is True
         and checks["doctor_ready"] is True
+        and all(checks["corpus_operations"].values())
         and all(database_reports.values())
         and checks["zero_context_build"]["valid"] is True
         and checks["wheel_exists"] is True

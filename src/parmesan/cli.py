@@ -8,6 +8,7 @@ from typing import Optional
 import typer
 
 from .manifest import build_manifest
+from .corpus import check_corpus, format_check, regenerate_manifest, release_corpus
 from .migration import migrate_v1_database
 from .router import dispatch_request, tool_catalog
 from .runtime import doctor as runtime_doctor
@@ -15,6 +16,8 @@ from .store import SQLitePGXStore
 
 app = typer.Typer(add_completion=False, no_args_is_help=True, help="Parmesan: local PGX tools for conversational LLMs.")
 legacy_app = app
+corpus_app = typer.Typer(add_completion=False, no_args_is_help=True, help="Validate and release a declared Parmesan corpus.")
+app.add_typer(corpus_app, name="corpus")
 
 
 @app.command("doctor")
@@ -119,6 +122,53 @@ def migrate_bare_pointer_links(database: Path, include_staged: bool = True, reas
     report = SQLitePGXStore(database).migrate_bare_pointer_references(
         request_id=str(uuid.uuid4()), include_staged=include_staged, reason=reason
     )
+    typer.echo(json.dumps(report, indent=2, ensure_ascii=False))
+
+
+@corpus_app.command("check")
+def corpus_check(
+    root: Path = typer.Argument(Path("."), exists=True, file_okay=False, dir_okay=True),
+    json_output: bool = typer.Option(False, "--json", help="Emit the complete structured result."),
+    skip_tests: bool = typer.Option(False, "--skip-tests", help="Skip declared test commands."),
+) -> None:
+    """Validate one corpus from its root CORPUS.toml contract."""
+    try:
+        report = check_corpus(root, run_tests=not skip_tests)
+    except Exception as exc:
+        typer.echo(json.dumps({"valid": False, "error": str(exc)}, indent=2, ensure_ascii=False))
+        raise typer.Exit(code=1) from exc
+    typer.echo(json.dumps(report.to_dict(), indent=2, ensure_ascii=False) if json_output else format_check(report), nl=False)
+    if not report.valid:
+        raise typer.Exit(code=1)
+
+
+@corpus_app.command("manifest")
+def corpus_manifest(root: Path = typer.Argument(Path("."), exists=True, file_okay=False, dir_okay=True)) -> None:
+    """Regenerate the root file manifest declared by CORPUS.toml."""
+    report = regenerate_manifest(root)
+    typer.echo(json.dumps({"valid": True, "file_count": report.get("file_count"), "manifest": str(root / "MANIFEST.json")}, indent=2))
+
+
+@corpus_app.command("release")
+def corpus_release(
+    root: Path = typer.Argument(Path("."), exists=True, file_okay=False, dir_okay=True),
+    output_dir: Path = typer.Option(Path("."), "--output-dir", "-o"),
+    patch: bool = typer.Option(False, "--patch", help="Increment the patch version."),
+    minor: bool = typer.Option(False, "--minor", help="Increment the minor version."),
+    major: bool = typer.Option(False, "--major", help="Increment the major version."),
+    message: Optional[str] = typer.Option(None, "--message", "-m", help="Mutation text for configured JSON version metadata."),
+    overwrite: bool = typer.Option(False, "--overwrite"),
+) -> None:
+    """Build a checked, version-bumped ZIP from a sterile staged copy."""
+    selected = [name for name, value in (("patch", patch), ("minor", minor), ("major", major)) if value]
+    if len(selected) > 1:
+        raise typer.BadParameter("choose only one of --patch, --minor, or --major")
+    bump = selected[0] if selected else "patch"
+    try:
+        report = release_corpus(root, output_dir=output_dir, bump=bump, message=message, overwrite=overwrite)
+    except Exception as exc:
+        typer.echo(json.dumps({"valid": False, "error": str(exc)}, indent=2, ensure_ascii=False))
+        raise typer.Exit(code=1) from exc
     typer.echo(json.dumps(report, indent=2, ensure_ascii=False))
 
 
