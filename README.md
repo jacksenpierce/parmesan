@@ -84,12 +84,17 @@ The release command stages a clean copy, removes transients, runs declared check
 | Inspect request, response, and tool guarantees | [`LLM_TOOL_CONTRACT.md`](LLM_TOOL_CONTRACT.md) and `TOOL_CATALOG.json` |
 | Validate and release a corpus directory | [`docs/CORPUS_OPERATIONS.md`](docs/CORPUS_OPERATIONS.md) |
 | Verify a software release | [`RELEASE.md`](RELEASE.md), `RELEASE.json`, `PACKAGE_MANIFEST.json`, and `SHA256SUMS.txt` |
+| Make a small change or prepare a release | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
+
+## Development and releases
+
+Small changes use short-lived, purpose-named branches such as `docs/...`, `fix/...`, `feature/...`, and `chore/...`. Open a pull request into `main`, inspect the complete diff, and merge the coherent change. A branch prefix is a naming convention, not a permanent category branch.
+
+Ordinary merged changes accumulate as unreleased work. GitHub Releases and version tags are periodic, immutable release cuts—not a required consequence of every documentation or source change. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full workflow.
 
 ## Releases and delivery
 
 The canonical downloadable artifacts are published in [GitHub Releases](https://github.com/jacksenpierce/parmesan/releases). A normal release is one ZIP named `PARMESAN_vMAJOR_MINOR_PATCH.zip`; its immutable release UUID and final SHA-256 identify the exact delivered artifact.
-
-Amazon Corpus is separate and is not included in Parmesan releases.
 
 Installing the bundled wheel is optional:
 

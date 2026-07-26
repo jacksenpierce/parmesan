@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Documented the small-branch, pull-request, and periodic-release workflow for maintainers.
+
 ## 2.7.1
 
 Canonical GitHub landing-page and release-discovery clarification.
