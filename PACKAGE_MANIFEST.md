@@ -1,20 +1,20 @@
-# Parmesan 2.7.0 package manifest
+# Parmesan 2.7.1 package manifest
 
-- Release ID: `aad5c968-3f42-4939-9b77-39c432ae8c93`
-- Artifact filename: `PARMESAN_v2_7_0.zip`
+- Release ID: `94414256-87db-4b36-9571-d09028606853`
+- Artifact filename: `PARMESAN_v2_7_1.zip`
 - Files: **82**
 - Core conversational tools: **17**
 - Total tools: **40**
 - Amazon Corpus bundled: **no**
-- Wheel: `dist/parmesan-2.7.0-py3-none-any.whl`
+- Wheel: `dist/parmesan-2.7.1-py3-none-any.whl`
 
 ## Inventory
 
 - `.github/workflows/tests.yml` — 295 bytes — `ce1266baa3d50d8ded5360d8a5bb5fc1789f1373866dc0915c6cc9e020ec3612`
 - `.gitignore` — 694 bytes — `f2dc00290e6a360684755731deefcc699141347a73fd99a73938da15b59ebb73`
 - `ARCHITECTURE.md` — 4,494 bytes — `26616021df3bfdca86b3ff66b6dab3c5c9591bcdaa149e289bfc74f42882f02c`
-- `CHANGELOG.md` — 6,122 bytes — `e7429bc4f6bdde51a3bfbacfd57c1a2ef92085a52e34ec8d4c55db02f3d16733`
-- `dist/parmesan-2.7.0-py3-none-any.whl` — 66,088 bytes — `3ca3721096fa1f6fca22d6fdcd893e2719242d93a9234b96bb786e4067ddac13`
+- `CHANGELOG.md` — 6,477 bytes — `a3d309a2824da8a64d3413d58a7bb822ce719d46ff94a5187c0113ed050d4106`
+- `dist/parmesan-2.7.1-py3-none-any.whl` — 66,958 bytes — `92034afa45155279d275e92e4b3107edd2bf0e596b2f0d2d78573af88fe40133`
 - `docs/CONSTRUAL_ENGINEERING.md` — 7,411 bytes — `bc4d1cbac26b1e59afb2ffe87a59102f984b2b2377a0f1d22c71e6ec906dc2c0`
 - `docs/CORPUS_OPERATIONS.md` — 3,167 bytes — `d9990fb26f2335f24caa5cbc50d2fc29aa709ad325596d0fabf379219c493f2e`
 - `docs/OPERATIONAL_PHILOSOPHY.md` — 7,703 bytes — `40cffadd1c7c0840b057aef1d89a10e4b59a552b85a66fe186c5ce0c491fdb6e`
@@ -35,12 +35,12 @@
 - `maintenance/README.md` — 556 bytes — `268f78032497b46a18a8cf9cc682e05b5b6247567c46b4e6991bdc9f06e87f5b`
 - `maintenance/TOOL_CATALOG.json` — 63,654 bytes — `1f34a0e2a966515fddca08c9f5f99afb5e5a94fa0d762e06f6494c3114c85708`
 - `PARMESAN_LLM.py` — 2,359 bytes — `f155ddaeb55b44bbd52df96ef87e45aaf223b76b1e445d67be0e4facb5cc9a5d`
-- `pyproject.toml` — 713 bytes — `a3bd94ecbb25ec5bb3be875a820c8e5bed067979a0d4ca43877f16976897026d`
-- `README.md` — 3,280 bytes — `216f68191b969bfff5cdc4cbde7420f56ba2cd1d4ce7b4284698bfa8f35afbbd`
-- `RELEASE.json` — 1,072 bytes — `5cdad340f148e63df4e8c5486ee8ac24c85eb48ee1a8b111345a5866da45ae18`
-- `RELEASE.md` — 2,246 bytes — `156edadf51389703b9873bfa936853425a2151aff08c98b145366ede085c48fb`
-- `RELEASE_MANIFEST.json` — 1,001 bytes — `bfc019a78c145bb87d7d4cb35865e5f50cd0d66f6334d39f1abe58ef9501b2c2`
-- `RELEASE_VALIDATION.json` — 2,905 bytes — `4f965235c8b3ccca61d661016b313c468f6f7e4a554e7b77a69d0730756c1bc1`
+- `pyproject.toml` — 713 bytes — `d1ed17aab6b419081b4b899fafc8b5751f6ba420bb2cac2b4653837da42fe4d2`
+- `README.md` — 5,599 bytes — `6ad1a9a53c8329c52d748fda463a9a5c5cfbe3a5bf252351666b46b9c53cee65`
+- `RELEASE.json` — 1,072 bytes — `b0b7c407651c7181d5c8cc1e63d1d1b52b66e3736b7d34553a805e40877f33fc`
+- `RELEASE.md` — 2,246 bytes — `0904d23e5f703e33f991cb025638b4ffddd69bc503262dfcb3c8d5495546e327`
+- `RELEASE_MANIFEST.json` — 1,001 bytes — `9a655ce73e977a1d097340b25eb890eba34d16769ab62101513008a471ed999d`
+- `RELEASE_VALIDATION.json` — 2,905 bytes — `5ab255e6eda3b13e6c125f4b57d8a6253a9a7e780e3a1a58eedc89f0e60b153b`
 - `requirements.txt` — 54 bytes — `d37fdf77cf534d220e880a82cfe1fc67d0b9ab5752b6fdebcc101a52a0307e4e`
 - `scripts/build_catalogs.py` — 667 bytes — `be6ee10260d76b17553689c46c057b0f25104fdb56d62da7c3e76dd97ea52e5c`
 - `scripts/build_manifest.py` — 618 bytes — `b45747c066dedb15697c151b0068a697fc9ea24e0446d71e29cff28bf4827a45`
@@ -77,7 +77,7 @@
 - `src/parmesan/tool_contracts.py` — 18,583 bytes — `68d334f24e6353aa89436613d34aee61f1271e997ccf1e6533bdb242174ebd9f`
 - `src/parmesan/tools.py` — 21,654 bytes — `4d019190da0b69a85f95569a06ed5560e772ff3fe23c19059647071089f77d7b`
 - `src/parmesan/traversal.py` — 3,282 bytes — `197cd912dd997aa69ea372afd7a67a0d04f69044d9de3b7978b82a0d4d64cdb8`
-- `src/parmesan/version.py` — 208 bytes — `22cb61db99e44edebae43d36802af93d9a2223912a812736fab7052ffbac333d`
+- `src/parmesan/version.py` — 208 bytes — `0260299c289cfdd9ea7c5166f28a5c12cc71c2a11a56ad1ffe2413a9a28d82f8`
 - `START_HERE.md` — 8,736 bytes — `843681582297808bbc7785ecd832926ec77287255d2c2429fa4050ae61278d54`
 - `tests/conftest.py` — 478 bytes — `21f3745061ec6f96addc6e1b812514b528dd94cb7398b7a733ec0c483591138d`
 - `tests/test_bare_pointer_migration.py` — 2,478 bytes — `4db21952937e4fdb2d5b569c0890977d8f1e9f58a3c84bc0244261d5ddc5ebef`

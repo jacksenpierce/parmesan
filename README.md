@@ -1,59 +1,99 @@
-# Parmesan 2.7.0
+# Parmesan
 
-Parmesan is a rugged, local PGX knowledge-base instrument designed to be handed directly to a capable conversational LLM. It creates and maintains SQLite-backed corpora with permanent pointers, append-only revisions, exact bare-pointer Markdown links, bounded context expansion, lawful traversal-expression embedding, full-text search, validation, transactions, and audit history.
+> A local, SQLite-backed PGX instrument for conversational LLMs doing durable, structured knowledge work.
 
-It is not a corpus, web service, plugin, or framework. A zero-context model should begin with [`START_HERE.md`](START_HERE.md) or run:
+Parmesan helps a human collaborator and an LLM build, inspect, and maintain an authoritative semantic graph. It is designed to be handed directly to a capable conversational LLM: no hosted service, plugin framework, or bundled corpus is required.
+
+## Start here
+
+From an extracted release or a source checkout:
 
 ```bash
 python PARMESAN_LLM.py doctor
+python PARMESAN_LLM.py catalog --profile core
 ```
 
-## Operating model
+Then read these in order:
 
-The SQLite corpus is the authoritative semantic graph and the default handoff artifact. PGX, Markdown, reports, and knowledge-base views are materialized projections: they may be generated or cached at any time, but they never replace the graph as source of truth.
+1. [`START_HERE.md`](START_HERE.md) — zero-context operating path.
+2. [`docs/OPERATIONAL_PHILOSOPHY.md`](docs/OPERATIONAL_PHILOSOPHY.md) — authority, evidence, lineage, session machinery, sentinels, and handoff.
+3. [`docs/CONSTRUAL_ENGINEERING.md`](docs/CONSTRUAL_ENGINEERING.md) — the 4C model and PGX practice for meaning-sensitive work.
 
-Use the core tools to operate a corpus. Use materialization tools when a database copy or human-readable view is needed. A conversational session may use temporary local machinery for PDFs, experiments, or extraction; only durable semantic results and intentionally captured provenance belong in the corpus.
+## What Parmesan is for
 
-Independent writing sessions receive automatic workstream identities. Materialized artifacts record the corpus identity, semantic snapshot, and their own export identity so an LLM can compare sibling artifacts before reconciling them.
+Use Parmesan when an LLM needs to repeatedly add artifacts, ask questions, generate synthesis, conduct experiments, and preserve durable semantic outcomes as a structured corpus.
 
-The default machine-readable catalog is `TOOL_CATALOG.json`. It exposes only the 17 normal conversational operations. Secondary operations are separated under `maintenance/`.
+- The SQLite database is the authoritative semantic graph and the default handoff artifact.
+- PGX, Markdown, reports, and knowledge-base views are materialized projections: generate or cache them when useful, but do not mistake them for the source of truth.
+- Persistent pointers, append-only revisions, exact local Markdown links, transactions, validation, full-text search, and audit history make the corpus inspectable and revisable.
+- Parallel work receives automatic corpus, semantic-snapshot, workstream, and materialization identities. Parmesan identifies divergence; the operating LLM performs semantic reconciliation deliberately.
 
-Canonical PGX references look like:
+Parmesan is not a corpus, a web service, an autonomous agent, or a framework that every session must extend. Session-specific machinery for PDFs, OCR, extraction, or experiments may be useful, but only durable results and selected provenance belong in the graph.
+
+## Construal Engineering and PGX
+
+Construal Engineering is the deliberate use of PGX to compose, preserve, inspect, compare, and revise the conditions through which material is taken to mean something for a task. It is grounded in the four-part model of **composition**, **compilation**, **connotation**, and **construal**.
+
+The normal semantic-link form is:
 
 ```markdown
-[V-enriched category](D03N001)
+[natural-language anchor](POINTER)
 ```
 
-The raw destination is the exact pointer in the active SQLite corpus. Resolution is case-sensitive and local; no network or URI resolver participates.
+The pointer is an exact, case-sensitive identity in the active corpus—not a URL, file path, or network target. For traversal work, use `pgx.traversal.embed` with a structured tree; Parmesan resolves pointers and serializes lawful notation such as:
 
-## Corpus checks and releases
+```text
+[((C1):(O1):(C2)):(O2):(C3)]
+```
 
-Parmesan 2.6 adds a compact corpus-operations harness. A corpus declares its release promises in one root `CORPUS.toml`, then uses:
+Read [`docs/CONSTRUAL_ENGINEERING.md`](docs/CONSTRUAL_ENGINEERING.md) and its two required 4C source documents before authoring or interpreting traversal expressions. Parmesan guarantees syntax, identity, revisions, and validation; an LLM remains responsible for contextual interpretation and for preserving meaningful alternative construals.
+
+## Common workflows
+
+### Create or operate a corpus
+
+Use the core tools to initialize a database, create graphs and nodes, retrieve bounded context, revise nodes with optimistic concurrency, and validate the resulting database. The intended Python entrance is:
+
+```python
+from parmesan import catalog, dispatch, doctor, initialize_corpus, open_corpus
+```
+
+### Materialize a handoff or compare parallel work
+
+Use the advanced lineage and materialization tools when a clean database copy, a projection, or a comparison between independently continued copies is needed. A materialization receives its own identity while retaining its corpus and semantic-snapshot lineage.
+
+### Release a corpus directory
+
+For a directory containing an authoritative Parmesan database plus projections or resources:
 
 ```bash
 parmesan corpus check /path/to/corpus
 parmesan corpus release /path/to/corpus --patch --output-dir /path/to/releases
 ```
 
-The release command works from a sterile staged copy, bumps the staged version, removes transients, runs declared tests, regenerates the root manifest, builds a deterministic ZIP, extracts it, and validates the delivered artifact again. The source corpus remains untouched. See [`docs/CORPUS_OPERATIONS.md`](docs/CORPUS_OPERATIONS.md).
+The release command stages a clean copy, removes transients, runs declared checks, builds a deterministic ZIP, and validates the delivered artifact. It does not modify the source corpus. See [`docs/CORPUS_OPERATIONS.md`](docs/CORPUS_OPERATIONS.md).
 
-## Optional installation
+## Documentation
 
-The source artifact can be used through `PARMESAN_LLM.py`. Installing the wheel is optional:
+| Read when you need to… | Document |
+| --- | --- |
+| Operate Parmesan with minimal prior context | [`START_HERE.md`](START_HERE.md) |
+| Understand operational authority and corpus lifecycle | [`docs/OPERATIONAL_PHILOSOPHY.md`](docs/OPERATIONAL_PHILOSOPHY.md) |
+| Do conceptually or meaning-sensitive work with PGX | [`docs/CONSTRUAL_ENGINEERING.md`](docs/CONSTRUAL_ENGINEERING.md) |
+| Author or interpret traversal expressions | [`docs/README.md`](docs/README.md) and the linked 4C guides |
+| Inspect request, response, and tool guarantees | [`LLM_TOOL_CONTRACT.md`](LLM_TOOL_CONTRACT.md) and `TOOL_CATALOG.json` |
+| Validate and release a corpus directory | [`docs/CORPUS_OPERATIONS.md`](docs/CORPUS_OPERATIONS.md) |
+| Verify a software release | [`RELEASE.md`](RELEASE.md), `RELEASE.json`, `PACKAGE_MANIFEST.json`, and `SHA256SUMS.txt` |
+
+## Releases and delivery
+
+The canonical downloadable artifacts are published in [GitHub Releases](https://github.com/jacksenpierce/parmesan/releases). A normal release is one ZIP named `PARMESAN_vMAJOR_MINOR_PATCH.zip`; its immutable release UUID and final SHA-256 identify the exact delivered artifact.
+
+Amazon Corpus is separate and is not included in Parmesan releases.
+
+Installing the bundled wheel is optional:
 
 ```bash
-python -m pip install dist/parmesan-2.7.0-py3-none-any.whl
+python -m pip install dist/parmesan-<version>-py3-none-any.whl
 parmesan doctor
 ```
-
-The package-root LLM entrances are:
-
-```python
-from parmesan import catalog, dispatch, doctor, initialize_corpus, open_corpus
-```
-
-See `START_HERE.md` for the canonical build and maintenance workflows. Traversal authors must also read [`docs/README.md`](docs/README.md), which makes the preserved PGX traversal and 4C guides part of the required operating path.
-
-## Release identity and delivery
-
-Read `RELEASE.json` for the immutable release UUID and `RELEASE.md` for the naming/version policy. Normal delivery is one archive named `PARMESAN_vMAJOR_MINOR_PATCH.zip`; its final SHA-256 identifies the delivered bytes.

@@ -1,8 +1,8 @@
 {
   "valid": true,
-  "version": "2.7.0",
-  "release_id": "aad5c968-3f42-4939-9b77-39c432ae8c93",
-  "artifact_filename": "PARMESAN_v2_7_0.zip",
+  "version": "2.7.1",
+  "release_id": "94414256-87db-4b36-9571-d09028606853",
+  "artifact_filename": "PARMESAN_v2_7_1.zip",
   "checks": {
     "required_files": true,
     "release_metadata_consistency": {
@@ -80,9 +80,9 @@
     },
     "wheel_exists": true,
     "wheel_import": {
-      "version": "2.7.0",
-      "release_id": "aad5c968-3f42-4939-9b77-39c432ae8c93",
-      "artifact_filename": "PARMESAN_v2_7_0.zip",
+      "version": "2.7.1",
+      "release_id": "94414256-87db-4b36-9571-d09028606853",
+      "artifact_filename": "PARMESAN_v2_7_1.zip",
       "core_tool_count": 17,
       "doctor_ready": true
     },

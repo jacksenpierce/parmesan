@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.7.1
+
+Canonical GitHub landing-page and release-discovery clarification.
+
+- Reframed the README as a stable repository front page with direct zero-context, operational-philosophy, and Construal Engineering entry points.
+- Clarified the authoritative database, projection, lineage, traversal, release, and Amazon Corpus boundaries for GitHub readers.
+
 ## 2.7.0
 
 Semantic-workspace and lineage capability release.
