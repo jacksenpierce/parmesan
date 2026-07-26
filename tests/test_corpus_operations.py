@@ -105,6 +105,17 @@ def test_release_bumps_staged_copy_and_keeps_source_unchanged(tmp_path: Path):
         assert handle.read("tiny-corpus/VERSION").decode().strip() == "v0.1.1"
 
 
+def test_release_rejects_output_inside_source_tree(tmp_path: Path):
+    root = tmp_path / "corpus"
+    build_corpus(root)
+    try:
+        release_corpus(root, output_dir=root)
+    except ValueError as exc:
+        assert "outside the source corpus" in str(exc)
+    else:
+        raise AssertionError("release output inside the source tree must be rejected")
+
+
 def test_unlinked_resource_ignores_its_own_contract_declaration(tmp_path: Path):
     root = tmp_path / "corpus"
     build_corpus(root)

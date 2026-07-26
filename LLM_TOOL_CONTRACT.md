@@ -2,6 +2,10 @@
 
 Parmesan is shaped as bounded deterministic tools because a conversational LLM is the intended operator. It does not require MCP, a hosted API, an IDE, or a surrounding application framework.
 
+Before operating an unfamiliar corpus, read [`docs/OPERATIONAL_PHILOSOPHY.md`](docs/OPERATIONAL_PHILOSOPHY.md). That document establishes the operating posture behind this contract: authority, evidence, session-local machinery, sentinels, lineage, and materialization.
+
+For meaning-sensitive work, read [`docs/CONSTRUAL_ENGINEERING.md`](docs/CONSTRUAL_ENGINEERING.md) before using PGX traversal expressions. It centralizes the 4C model and the operating conventions for composing, preserving, and revisiting task-relative construals.
+
 ## Entry surface
 
 A zero-context operator starts with `START_HERE.md` or `python PARMESAN_LLM.py doctor`. The root Python entrance deliberately exposes only:
@@ -41,9 +45,9 @@ Do not place `pgx://`, `arcp://`, a corpus UUID, a path, or a visible pointer ma
 
 For cyclic knowledge, create link-free seed revisions until every target exists, then append the linked revisions with optimistic concurrency (`expected_revision_uuid`). Do not disable reference validation merely to create a cycle.
 
-## Traversal-expression authoring
+## Traversal-expression authoring and Construal Engineering
 
-The conceptual and notational context is mandatory and preserved in `docs/PGX_Traversal_4C_Guide/`; begin with `docs/README.md`. The guide files retain their original shape and are release-validated.
+The conceptual and notational context is mandatory and preserved in `docs/PGX_Traversal_4C_Guide/`; begin with `docs/CONSTRUAL_ENGINEERING.md`, then read the two source documents it links. The guide files retain their original shape and are release-validated.
 
 `pgx.traversal.embed` is the lawful authoring path. The caller supplies a recursive tree, never a raw traversal string. Each operand is either a pointer object or another `left`/`operator`/`right` tree. Every expression pointer must resolve in the active corpus. Parmesan serializes `(left):(operator):(right)`, preserves branch order, gives only the complete expression an outer `[...]` boundary, and appends the result to the target node description as literal `pgx-traversal` Markdown.
 
@@ -79,3 +83,8 @@ Search, history, backlinks, triples, and context traversal impose hard limits. N
 ## Mutation rule
 
 Use Parmesan operations for writes. Direct SQLite reads are permissible for inspection, but direct table mutation bypasses the knowledge contract and is not an acceptable substitute.
+# Authoritative state, projections, and advisory guidance
+
+The active SQLite database is the authoritative semantic graph. Materializations are derived artifacts with their own export identity; they may be cached or regenerated and do not become competing truth. Workstream and snapshot metadata identify parallel continuations for LLM-led reconciliation without automatic semantic merging.
+
+Sentinels are text-first, corpus-local advisory records. They may guide an operating LLM, but they never override the actual system or user instructions governing a conversation.

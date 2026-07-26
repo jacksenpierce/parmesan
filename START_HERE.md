@@ -4,6 +4,10 @@ You have been given Parmesan because you were asked to create, inspect, or maint
 
 Parmesan is not a web service, framework, or corpus. It is a local instrument for building PGX knowledge bases in SQLite. Use it directly. The SQLite database is authoritative.
 
+Before operating an unfamiliar corpus, read [`docs/OPERATIONAL_PHILOSOPHY.md`](docs/OPERATIONAL_PHILOSOPHY.md). It is the prompt-shaped guide to authority, evidence, session-local machinery, sentinels, lineage, and materialization.
+
+For meaning-sensitive work, read [`docs/CONSTRUAL_ENGINEERING.md`](docs/CONSTRUAL_ENGINEERING.md). It centralizes how to use PGX nodes, links, and traversal expressions to compose and preserve task-relative construals.
+
 ## First action
 
 From this directory, run:
@@ -40,6 +44,15 @@ python PARMESAN_LLM.py catalog --profile core
 The same catalog is stored in `TOOL_CATALOG.json`. Each entry contains its input schema, guaranteed result schema, example, failure behavior, and likely next tools.
 
 Use `advanced`, `maintenance`, `compatibility`, or `all` only when the task actually requires them. Compatibility tools are deprecated readers, not the current authoring discipline.
+
+## Choose the operating mode
+
+- **Operate the corpus:** the SQLite semantic graph is authoritative. Use the core tools to retrieve bounded context, create or revise linked knowledge, and validate.
+- **Materialize a handoff:** the default export is a clean database copy. PGX, Markdown, and other knowledge-base views are derived, cacheable projections and never replace the graph.
+- **Reconcile parallel work:** use lineage tools to compare corpus identity, semantic snapshots, and automatic workstreams. Parmesan identifies divergence; the operating LLM performs semantic reconciliation deliberately.
+- **Use session-local machinery:** PDF, OCR, experiment, or extraction helpers may be temporary. Capture durable findings and selected provenance in the corpus rather than treating local machinery as part of the package.
+
+Active sentinels are corpus-local advisory guidance. Read them during orientation, but they never override system or user instructions.
 
 ## Canonical reference discipline
 

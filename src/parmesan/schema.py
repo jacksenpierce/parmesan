@@ -6,7 +6,7 @@ from pathlib import Path
 
 from .timeutil import now_rfc3339_ns
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 PRODUCT = "Parmesan"
 DEFAULT_POINTER_PATTERN = r"[A-Za-z][A-Za-z0-9._-]*"
 DEFAULT_URI_TEMPLATE = "{pointer}"
@@ -167,6 +167,33 @@ CREATE TABLE schema_migrations (
   description TEXT NOT NULL
 ) STRICT, WITHOUT ROWID;
 
+-- Operational lineage is deliberately separate from semantic graph content.
+CREATE TABLE corpus_workstreams (
+  workstream_id TEXT NOT NULL PRIMARY KEY,
+  corpus_id TEXT NOT NULL,
+  base_snapshot_id TEXT NOT NULL,
+  created_at TEXT NOT NULL UNIQUE,
+  package_release_id TEXT NOT NULL,
+  mutation_count INTEGER NOT NULL DEFAULT 0 CHECK(mutation_count>=0)
+) STRICT, WITHOUT ROWID;
+
+CREATE TABLE materializations (
+  materialization_id TEXT NOT NULL PRIMARY KEY,
+  corpus_id TEXT NOT NULL,
+  snapshot_id TEXT NOT NULL,
+  workstream_id TEXT,
+  kind TEXT NOT NULL CHECK(kind IN ('database','pgx','markdown')),
+  created_at TEXT NOT NULL UNIQUE,
+  details_json TEXT NOT NULL
+) STRICT, WITHOUT ROWID;
+
+CREATE TABLE sentinel_guidance (
+  node_uuid TEXT NOT NULL PRIMARY KEY REFERENCES node_identity(uuid) ON UPDATE RESTRICT ON DELETE RESTRICT,
+  scope TEXT NOT NULL DEFAULT 'corpus',
+  active INTEGER NOT NULL DEFAULT 1 CHECK(active IN (0,1)),
+  created_at TEXT NOT NULL UNIQUE
+) STRICT, WITHOUT ROWID;
+
 CREATE VIRTUAL TABLE node_fts USING fts5(
   pointer,
   title,
@@ -317,6 +344,7 @@ def create_empty_database(
         "product_name": PRODUCT,
         "parmesan_schema_version": str(SCHEMA_VERSION),
         "database_uuid": database_uuid,
+        "corpus_id": database_uuid,
         "uuid_namespace": namespace,
         "uuid_strategy": "UUIDv5(database uuid_namespace, pointer)",
         "pointer_pattern": DEFAULT_POINTER_PATTERN,
@@ -333,7 +361,7 @@ def create_empty_database(
     connection.executemany("INSERT INTO metadata(key,value) VALUES (?,?)", metadata.items())
     connection.execute(
         "INSERT INTO schema_migrations(version,applied_at,description) VALUES (?,?,?)",
-        (SCHEMA_VERSION, now_rfc3339_ns(), "Parmesan 2.3 bare-pointer Markdown reference discipline"),
+        (SCHEMA_VERSION, now_rfc3339_ns(), "Parmesan 2.7 lineage, materialization, and advisory sentinel metadata"),
     )
     connection.execute(
         """INSERT INTO reference_profiles

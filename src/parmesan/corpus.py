@@ -32,7 +32,6 @@ DEFAULT_TRANSIENT_GLOBS = [
     "**/*-journal",
     "**/.DS_Store",
 ]
-DEFAULT_MANIFEST_EXCLUDES = ["MANIFEST.json", ".git/**"]
 SEMVER_RE = re.compile(r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$")
 WIKILINK_RE = re.compile(r"\[\[([^\]|#]+)(?:#[^\]|]+)?(?:\|[^\]]+)?\]\]")
 
@@ -563,10 +562,18 @@ def _run_tests(spec: CorpusSpec, findings: list[Finding], *, profile: str) -> li
 def check_corpus(
     root: str | Path,
     *,
-    profile: str = "full",
+    test_profile: str = "full",
+    profile: str | None = None,
     run_tests: bool = True,
     check_manifest: bool = True,
 ) -> CheckResult:
+    """Validate a corpus; ``test_profile`` selects declared tests only.
+
+    ``profile`` remains a compatibility alias for callers written before the
+    narrower meaning was named explicitly.
+    """
+    if profile is not None:
+        test_profile = profile
     spec = CorpusSpec.load(root)
     findings: list[Finding] = []
     checks: dict[str, Any] = {}
@@ -580,7 +587,7 @@ def check_corpus(
     checks["projections"] = _check_projections(spec, findings)
     checks["unlinked"] = _check_unlinked(spec, findings)
     if run_tests:
-        checks["tests"] = _run_tests(spec, findings, profile=profile)
+        checks["tests"] = _run_tests(spec, findings, profile=test_profile)
     valid = not any(item.severity == "error" for item in findings)
     return CheckResult(root=str(spec.root), valid=valid, findings=findings, checks=checks)
 
@@ -602,6 +609,9 @@ def clean_transients(root: str | Path) -> list[str]:
 
 
 def _copy_source(source: Path, destination: Path) -> None:
+    symlinks = [path.relative_to(source).as_posix() for path in source.rglob("*") if path.is_symlink()]
+    if symlinks:
+        raise ValueError(f"source corpus contains symlinks and cannot be staged safely: {symlinks[:20]}")
     def ignore(_directory: str, names: list[str]) -> set[str]:
         return {name for name in names if name in {".git", "__pycache__", ".pytest_cache"}}
     shutil.copytree(source, destination, ignore=ignore)
@@ -642,7 +652,14 @@ def release_corpus(
     overwrite: bool = False,
 ) -> dict[str, Any]:
     source_path = Path(source).expanduser().resolve()
-    source_spec = CorpusSpec.load(source_path)
+    CorpusSpec.load(source_path)
+    output_root = Path(output_dir).expanduser().resolve()
+    try:
+        output_root.relative_to(source_path)
+    except ValueError:
+        pass
+    else:
+        raise ValueError("release output directory must be outside the source corpus to preserve source-tree immutability")
     with tempfile.TemporaryDirectory(prefix="parmesan-corpus-release-") as temporary:
         temp = Path(temporary)
         stage = temp / "stage"
@@ -672,7 +689,7 @@ def release_corpus(
             raise ValueError("release archive template must produce one safe .zip filename")
         if archive_root_path.is_absolute() or len(archive_root_path.parts) != 1 or ".." in archive_root_path.parts:
             raise ValueError("release root template must produce one safe directory name")
-        output = Path(output_dir).expanduser().resolve() / archive_name
+        output = output_root / archive_name
         output.parent.mkdir(parents=True, exist_ok=True)
         if output.exists() and not overwrite:
             raise FileExistsError(f"refusing to overwrite existing release: {output}")

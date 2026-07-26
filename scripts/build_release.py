@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import os
+import argparse
+import json
 import shutil
 import subprocess
 import sys
@@ -17,6 +19,11 @@ def run(script: str, *arguments: str) -> None:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Build and verify a Parmesan release artifact.")
+    parser.add_argument("--output-dir", default=str(ROOT.parent))
+    parser.add_argument("--overwrite", action="store_true", help="Replace an existing derived artifact at the selected output path.")
+    args = parser.parse_args()
+
     run("generate_release_metadata.py")
     run("build_catalogs.py")
     shutil.rmtree(ROOT / "dist", ignore_errors=True)
@@ -31,7 +38,12 @@ def main() -> None:
     # package manifest afterward so its recorded hash reflects that final
     # validation report.
     run("build_package_manifest.py")
-    run("build_release_archive.py", "--output-dir", str(ROOT.parent))
+    archive_arguments = ["--output-dir", args.output_dir]
+    if args.overwrite:
+        archive_arguments.append("--overwrite")
+    run("build_release_archive.py", *archive_arguments)
+    release = json.loads((ROOT / "RELEASE.json").read_text(encoding="utf-8"))
+    run("verify_package_manifest.py", "--archive", str(Path(args.output_dir).resolve() / release["artifact_filename"]))
 
 
 if __name__ == "__main__":

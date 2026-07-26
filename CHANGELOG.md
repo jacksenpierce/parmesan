@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.7.0
+
+Semantic-workspace and lineage capability release.
+
+- Made the SQLite semantic graph explicit as the authoritative corpus and database handoff as the default materialization.
+- Added automatic corpus, snapshot, workstream, and materialization identities for branch-aware LLM reconciliation without automatic semantic merging.
+- Added database materialization and lineage comparison operations, plus advisory text-first sentinels in a reserved system graph.
+- Added a central Construal Engineering operating reference linking the 4C model to PGX links, nodes, triples, traversal expressions, situated readings, and alternative construals.
+- Hardened corpus release output isolation, symlink handling, structured CLI failures, and final release package integrity verification.
+
 ## 2.6.1
 
 Release-integrity repair.

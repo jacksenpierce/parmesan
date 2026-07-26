@@ -209,6 +209,26 @@ class ManifestArgs(ToolArgs):
     output_markdown: str | None = None
 
 
+class MaterializeDatabaseArgs(ToolArgs):
+    output: str
+    overwrite: bool = False
+
+
+class LineageCompareArgs(ToolArgs):
+    other_database: str
+
+
+class SentinelCreateArgs(ToolArgs):
+    pointer: str
+    title: str
+    guidance: str
+    scope: str = Field(default="corpus", min_length=1, max_length=100)
+
+
+class SentinelListArgs(ToolArgs):
+    active_only: bool = True
+
+
 @dataclass(frozen=True)
 class ToolDefinition:
     name: str
@@ -265,6 +285,31 @@ def _init(_, args: InitArgs, ctx):
 @register("pgx.database.describe", "Orient the operating LLM to an existing corpus: counts, graphs, pointer grammar, reserved seed pointers, and next actions.", EmptyArgs, max_output="one compact corpus orientation report")
 def _describe(store, args, ctx):
     return describe_corpus(store.path)
+
+
+@register("pgx.lineage.describe", "Describe the authoritative corpus identity, deterministic semantic snapshot, automatic workstreams, and prior materializations.", EmptyArgs, max_output="one bounded lineage report", profile="advanced")
+def _lineage_describe(store, args, ctx):
+    return store.lineage_describe()
+
+
+@register("pgx.lineage.compare", "Compare two corpus artifacts for shared identity, common lineage base, and bounded reconciliation candidates; never auto-merge semantics.", LineageCompareArgs, max_output="at most 200 reconciliation candidates", profile="advanced")
+def _lineage_compare(store, args: LineageCompareArgs, ctx):
+    return store.compare_lineage(args.other_database)
+
+
+@register("pgx.materialize.database", "Export a clean database materialization. The authoritative graph remains the source of truth; the export receives its own materialization identity.", MaterializeDatabaseArgs, max_output="one database artifact identity", profile="advanced")
+def _materialize_database(store, args: MaterializeDatabaseArgs, ctx):
+    return store.materialize_database(**args.model_dump())
+
+
+@register("pgx.sentinel.create", "Create a text-first, corpus-local advisory sentinel. Sentinels guide operating LLMs but never override system or user instructions.", SentinelCreateArgs, **MUTATION_META, profile="advanced")
+def _sentinel_create(store, args: SentinelCreateArgs, ctx):
+    return store.create_sentinel(request_id=ctx["request_id"], **args.model_dump())
+
+
+@register("pgx.sentinel.list", "List active advisory sentinels for this corpus.", SentinelListArgs, max_output="bounded active sentinel list", profile="advanced")
+def _sentinel_list(store, args: SentinelListArgs, ctx):
+    return store.list_sentinels(**args.model_dump())
 
 
 @register("pgx.database.validate", "Prove SQLite, identity, revision, graph, reference, registry, triple, FTS, and PGX round-trip invariants.", EmptyArgs, max_output="bounded validation report")

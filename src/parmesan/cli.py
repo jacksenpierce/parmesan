@@ -20,6 +20,10 @@ corpus_app = typer.Typer(add_completion=False, no_args_is_help=True, help="Valid
 app.add_typer(corpus_app, name="corpus")
 
 
+def _corpus_error(exc: Exception) -> str:
+    return json.dumps({"valid": False, "error": {"code": "corpus_operation_failed", "message": str(exc), "exception_type": type(exc).__name__, "suggested_action": "Inspect CORPUS.toml and run parmesan corpus check before retrying."}}, indent=2, ensure_ascii=False)
+
+
 @app.command("doctor")
 def doctor(database: Optional[Path] = typer.Argument(None)) -> None:
     """Check whether Parmesan and an optional corpus are ready for use."""
@@ -135,7 +139,7 @@ def corpus_check(
     try:
         report = check_corpus(root, run_tests=not skip_tests)
     except Exception as exc:
-        typer.echo(json.dumps({"valid": False, "error": str(exc)}, indent=2, ensure_ascii=False))
+        typer.echo(_corpus_error(exc))
         raise typer.Exit(code=1) from exc
     typer.echo(json.dumps(report.to_dict(), indent=2, ensure_ascii=False) if json_output else format_check(report), nl=False)
     if not report.valid:
@@ -152,7 +156,7 @@ def corpus_manifest(root: Path = typer.Argument(Path("."), exists=True, file_oka
 @corpus_app.command("release")
 def corpus_release(
     root: Path = typer.Argument(Path("."), exists=True, file_okay=False, dir_okay=True),
-    output_dir: Path = typer.Option(Path("."), "--output-dir", "-o"),
+    output_dir: Optional[Path] = typer.Option(None, "--output-dir", "-o", help="Directory outside the source corpus for release ZIPs; defaults to a sibling releases directory."),
     patch: bool = typer.Option(False, "--patch", help="Increment the patch version."),
     minor: bool = typer.Option(False, "--minor", help="Increment the minor version."),
     major: bool = typer.Option(False, "--major", help="Increment the major version."),
@@ -165,9 +169,9 @@ def corpus_release(
         raise typer.BadParameter("choose only one of --patch, --minor, or --major")
     bump = selected[0] if selected else "patch"
     try:
-        report = release_corpus(root, output_dir=output_dir, bump=bump, message=message, overwrite=overwrite)
+        report = release_corpus(root, output_dir=output_dir or (root.resolve().parent / "releases"), bump=bump, message=message, overwrite=overwrite)
     except Exception as exc:
-        typer.echo(json.dumps({"valid": False, "error": str(exc)}, indent=2, ensure_ascii=False))
+        typer.echo(_corpus_error(exc))
         raise typer.Exit(code=1) from exc
     typer.echo(json.dumps(report, indent=2, ensure_ascii=False))
 

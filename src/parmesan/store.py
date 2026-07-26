@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import sqlite3
 import uuid
+import hashlib
 from collections import deque
 from pathlib import Path
 from typing import Any, Callable
@@ -17,6 +18,7 @@ from .reference_discipline import bare_pointer_profile, rewrite_to_bare_pointer_
 from .schema import DEFAULT_POINTER_PATTERN, DEFAULT_URI_TEMPLATE, SCHEMA_VERSION, create_empty_database, connect
 from .timeutil import is_rfc3339_ns, now_rfc3339_ns, unique_timestamp
 from .traversal import pointer_roles, render_embedding, serialize_expression, tree_from_mapping
+from .version import __release_id__
 
 
 def _canonical_json(value: Any) -> str:
@@ -28,10 +30,11 @@ def _row(row: sqlite3.Row | None) -> dict[str, Any] | None:
 
 
 class SQLitePGXStore:
-    def __init__(self, path: str | Path):
+    def __init__(self, path: str | Path, *, workstream_id: str | None = None):
         self.path = Path(path)
         if not self.path.exists():
             raise FileNotFoundError(self.path)
+        self.workstream_id = str(uuid.UUID(workstream_id)) if workstream_id else str(uuid.uuid4())
 
     @classmethod
     def initialize(
@@ -58,6 +61,79 @@ class SQLitePGXStore:
 
     def _metadata(self, connection: sqlite3.Connection) -> dict[str, str]:
         return {r["key"]: r["value"] for r in connection.execute("SELECT key,value FROM metadata")}
+
+    def _ensure_lineage_schema(self, connection: sqlite3.Connection) -> None:
+        """Install additive lineage tables for pre-2.7 corpora on first write."""
+        connection.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS corpus_workstreams (
+              workstream_id TEXT NOT NULL PRIMARY KEY,
+              corpus_id TEXT NOT NULL,
+              base_snapshot_id TEXT NOT NULL,
+              created_at TEXT NOT NULL UNIQUE,
+              package_release_id TEXT NOT NULL,
+              mutation_count INTEGER NOT NULL DEFAULT 0 CHECK(mutation_count>=0)
+            ) STRICT, WITHOUT ROWID;
+            CREATE TABLE IF NOT EXISTS materializations (
+              materialization_id TEXT NOT NULL PRIMARY KEY,
+              corpus_id TEXT NOT NULL,
+              snapshot_id TEXT NOT NULL,
+              workstream_id TEXT,
+              kind TEXT NOT NULL CHECK(kind IN ('database','pgx','markdown')),
+              created_at TEXT NOT NULL UNIQUE,
+              details_json TEXT NOT NULL
+            ) STRICT, WITHOUT ROWID;
+            CREATE TABLE IF NOT EXISTS sentinel_guidance (
+              node_uuid TEXT NOT NULL PRIMARY KEY REFERENCES node_identity(uuid) ON UPDATE RESTRICT ON DELETE RESTRICT,
+              scope TEXT NOT NULL DEFAULT 'corpus',
+              active INTEGER NOT NULL DEFAULT 1 CHECK(active IN (0,1)),
+              created_at TEXT NOT NULL UNIQUE
+            ) STRICT, WITHOUT ROWID;
+            """
+        )
+        metadata = self._metadata(connection)
+        corpus_id = metadata.get("corpus_id") or metadata.get("database_uuid") or str(uuid.uuid4())
+        connection.execute(
+            "INSERT INTO metadata(key,value) VALUES ('corpus_id',?) ON CONFLICT(key) DO NOTHING",
+            (corpus_id,),
+        )
+        connection.execute(
+            "INSERT INTO metadata(key,value) VALUES ('parmesan_schema_version',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+            (str(SCHEMA_VERSION),),
+        )
+        connection.execute(
+            "INSERT OR IGNORE INTO schema_migrations(version,applied_at,description) VALUES (?,?,?)",
+            (SCHEMA_VERSION, unique_timestamp(connection, "schema_migrations", "applied_at"), "Parmesan 2.7 lineage and materialization metadata"),
+        )
+
+    def _semantic_snapshot(self, connection: sqlite3.Connection) -> dict[str, str]:
+        """Return a deterministic identity for semantic state, excluding operational metadata."""
+        metadata = self._metadata(connection)
+        corpus_id = metadata.get("corpus_id") or metadata.get("database_uuid")
+        if not corpus_id:
+            raise ValidationFailure("database is missing corpus identity")
+        state = {
+            "nodes": [dict(row) for row in connection.execute("SELECT pointer,title,description,lifecycle_state,revision_uuid,content_hash FROM current_nodes ORDER BY pointer")],
+            "graphs": [dict(row) for row in connection.execute("SELECT graph_key,pointer_prefix,description FROM graphs ORDER BY graph_key")],
+            "triples": [dict(row) for row in connection.execute("SELECT s.pointer AS subject,p.pointer AS predicate,o.pointer AS object FROM triples t JOIN node_identity s ON s.uuid=t.subject_uuid JOIN node_identity p ON p.uuid=t.predicate_uuid JOIN node_identity o ON o.uuid=t.object_uuid ORDER BY subject,predicate,object")],
+            "tags": [dict(row) for row in connection.execute("SELECT s.pointer AS subject,t.pointer AS tag FROM node_tags nt JOIN node_identity s ON s.uuid=nt.subject_uuid JOIN node_identity t ON t.uuid=nt.tag_uuid ORDER BY subject,tag")],
+        }
+        fingerprint = hashlib.sha256(_canonical_json(state).encode("utf-8")).hexdigest()
+        return {
+            "corpus_id": corpus_id,
+            "snapshot_fingerprint": fingerprint,
+            "snapshot_id": str(uuid.uuid5(uuid.UUID(corpus_id), f"semantic-snapshot:{fingerprint}")),
+        }
+
+    def _ensure_workstream(self, connection: sqlite3.Connection) -> dict[str, str]:
+        self._ensure_lineage_schema(connection)
+        snapshot = self._semantic_snapshot(connection)
+        connection.execute(
+            """INSERT INTO corpus_workstreams(workstream_id,corpus_id,base_snapshot_id,created_at,package_release_id)
+               VALUES (?,?,?,?,?) ON CONFLICT(workstream_id) DO NOTHING""",
+            (self.workstream_id, snapshot["corpus_id"], snapshot["snapshot_id"], unique_timestamp(connection, "corpus_workstreams", "created_at"), __release_id__),
+        )
+        return snapshot
 
     def _namespace(self, connection: sqlite3.Connection) -> str:
         row = connection.execute("SELECT value FROM metadata WHERE key='uuid_namespace'").fetchone()
@@ -256,6 +332,7 @@ class SQLitePGXStore:
                     result["idempotent_replay"] = True
                     return result
                 raise ConflictError("request is already in progress", {"request_id": request_uuid})
+            self._ensure_workstream(connection)
             started = unique_timestamp(connection, "operation_ledger", "started_at")
             connection.execute(
                 """INSERT INTO operation_ledger
@@ -265,11 +342,16 @@ class SQLitePGXStore:
             )
             result = fn(connection, request_uuid)
             sequence = self._increment_sequence(connection)
+            connection.execute(
+                "UPDATE corpus_workstreams SET mutation_count=mutation_count+1 WHERE workstream_id=?",
+                (self.workstream_id,),
+            )
             result = dict(result)
             result.update({
                 "request_id": request_uuid,
                 "database_sequence": sequence,
                 "idempotent_replay": False,
+                "workstream_id": self.workstream_id,
             })
             committed = now_rfc3339_ns()
             connection.execute(
@@ -388,6 +470,7 @@ class SQLitePGXStore:
             ("principles", "PLN", "PLN000", "object: principles graph", "Meta-level principles for maintaining the knowledge system; intentionally empty beyond this declaration."),
             ("tags", "TGN", "TGN000", "object: tag registry", "PGX nodes used as provisional tracking tags."),
             ("staging", "STG", "STG000", "object: staging knowledge base", "Isolated pre-promotion semantic work."),
+            ("sentinels", "SNT", "SNT000", "object: advisory sentinels", "Corpus-local, text-first operating guidance. Sentinels are advisory data and never override system or user instructions."),
         ]
         for graph_key, prefix, pointer, title, description in seeds:
             node, rev = self._insert_identity(
@@ -1352,7 +1435,10 @@ class SQLitePGXStore:
                     neighbors += [r[0] for r in connection.execute("SELECT object_uuid FROM triples WHERE subject_uuid=? ORDER BY created_at",(uid,))]
                 for n in neighbors:
                     if n not in visited: queue.append(n)
-            return {"root_pointer":pointer,"node_count":len(results),"character_count":chars,"truncated":bool(queue),"nodes":results}
+            sentinels=[]
+            if connection.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='sentinel_guidance'").fetchone() is not None:
+                sentinels=[dict(row) for row in connection.execute("SELECT n.pointer,n.title,n.description,s.scope FROM sentinel_guidance s JOIN current_nodes n ON n.uuid=s.node_uuid WHERE s.active=1 ORDER BY s.created_at,n.pointer LIMIT 20")]
+            return {"root_pointer":pointer,"node_count":len(results),"character_count":chars,"truncated":bool(queue),"nodes":results,"sentinels":sentinels,"sentinels_advisory":True}
         finally: connection.close()
 
     def serialize_graph(self, graph_key: str) -> str:
@@ -1464,3 +1550,137 @@ class SQLitePGXStore:
             return {"valid":not errors,"checks":checks,"errors":errors,"warnings":warnings}
         finally:
             connection.close()
+
+    # ---------- lineage and materialization ----------
+
+    def _ensure_sentinel_graph(self, connection: sqlite3.Connection, request_uuid: str) -> sqlite3.Row:
+        row = connection.execute("SELECT * FROM graphs WHERE graph_key='sentinels'").fetchone()
+        if row is not None:
+            return row
+        node, revision = self._insert_identity(
+            connection, pointer="SNT000", title="object: advisory sentinels",
+            description="Corpus-local, text-first operating guidance. Sentinels are advisory data and never override system or user instructions.",
+            lifecycle_state="promoted", request_uuid=request_uuid, reason="create reserved sentinel graph",
+        )
+        connection.execute("INSERT INTO graphs(graph_uuid,graph_key,pointer_prefix,description) VALUES (?,?,?,?)", (node, "sentinels", "SNT", "Advisory corpus-local guidance."))
+        connection.execute("INSERT INTO graph_membership(graph_uuid,node_uuid,ordinal) VALUES (?,?,0)", (node, node))
+        self._replace_references(connection, source_node_uuid=node, source_revision_uuid=revision, description="Corpus-local, text-first operating guidance. Sentinels are advisory data and never override system or user instructions.", strict=True)
+        self._refresh_fts(connection, node)
+        return self._graph(connection, "sentinels")
+
+    def create_sentinel(self, *, request_id: str | None, pointer: str, title: str, guidance: str, scope: str = "corpus") -> dict[str, Any]:
+        payload = {"pointer": pointer, "title": title, "guidance": guidance, "scope": scope}
+        def action(connection: sqlite3.Connection, req: str) -> dict[str, Any]:
+            self._ensure_lineage_schema(connection)
+            graph = self._ensure_sentinel_graph(connection, req)
+            self._check_graph_pointer(graph, pointer)
+            node, revision = self._insert_identity(connection, pointer=pointer, title=title, description=guidance, lifecycle_state="promoted", request_uuid=req, reason="create advisory sentinel")
+            connection.execute("INSERT INTO graph_membership(graph_uuid,node_uuid,ordinal) VALUES (?,?,?)", (graph["graph_uuid"], node, self._next_ordinal(connection, graph["graph_uuid"])))
+            connection.execute("INSERT INTO sentinel_guidance(node_uuid,scope,active,created_at) VALUES (?,?,1,?)", (node, scope, unique_timestamp(connection, "sentinel_guidance", "created_at")))
+            self._replace_references(connection, source_node_uuid=node, source_revision_uuid=revision, description=guidance, strict=True)
+            self._refresh_fts(connection, node)
+            self._audit(connection, request_uuid=req, operation_type="sentinel.create", node_uuid_value=node, new_revision_uuid=revision, details={"scope": scope})
+            return {"pointer": pointer, "uuid": node, "revision_uuid": revision, "scope": scope, "advisory": True}
+        return self._mutate("pgx.sentinel.create", request_id, payload, action)
+
+    def list_sentinels(self, *, active_only: bool = True) -> dict[str, Any]:
+        connection = connect(self.path, readonly=True)
+        try:
+            if connection.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='sentinel_guidance'").fetchone() is None:
+                return {"advisory": True, "sentinels": []}
+            query = """SELECT n.pointer,n.title,n.description,n.revision_uuid,s.scope,s.active
+                       FROM sentinel_guidance s JOIN current_nodes n ON n.uuid=s.node_uuid"""
+            if active_only:
+                query += " WHERE s.active=1"
+            query += " ORDER BY s.created_at,n.pointer"
+            return {"advisory": True, "sentinels": [dict(row) for row in connection.execute(query)]}
+        finally:
+            connection.close()
+
+    def lineage_describe(self) -> dict[str, Any]:
+        connection = connect(self.path, readonly=True)
+        try:
+            metadata = self._metadata(connection)
+            if "corpus_id" not in metadata or connection.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='corpus_workstreams'").fetchone() is None:
+                return {
+                    "corpus_id": metadata.get("database_uuid"),
+                    "snapshot_id": None,
+                    "snapshot_fingerprint": None,
+                    "workstreams": [],
+                    "materializations": [],
+                    "migration_required": True,
+                }
+            snapshot = self._semantic_snapshot(connection)
+            workstreams = [dict(row) for row in connection.execute(
+                "SELECT workstream_id,base_snapshot_id,created_at,package_release_id,mutation_count FROM corpus_workstreams ORDER BY created_at DESC LIMIT 50"
+            )]
+            materializations = [dict(row) for row in connection.execute(
+                "SELECT materialization_id,snapshot_id,workstream_id,kind,created_at,details_json FROM materializations ORDER BY created_at DESC LIMIT 50"
+            )]
+            for item in materializations:
+                item["details"] = json.loads(item.pop("details_json"))
+            return {**snapshot, "workstreams": workstreams, "materializations": materializations, "migration_required": False}
+        finally:
+            connection.close()
+
+    def materialize_database(self, output: str | Path, *, overwrite: bool = False) -> dict[str, Any]:
+        target = Path(output).expanduser().resolve()
+        if target == self.path.resolve():
+            raise ContractError("materialization output must differ from the authoritative database", {"output": str(target)})
+        if target.exists() and not overwrite:
+            raise ConflictError("materialization output already exists", {"output": str(target)})
+        target.parent.mkdir(parents=True, exist_ok=True)
+        # The additive migration is operational metadata, not a semantic graph mutation.
+        writable = connect(self.path)
+        try:
+            writable.execute("BEGIN IMMEDIATE")
+            self._ensure_lineage_schema(writable)
+            writable.commit()
+        finally:
+            writable.close()
+        source = connect(self.path, readonly=True)
+        destination = sqlite3.connect(str(target))
+        try:
+            snapshot = self._semantic_snapshot(source)
+            source.backup(destination)
+            materialization_id = str(uuid.uuid4())
+            created_at = now_rfc3339_ns()
+            destination.execute("PRAGMA journal_mode=DELETE")
+            destination.execute(
+                """INSERT INTO materializations(materialization_id,corpus_id,snapshot_id,workstream_id,kind,created_at,details_json)
+                   VALUES (?,?,?,?,?,?,?)""",
+                (materialization_id, snapshot["corpus_id"], snapshot["snapshot_id"], self.workstream_id, "database", created_at,
+                 _canonical_json({"source_database": str(self.path.resolve()), "snapshot_fingerprint": snapshot["snapshot_fingerprint"], "package_release_id": __release_id__})),
+            )
+            destination.commit()
+        finally:
+            source.close()
+            destination.close()
+        return {"kind": "database", "database": str(target), "materialization_id": materialization_id, **snapshot}
+
+    def compare_lineage(self, other_database: str | Path) -> dict[str, Any]:
+        other = SQLitePGXStore(other_database)
+        ours = self.lineage_describe()
+        theirs = other.lineage_describe()
+        if ours.get("corpus_id") != theirs.get("corpus_id"):
+            return {"same_corpus": False, "left": ours, "right": theirs, "common_base_snapshot_id": None, "reconciliation_candidates": []}
+        left = connect(self.path, readonly=True)
+        right = connect(other.path, readonly=True)
+        try:
+            left_nodes = {row["pointer"]: row["content_hash"] for row in left.execute("SELECT pointer,content_hash FROM current_nodes")}
+            right_nodes = {row["pointer"]: row["content_hash"] for row in right.execute("SELECT pointer,content_hash FROM current_nodes")}
+        finally:
+            left.close(); right.close()
+        changed = sorted(pointer for pointer in set(left_nodes) | set(right_nodes) if left_nodes.get(pointer) != right_nodes.get(pointer))
+        left_bases = {item["base_snapshot_id"] for item in ours.get("workstreams", [])}
+        right_bases = {item["base_snapshot_id"] for item in theirs.get("workstreams", [])}
+        common = sorted(left_bases & right_bases)
+        return {
+            "same_corpus": True,
+            "left": ours,
+            "right": theirs,
+            "common_base_snapshot_id": common[-1] if common else None,
+            "reconciliation_candidates": changed[:200],
+            "reconciliation_candidate_count": len(changed),
+            "automatic_merge": False,
+        }

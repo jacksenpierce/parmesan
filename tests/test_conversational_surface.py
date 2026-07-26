@@ -27,7 +27,7 @@ def test_catalog_profiles_hide_secondary_tools_by_default():
     compatibility = parmesan.catalog("compatibility")
 
     assert len(core) == 17
-    assert len(all_tools) == 35
+    assert len(all_tools) == 40
     assert all(item["profile"] == "core" for item in core)
     assert all(item["contract_level"] == "guaranteed" for item in core)
     assert all(item["success_example"] for item in core)
@@ -107,12 +107,24 @@ def test_zero_context_docs_cover_observed_handoff_failures():
     package_root = Path(__file__).resolve().parents[1]
     start = (package_root / "START_HERE.md").read_text(encoding="utf-8")
     contract = (package_root / "LLM_TOOL_CONTRACT.md").read_text(encoding="utf-8")
+    philosophy = (package_root / "docs" / "OPERATIONAL_PHILOSOPHY.md").read_text(encoding="utf-8")
+    construal_engineering = (package_root / "docs" / "CONSTRUAL_ENGINEERING.md").read_text(encoding="utf-8")
     release = json.loads((package_root / "RELEASE.json").read_text(encoding="utf-8"))
 
     assert "expected_revision_uuid" in start
     assert 'response["result"]["pgx"]' in start
     assert "-wal" in start and "-shm" in start
     assert 'response["result"]["pgx"]' in contract
+    assert "docs/OPERATIONAL_PHILOSOPHY.md" in start
+    assert "docs/OPERATIONAL_PHILOSOPHY.md" in contract
+    assert "authoritative semantic graph" in philosophy
+    assert "Session-local machinery" in philosophy
+    assert "does not perform automatic semantic merges" in philosophy
+    assert "docs/CONSTRUAL_ENGINEERING.md" in start
+    assert "docs/CONSTRUAL_ENGINEERING.md" in contract
+    assert "The 4C model" in construal_engineering
+    assert "pgx.traversal.embed" in construal_engineering
+    assert "can determine the one construal every reader must adopt" in construal_engineering
     assert release["version"] == parmesan.__version__
     assert release["release_id"] == parmesan.__release_id__
     assert release["artifact_filename"] == parmesan.__artifact_filename__

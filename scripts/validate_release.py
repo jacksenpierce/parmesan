@@ -37,6 +37,8 @@ def main() -> None:
         ROOT / "maintenance" / "TOOL_CATALOG.json",
         ROOT / "examples" / "zero_context_build.py",
         ROOT / "docs" / "README.md",
+        ROOT / "docs" / "OPERATIONAL_PHILOSOPHY.md",
+        ROOT / "docs" / "CONSTRUAL_ENGINEERING.md",
         ROOT / "docs" / "CORPUS_OPERATIONS.md",
         ROOT / "examples" / "CORPUS.toml",
         ROOT / "docs" / "PGX_Traversal_4C_Guide" / "4C_MODEL_CONTEXT.md",
@@ -79,6 +81,8 @@ def main() -> None:
         return
     start_here = (ROOT / "START_HERE.md").read_text(encoding="utf-8")
     contract = (ROOT / "LLM_TOOL_CONTRACT.md").read_text(encoding="utf-8")
+    philosophy = (ROOT / "docs" / "OPERATIONAL_PHILOSOPHY.md").read_text(encoding="utf-8")
+    construal_engineering = (ROOT / "docs" / "CONSTRUAL_ENGINEERING.md").read_text(encoding="utf-8")
     guide_4c = ROOT / "docs" / "PGX_Traversal_4C_Guide" / "4C_MODEL_CONTEXT.md"
     guide_usage = ROOT / "docs" / "PGX_Traversal_4C_Guide" / "USING_PGX_TRAVERSAL_NOTATION_AND_EXPRESSIONS.md"
     docs_index = (ROOT / "docs" / "README.md").read_text(encoding="utf-8")
@@ -94,6 +98,23 @@ def main() -> None:
         "serialize_result_path": 'response["result"]["pgx"]' in start_here and 'response["result"]["pgx"]' in contract,
         "clean_sqlite_handoff": "-wal" in start_here and "-shm" in start_here,
         "traversal_expression_authoring": "pgx.traversal.embed" in start_here and "exactly one outer square-bracket" in start_here and "pgx.traversal.embed" in contract,
+    }
+    checks["operational_philosophy"] = {
+        "linked_from_start_here": "docs/OPERATIONAL_PHILOSOPHY.md" in start_here,
+        "linked_from_contract": "docs/OPERATIONAL_PHILOSOPHY.md" in contract,
+        "authoritative_graph": "authoritative semantic graph" in philosophy,
+        "projection_boundary": "Materialized projections" in philosophy,
+        "sentinel_boundary": "never a way to override system or user instructions" in philosophy,
+        "session_machinery_boundary": "Session-local machinery" in philosophy,
+        "reconciliation_boundary": "does not perform automatic semantic merges" in philosophy,
+    }
+    checks["construal_engineering"] = {
+        "linked_from_start_here": "docs/CONSTRUAL_ENGINEERING.md" in start_here,
+        "linked_from_contract": "docs/CONSTRUAL_ENGINEERING.md" in contract,
+        "4c_model": "The 4C model" in construal_engineering,
+        "source_documents": "4C_MODEL_CONTEXT.md" in construal_engineering and "USING_PGX_TRAVERSAL_NOTATION_AND_EXPRESSIONS.md" in construal_engineering,
+        "pgx_traversal_guidance": "pgx.traversal.embed" in construal_engineering,
+        "interpretation_boundary": "can determine the one construal every reader must adopt" in construal_engineering,
     }
     checks["release_tree_hygiene"] = {
         "no_sqlite_transients": not any(
@@ -196,10 +217,12 @@ def main() -> None:
         and all(checks["release_identity"].values())
         and checks.get("artifact_root_directory_matches", True)
         and all(checks["zero_context_hardening_docs"].values())
+        and all(checks["operational_philosophy"].values())
+        and all(checks["construal_engineering"].values())
         and all(checks["traversal_guide_integrity"].values())
         and all(checks["release_tree_hygiene"].values())
         and checks["core_tool_count"] == 17
-        and checks["all_tool_count"] == 35
+        and checks["all_tool_count"] == 40
         and checks["core_contracts_guaranteed"] is True
         and checks["doctor_ready"] is True
         and all(checks["corpus_operations"].values())

@@ -1,4 +1,4 @@
-# Parmesan 2.6.1
+# Parmesan 2.7.0
 
 Parmesan is a rugged, local PGX knowledge-base instrument designed to be handed directly to a capable conversational LLM. It creates and maintains SQLite-backed corpora with permanent pointers, append-only revisions, exact bare-pointer Markdown links, bounded context expansion, lawful traversal-expression embedding, full-text search, validation, transactions, and audit history.
 
@@ -7,6 +7,14 @@ It is not a corpus, web service, plugin, or framework. A zero-context model shou
 ```bash
 python PARMESAN_LLM.py doctor
 ```
+
+## Operating model
+
+The SQLite corpus is the authoritative semantic graph and the default handoff artifact. PGX, Markdown, reports, and knowledge-base views are materialized projections: they may be generated or cached at any time, but they never replace the graph as source of truth.
+
+Use the core tools to operate a corpus. Use materialization tools when a database copy or human-readable view is needed. A conversational session may use temporary local machinery for PDFs, experiments, or extraction; only durable semantic results and intentionally captured provenance belong in the corpus.
+
+Independent writing sessions receive automatic workstream identities. Materialized artifacts record the corpus identity, semantic snapshot, and their own export identity so an LLM can compare sibling artifacts before reconciling them.
 
 The default machine-readable catalog is `TOOL_CATALOG.json`. It exposes only the 17 normal conversational operations. Secondary operations are separated under `maintenance/`.
 
@@ -34,7 +42,7 @@ The release command works from a sterile staged copy, bumps the staged version, 
 The source artifact can be used through `PARMESAN_LLM.py`. Installing the wheel is optional:
 
 ```bash
-python -m pip install dist/parmesan-2.6.1-py3-none-any.whl
+python -m pip install dist/parmesan-2.7.0-py3-none-any.whl
 parmesan doctor
 ```
 

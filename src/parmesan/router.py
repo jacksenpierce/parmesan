@@ -10,6 +10,8 @@ from .models import ToolRequest
 from .store import SQLitePGXStore
 from .tools import TOOLS, catalog
 
+RUNTIME_WORKSTREAM_ID = str(uuid.uuid4())
+
 
 def tool_catalog(profile: str = "core") -> list[dict[str, Any]]:
     return catalog(profile=profile)
@@ -98,11 +100,11 @@ def dispatch_request(payload: dict[str, Any]) -> dict[str, Any]:
                     suggested_action="Replace request_id with a valid UUIDv4 and retry the unchanged request.",
                 )
         args = definition.input_model.model_validate(request.arguments)
-        store = SQLitePGXStore(request.database) if request.database else None
+        store = SQLitePGXStore(request.database, workstream_id=RUNTIME_WORKSTREAM_ID) if request.database else None
         result = definition.handler(
             store,
             args,
-            {"request_id": request.request_id, "database": request.database},
+            {"request_id": request.request_id, "database": request.database, "workstream_id": RUNTIME_WORKSTREAM_ID},
         )
         warnings = result.get("warnings", []) if isinstance(result, dict) else []
         sequence = result.get("database_sequence") if isinstance(result, dict) else None
