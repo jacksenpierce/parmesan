@@ -85,6 +85,7 @@ The release command stages a clean copy, removes transients, runs declared check
 | Validate and release a corpus directory | [`docs/CORPUS_OPERATIONS.md`](docs/CORPUS_OPERATIONS.md) |
 | Verify a software release | [`RELEASE.md`](RELEASE.md), `RELEASE.json`, `PACKAGE_MANIFEST.json`, and `SHA256SUMS.txt` |
 | Make a small change or prepare a release | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
+| Inspect an annotated external corpus materialization | [`corpus-artifacts/README.md`](corpus-artifacts/README.md) |
 
 ## Development and releases
 

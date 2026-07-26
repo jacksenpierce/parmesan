@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "artifact_id": "construal-engineering-lab-v0.0.12",
+  "kind": "pgx_text_materialization",
+  "status": "quarantined_experiment_not_evaluated",
+  "source_archive": {
+    "filename": "parmesan-corpus-v0.0.12.zip",
+    "sha256": "ccfe925308eeb0dca128bec3a695c5557702e325a734a733780fb9cf190310e5",
+    "source_root": "parmesan-corpus"
+  },
+  "source_member": {
+    "path": "parmesan-corpus/pgx-networkx-bridge/knowledge/exports/lexicon-lab.pgx.txt",
+    "bytes": 22417,
+    "sha256": "a31e45a9e7ca1a459232e8898dd9d8bfd5847333792d9eb6a2afbe4d2977557c"
+  },
+  "authoritative_source": "parmesan-corpus/pgx-networkx-bridge/knowledge/yellow_house.sqlite",
+  "local_materialization": "lexicon-lab.pgx.txt",
+  "notes": "The checked-in file is byte-identical to source_member. Its external PGX pointers are not expected to resolve in this repository alone."
+}
