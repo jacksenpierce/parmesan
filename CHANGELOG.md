@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added persistent working and publish modes. Fresh and legacy corpora default safely to working mode; external manifests and database materializations require an explicit publish-mode transition, while publish mode freezes semantic mutation.
 - Resolved overlapping graph namespaces by assigning pointers to the uniquely longest registered prefix and validating memberships against that canonical resolution.
 - Documented the small-branch, pull-request, and periodic-release workflow for maintainers.
 - Added the complete agent-facing “Construal Engineering with Parmesan” guide verbatim to the required operating context.

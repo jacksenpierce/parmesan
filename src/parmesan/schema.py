@@ -194,6 +194,24 @@ CREATE TABLE sentinel_guidance (
   created_at TEXT NOT NULL UNIQUE
 ) STRICT, WITHOUT ROWID;
 
+CREATE TABLE operating_mode_state (
+  singleton_id INTEGER NOT NULL PRIMARY KEY CHECK(singleton_id=1),
+  mode_key TEXT NOT NULL CHECK(mode_key IN ('working','publish')),
+  revision INTEGER NOT NULL CHECK(revision>=1),
+  updated_at TEXT NOT NULL UNIQUE,
+  reason TEXT NOT NULL
+) STRICT, WITHOUT ROWID;
+
+CREATE TABLE operating_mode_history (
+  transition_uuid TEXT NOT NULL PRIMARY KEY,
+  from_mode_key TEXT CHECK(from_mode_key IN ('working','publish')),
+  to_mode_key TEXT NOT NULL CHECK(to_mode_key IN ('working','publish')),
+  revision INTEGER NOT NULL UNIQUE CHECK(revision>=1),
+  changed_at TEXT NOT NULL UNIQUE,
+  reason TEXT NOT NULL,
+  request_uuid TEXT
+) STRICT, WITHOUT ROWID;
+
 CREATE VIRTUAL TABLE node_fts USING fts5(
   pointer,
   title,
@@ -362,6 +380,19 @@ def create_empty_database(
     connection.execute(
         "INSERT INTO schema_migrations(version,applied_at,description) VALUES (?,?,?)",
         (SCHEMA_VERSION, now_rfc3339_ns(), "Parmesan 2.7 lineage, materialization, and advisory sentinel metadata"),
+    )
+    initial_mode_at = now_rfc3339_ns()
+    initial_transition_uuid = str(uuid.uuid4())
+    connection.execute(
+        """INSERT INTO operating_mode_state(singleton_id,mode_key,revision,updated_at,reason)
+           VALUES (1,'working',1,?,'default safe working mode')""",
+        (initial_mode_at,),
+    )
+    connection.execute(
+        """INSERT INTO operating_mode_history
+           (transition_uuid,from_mode_key,to_mode_key,revision,changed_at,reason,request_uuid)
+           VALUES (?,NULL,'working',1,?,'default safe working mode',NULL)""",
+        (initial_transition_uuid, initial_mode_at),
     )
     connection.execute(
         """INSERT INTO reference_profiles

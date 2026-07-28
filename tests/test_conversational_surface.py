@@ -26,8 +26,8 @@ def test_catalog_profiles_hide_secondary_tools_by_default():
     all_tools = parmesan.catalog("all")
     compatibility = parmesan.catalog("compatibility")
 
-    assert len(core) == 17
-    assert len(all_tools) == 40
+    assert len(core) == 19
+    assert len(all_tools) == 42
     assert all(item["profile"] == "core" for item in core)
     assert all(item["contract_level"] == "guaranteed" for item in core)
     assert all(item["success_example"] for item in core)

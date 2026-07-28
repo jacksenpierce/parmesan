@@ -49,8 +49,9 @@ Use `advanced`, `maintenance`, `compatibility`, or `all` only when the task actu
 
 ## Choose the operating mode
 
-- **Operate the corpus:** the SQLite semantic graph is authoritative. Use the core tools to retrieve bounded context, create or revise linked knowledge, and validate.
-- **Materialize a handoff:** the default export is a clean database copy. PGX, Markdown, and other knowledge-base views are derived, cacheable projections and never replace the graph.
+- **Working mode is the default:** the SQLite semantic graph is authoritative. Use the core tools to retrieve bounded context, create or revise linked knowledge, and validate. Parmesan does not automatically rebuild or serialize external knowledge-base views.
+- **Publish only when explicitly requested:** run `pgx.mode.set` with mode `publish` and a reason before writing manifests or database materializations. Publish mode freezes semantic mutation so every output comes from one fixed database state. Return to `working` mode before continuing semantic work.
+- **Materialize a handoff deliberately:** a clean database copy is the normal handoff. PGX, Markdown, and other knowledge-base views are derived, cacheable projections and never replace the graph.
 - **Reconcile parallel work:** use lineage tools to compare corpus identity, semantic snapshots, and automatic workstreams. Parmesan identifies divergence; the operating LLM performs semantic reconciliation deliberately.
 - **Use session-local machinery:** PDF, OCR, experiment, or extraction helpers may be temporary. Capture durable findings and selected provenance in the corpus rather than treating local machinery as part of the package.
 

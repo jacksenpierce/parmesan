@@ -79,6 +79,28 @@ RESULT_SCHEMAS: dict[str, dict[str, Any]] = {
         },
     ),
     "pgx.database.validate": VALIDATION_RESULT,
+    "pgx.mode.show": _object(
+        ["mode", "revision", "persisted", "publication_enabled", "reason"],
+        {
+            "mode": {"enum": ["working", "publish"]},
+            "revision": {"type": "integer"},
+            "updated_at": {"type": "string"},
+            "persisted": {"type": "boolean"},
+            "publication_enabled": {"type": "boolean"},
+            "reason": _string(),
+        },
+    ),
+    "pgx.mode.set": _object(
+        ["mode", "revision", "unchanged", "publication_enabled", *MUTATION_FIELDS],
+        {
+            "mode": {"enum": ["working", "publish"]},
+            "revision": {"type": "integer"},
+            "transition_uuid": {"type": "string"},
+            "unchanged": {"type": "boolean"},
+            "publication_enabled": {"type": "boolean"},
+            **MUTATION_FIELDS,
+        },
+    ),
     "pgx.graph.create": _object(
         ["graph_key", "pointer", "uuid", "revision_uuid", *MUTATION_FIELDS],
         {
@@ -256,6 +278,14 @@ SUCCESS_EXAMPLES: dict[str, dict[str, Any]] = {
         "request": _request("pgx.database.validate", {}, database="knowledge.sqlite"),
         "result_excerpt": {"valid": True, "errors": [], "warnings": []},
     },
+    "pgx.mode.show": {
+        "request": _request("pgx.mode.show", {}, database="knowledge.sqlite"),
+        "result_excerpt": {"mode": "working", "publication_enabled": False, "persisted": True},
+    },
+    "pgx.mode.set": {
+        "request": _request("pgx.mode.set", {"mode": "publish", "reason": "prepare one explicit publication"}, database="knowledge.sqlite", request_id="12121212-1212-4212-8212-121212121212"),
+        "result_excerpt": {"mode": "publish", "publication_enabled": True, "unchanged": False},
+    },
     "pgx.graph.create": {
         "request": _request("pgx.graph.create", {"graph_key": "cell-biology", "pointer_prefix": "CB", "declaration_pointer": "CB0", "title": "Cell biology", "description": "Domain graph for cell biology."}, database="knowledge.sqlite", request_id="22222222-2222-4222-8222-222222222222"),
         "result_excerpt": {"graph_key": "cell-biology", "pointer": "CB0", "database_sequence": 1},
@@ -369,8 +399,10 @@ FAILURE_EXAMPLES: dict[str, dict[str, Any]] = {
 
 NEXT_TOOLS: dict[str, list[str]] = {
     "pgx.system.doctor": ["pgx.database.initialize", "pgx.database.describe"],
-    "pgx.database.initialize": ["pgx.graph.create", "pgx.database.describe"],
-    "pgx.database.describe": ["pgx.node.search", "pgx.graph.create", "pgx.database.validate"],
+    "pgx.database.initialize": ["pgx.mode.show", "pgx.graph.create", "pgx.database.describe"],
+    "pgx.database.describe": ["pgx.mode.show", "pgx.node.search", "pgx.graph.create", "pgx.database.validate"],
+    "pgx.mode.show": ["pgx.graph.create", "pgx.mode.set"],
+    "pgx.mode.set": ["pgx.mode.show", "pgx.manifest.build", "pgx.materialize.database"],
     "pgx.graph.create": ["pgx.node.create"],
     "pgx.node.create": ["pgx.node.create", "pgx.traversal.embed", "pgx.reference.validate", "pgx.database.validate"],
     "pgx.node.get": ["pgx.node.update", "pgx.traversal.embed", "pgx.context.build", "pgx.reference.list"],

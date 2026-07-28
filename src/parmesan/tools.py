@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any, Callable, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -214,6 +214,11 @@ class MaterializeDatabaseArgs(ToolArgs):
     overwrite: bool = False
 
 
+class ModeSetArgs(ToolArgs):
+    mode: Literal["working", "publish"]
+    reason: str = Field(min_length=1, max_length=500)
+
+
 class LineageCompareArgs(ToolArgs):
     other_database: str
 
@@ -285,6 +290,16 @@ def _init(_, args: InitArgs, ctx):
 @register("pgx.database.describe", "Orient the operating LLM to an existing corpus: counts, graphs, pointer grammar, reserved seed pointers, and next actions.", EmptyArgs, max_output="one compact corpus orientation report")
 def _describe(store, args, ctx):
     return describe_corpus(store.path)
+
+
+@register("pgx.mode.show", "Show the persistent operating mode. Working mode is the safe default and disables external materialization.", EmptyArgs, max_output="one mode state")
+def _mode_show(store, args, ctx):
+    return store.mode_show()
+
+
+@register("pgx.mode.set", "Explicitly toggle between safe working mode and the bounded publication gate. Changing mode does not itself materialize anything.", ModeSetArgs, **MUTATION_META)
+def _mode_set(store, args: ModeSetArgs, ctx):
+    return store.mode_set(request_id=ctx["request_id"], **args.model_dump())
 
 
 @register("pgx.lineage.describe", "Describe the authoritative corpus identity, deterministic semantic snapshot, automatic workstreams, and prior materializations.", EmptyArgs, max_output="one bounded lineage report", profile="advanced")
@@ -480,6 +495,8 @@ def _context(store, args, ctx):
 
 @register("pgx.manifest.build", "Generate JSON and optional Markdown manifests from authoritative SQLite state.", ManifestArgs, max_output="metadata and graph summaries")
 def _manifest(store, args, ctx):
+    if args.output_json or args.output_markdown:
+        store.require_publish_mode("pgx.manifest.build")
     return build_manifest(store.path, args.output_json, args.output_markdown)
 
 

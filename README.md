@@ -60,7 +60,9 @@ from parmesan import catalog, dispatch, doctor, initialize_corpus, open_corpus
 
 ### Materialize a handoff or compare parallel work
 
-Use the advanced lineage and materialization tools when a clean database copy, a projection, or a comparison between independently continued copies is needed. A materialization receives its own identity while retaining its corpus and semantic-snapshot lineage.
+Ordinary work remains in the default `working` mode and never automatically rebuilds or serializes an external knowledge base. When a clean database copy or another publication surface is explicitly needed, use `pgx.mode.set` to enter `publish` mode before invoking the advanced materialization tools. Publish mode freezes semantic mutation so each output comes from one fixed database state. Return to `working` mode afterward.
+
+A materialization receives its own identity while retaining its corpus and semantic-snapshot lineage. Use lineage comparison when independently continued copies need deliberate LLM reconciliation.
 
 ### Release a corpus directory
 

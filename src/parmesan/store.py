@@ -105,6 +105,135 @@ class SQLitePGXStore:
             "INSERT OR IGNORE INTO schema_migrations(version,applied_at,description) VALUES (?,?,?)",
             (SCHEMA_VERSION, unique_timestamp(connection, "schema_migrations", "applied_at"), "Parmesan 2.7 lineage and materialization metadata"),
         )
+        self._ensure_operating_mode_schema(connection)
+
+    def _ensure_operating_mode_schema(self, connection: sqlite3.Connection) -> None:
+        """Install the safe default-off publication gate for legacy corpora."""
+        connection.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS operating_mode_state (
+              singleton_id INTEGER NOT NULL PRIMARY KEY CHECK(singleton_id=1),
+              mode_key TEXT NOT NULL CHECK(mode_key IN ('working','publish')),
+              revision INTEGER NOT NULL CHECK(revision>=1),
+              updated_at TEXT NOT NULL UNIQUE,
+              reason TEXT NOT NULL
+            ) STRICT, WITHOUT ROWID;
+            CREATE TABLE IF NOT EXISTS operating_mode_history (
+              transition_uuid TEXT NOT NULL PRIMARY KEY,
+              from_mode_key TEXT CHECK(from_mode_key IN ('working','publish')),
+              to_mode_key TEXT NOT NULL CHECK(to_mode_key IN ('working','publish')),
+              revision INTEGER NOT NULL UNIQUE CHECK(revision>=1),
+              changed_at TEXT NOT NULL UNIQUE,
+              reason TEXT NOT NULL,
+              request_uuid TEXT
+            ) STRICT, WITHOUT ROWID;
+            """
+        )
+        if connection.execute("SELECT 1 FROM operating_mode_state WHERE singleton_id=1").fetchone() is None:
+            changed_at = unique_timestamp(connection, "operating_mode_history", "changed_at")
+            transition_uuid = str(uuid.uuid4())
+            connection.execute(
+                """INSERT INTO operating_mode_state(singleton_id,mode_key,revision,updated_at,reason)
+                   VALUES (1,'working',1,?,'default safe working mode')""",
+                (changed_at,),
+            )
+            connection.execute(
+                """INSERT INTO operating_mode_history
+                   (transition_uuid,from_mode_key,to_mode_key,revision,changed_at,reason,request_uuid)
+                   VALUES (?,NULL,'working',1,?,'default safe working mode',NULL)""",
+                (transition_uuid, changed_at),
+            )
+
+    def _mode_row(self, connection: sqlite3.Connection) -> sqlite3.Row | None:
+        if connection.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='operating_mode_state'"
+        ).fetchone() is None:
+            return None
+        return connection.execute(
+            "SELECT mode_key,revision,updated_at,reason FROM operating_mode_state WHERE singleton_id=1"
+        ).fetchone()
+
+    def mode_show(self) -> dict[str, Any]:
+        connection = connect(self.path, readonly=True)
+        try:
+            row = self._mode_row(connection)
+            if row is None:
+                return {
+                    "mode": "working",
+                    "revision": 0,
+                    "persisted": False,
+                    "publication_enabled": False,
+                    "reason": "legacy corpus defaults safely to working mode",
+                }
+            return {
+                "mode": row["mode_key"],
+                "revision": row["revision"],
+                "updated_at": row["updated_at"],
+                "reason": row["reason"],
+                "persisted": True,
+                "publication_enabled": row["mode_key"] == "publish",
+            }
+        finally:
+            connection.close()
+
+    def mode_set(self, *, request_id: str | None, mode: str, reason: str) -> dict[str, Any]:
+        if mode not in {"working", "publish"}:
+            raise ContractError("unknown operating mode", {"mode": mode, "allowed": ["working", "publish"]})
+        payload = {"mode": mode, "reason": reason}
+
+        def action(connection: sqlite3.Connection, req: str) -> dict[str, Any]:
+            self._ensure_operating_mode_schema(connection)
+            current = self._mode_row(connection)
+            assert current is not None
+            if current["mode_key"] == mode:
+                return {
+                    "mode": mode,
+                    "revision": current["revision"],
+                    "unchanged": True,
+                    "publication_enabled": mode == "publish",
+                }
+            revision = int(current["revision"]) + 1
+            changed_at = unique_timestamp(connection, "operating_mode_history", "changed_at")
+            transition_uuid = str(uuid.uuid4())
+            connection.execute(
+                """INSERT INTO operating_mode_history
+                   (transition_uuid,from_mode_key,to_mode_key,revision,changed_at,reason,request_uuid)
+                   VALUES (?,?,?,?,?,?,?)""",
+                (transition_uuid, current["mode_key"], mode, revision, changed_at, reason, req),
+            )
+            connection.execute(
+                """UPDATE operating_mode_state
+                   SET mode_key=?,revision=?,updated_at=?,reason=?
+                   WHERE singleton_id=1""",
+                (mode, revision, changed_at, reason),
+            )
+            self._audit(
+                connection,
+                request_uuid=req,
+                operation_type="mode.set",
+                details={"from": current["mode_key"], "to": mode, "revision": revision, "reason": reason},
+            )
+            return {
+                "mode": mode,
+                "revision": revision,
+                "transition_uuid": transition_uuid,
+                "unchanged": False,
+                "publication_enabled": mode == "publish",
+            }
+
+        return self._mutate("pgx.mode.set", request_id, payload, action)
+
+    def require_publish_mode(self, operation: str) -> None:
+        state = self.mode_show()
+        if state["mode"] != "publish":
+            raise ContractError(
+                "external materialization is disabled in working mode",
+                {
+                    "operation": operation,
+                    "mode": state["mode"],
+                    "next_action": "Explicitly set publish mode, run the publication operation, then return to working mode.",
+                },
+            )
 
     def _semantic_snapshot(self, connection: sqlite3.Connection) -> dict[str, str]:
         """Return a deterministic identity for semantic state, excluding operational metadata."""
@@ -332,6 +461,13 @@ class SQLitePGXStore:
                     result["idempotent_replay"] = True
                     return result
                 raise ConflictError("request is already in progress", {"request_id": request_uuid})
+            self._ensure_operating_mode_schema(connection)
+            mode = self._mode_row(connection)
+            if tool_name != "pgx.mode.set" and mode is not None and mode["mode_key"] == "publish":
+                raise ConflictError(
+                    "semantic mutation is disabled while publish mode is active",
+                    {"tool": tool_name, "next_action": "Return to working mode before changing canonical corpus state."},
+                )
             self._ensure_workstream(connection)
             started = unique_timestamp(connection, "operation_ledger", "started_at")
             connection.execute(
@@ -1663,6 +1799,7 @@ class SQLitePGXStore:
             connection.close()
 
     def materialize_database(self, output: str | Path, *, overwrite: bool = False) -> dict[str, Any]:
+        self.require_publish_mode("pgx.materialize.database")
         target = Path(output).expanduser().resolve()
         if target == self.path.resolve():
             raise ContractError("materialization output must differ from the authoritative database", {"output": str(target)})
