@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import shutil
 import sqlite3
 import uuid
@@ -137,3 +138,25 @@ def test_failed_publication_cleans_partial_output_and_returns_to_working(tmp_pat
     assert SQLitePGXStore(created["database"]).mode_show()["mode"] == "working"
     assert not (root / "handoffs" / "must-not-exist").exists()
     assert not list((root / "handoffs").glob("*.partial"))
+
+
+def test_handoff_classifies_machinery_mismatch(tmp_path):
+    root = tmp_path / "workspace"
+    created = initialize_workspace(root)
+    response = dispatch_request({
+        "tool": "pgx.handoff.publish",
+        "database": created["database"],
+        "request_id": str(uuid.uuid4()),
+        "expected_head": created["head"],
+        "arguments": {"workspace_root": str(root), "name": "checkpoint"},
+    })
+    receipt = root / "handoffs" / "checkpoint" / HANDOFF_FILENAME
+    altered = tmp_path / HANDOFF_FILENAME
+    content = json.loads(receipt.read_text(encoding="utf-8"))
+    content["machinery"]["release_id"] = "00000000-0000-0000-0000-000000000000"
+    altered.write_text(json.dumps(content), encoding="utf-8")
+
+    classification = inspect_handoff(altered, response["result"]["database"])
+
+    assert classification["classification"] == "machinery_mismatch"
+    assert classification["authorized"] is False

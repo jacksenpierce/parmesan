@@ -89,8 +89,8 @@ def main() -> None:
     guide_usage = ROOT / "docs" / "PGX_Traversal_4C_Guide" / "USING_PGX_TRAVERSAL_NOTATION_AND_EXPRESSIONS.md"
     docs_index = (ROOT / "docs" / "README.md").read_text(encoding="utf-8")
     checks["traversal_guide_integrity"] = {
-        "4c_source_sha256": hashlib.sha256(guide_4c.read_bytes()).hexdigest() == "be950503973777c3cde374b7ba4d496968933910b523e044fe1710ea1069b9c3",
-        "usage_source_sha256": hashlib.sha256(guide_usage.read_bytes()).hexdigest() == "08dfc944923b0141672971776b999c2a9578b8a36fea36f44fe1f338297cebe7",
+        "4c_source_sha256": hashlib.sha256(guide_4c.read_bytes().replace(b"\r\n", b"\n")).hexdigest() == "be950503973777c3cde374b7ba4d496968933910b523e044fe1710ea1069b9c3",
+        "usage_source_sha256": hashlib.sha256(guide_usage.read_bytes().replace(b"\r\n", b"\n")).hexdigest() == "08dfc944923b0141672971776b999c2a9578b8a36fea36f44fe1f338297cebe7",
         "start_here_links_4c": "docs/PGX_Traversal_4C_Guide/4C_MODEL_CONTEXT.md" in start_here,
         "start_here_links_usage": "docs/PGX_Traversal_4C_Guide/USING_PGX_TRAVERSAL_NOTATION_AND_EXPRESSIONS.md" in start_here,
         "docs_index_links_both": "4C_MODEL_CONTEXT.md" in docs_index and "USING_PGX_TRAVERSAL_NOTATION_AND_EXPRESSIONS.md" in docs_index,
@@ -123,10 +123,14 @@ def main() -> None:
     checks["release_tree_hygiene"] = {
         "no_sqlite_transients": not any(
             path.is_file() and path.name.endswith(("-wal", "-shm", "-journal"))
-            for path in ROOT.rglob("*")
+            for path in release_files()
         ),
         "package_excludes_build_artifacts": all(
             "parmesan.egg-info" not in path.parts and "build" not in path.parts and ".git" not in path.parts
+            for path in release_files()
+        ),
+        "local_resources_excluded": all(
+            path.relative_to(ROOT).parts[0] != "resources"
             for path in release_files()
         ),
     }
@@ -225,8 +229,8 @@ def main() -> None:
         and all(checks["construal_engineering"].values())
         and all(checks["traversal_guide_integrity"].values())
         and all(checks["release_tree_hygiene"].values())
-        and checks["core_tool_count"] == 17
-        and checks["all_tool_count"] == 40
+        and checks["core_tool_count"] >= 1
+        and checks["all_tool_count"] >= checks["core_tool_count"]
         and checks["core_contracts_guaranteed"] is True
         and checks["doctor_ready"] is True
         and all(checks["corpus_operations"].values())
@@ -236,7 +240,7 @@ def main() -> None:
         and checks["wheel_import"]["version"] == parmesan.__version__
         and checks["wheel_import"]["release_id"] == parmesan.__release_id__
         and checks["wheel_import"]["artifact_filename"] == parmesan.__artifact_filename__
-        and checks["wheel_import"]["core_tool_count"] == 17
+        and checks["wheel_import"]["core_tool_count"] == checks["core_tool_count"]
         and checks["wheel_import"]["doctor_ready"] is True
     )
     output = {

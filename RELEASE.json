@@ -2,11 +2,11 @@
   "schema_version": 1,
   "product": "Parmesan",
   "artifact_kind": "conversational_llm_software",
-  "version": "2.7.1",
-  "release_id": "94414256-87db-4b36-9571-d09028606853",
-  "root_directory": "PARMESAN_v2_7_1",
-  "built_at_utc": "2026-07-26T20:15:00Z",
-  "supersedes": "2.7.0",
+  "version": "3.0.0",
+  "release_id": "e670026f-0159-44d7-af31-d1b98346a77f",
+  "root_directory": "PARMESAN_v3_0_0",
+  "built_at_utc": "2026-07-28T22:05:04Z",
+  "supersedes": "2.7.1",
   "operator": "conversational_llm",
   "amazon_corpus_bundled": false,
   "version_policy": {
@@ -21,5 +21,5 @@
     "uuid_in_filename": false,
     "same_version_rebuilds": "forbidden after delivery; change any byte only under a new version and release_id"
   },
-  "artifact_filename": "PARMESAN_v2_7_1.zip"
+  "artifact_filename": "PARMESAN_v3_0_0.zip"
 }

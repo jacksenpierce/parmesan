@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 3.0.0
+
+MIC-ready authority and workflow release.
+
 - Added copy-only legacy workspace adoption with source-hash and count attestations, explicit extension table classification, schema fingerprints, machinery declarations, and fail-closed unknown-table/schema-drift checks. Existing sentinel graph members are adopted regardless of historical pointer-prefix convention.
 - Added durable resumable change sets with persisted intent, base snapshot, ordered mutation receipts, explicit resolution states, and a publication interlock for unfinished work. Added bounded batch preflight with zero persistent writes and atomic apply for prepared node, revision, traversal, and relation plans; successful batches advance one head.
 - Added managed MIC workspaces and bounded handoff publication. Workspaces declare one authoritative corpus and reject unregistered SQLite candidates; each atomic handoff carries a receipt with corpus, head, byte hash, and machinery identity, while publication automatically returns the source to working mode.

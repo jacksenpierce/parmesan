@@ -169,3 +169,17 @@ def test_registered_extension_schema_drift_blocks_mutation(tmp_path):
             description="Must not be written.",
         )
     assert target.current_head() == adopted["head"]
+
+
+def test_adoption_refuses_live_sqlite_sidecars_without_touching_source(tmp_path):
+    source = _legacy_fixture(tmp_path / "legacy.sqlite")
+    before = sha256_file(source)
+    sidecar = tmp_path / "legacy.sqlite-wal"
+    sidecar.write_bytes(b"live-wal-evidence")
+
+    with pytest.raises(ContractError, match="live SQLite sidecars"):
+        adopt_workspace(source, tmp_path / "workspace", extensions=_document_extension())
+
+    assert sha256_file(source) == before
+    assert sidecar.read_bytes() == b"live-wal-evidence"
+    assert not (tmp_path / "workspace").exists()
