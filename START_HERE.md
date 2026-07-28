@@ -51,6 +51,7 @@ Use `advanced`, `maintenance`, `compatibility`, or `all` only when the task actu
 
 - **Working mode is the default:** the SQLite semantic graph is authoritative. Use the core tools to retrieve bounded context, create or revise linked knowledge, and validate. Parmesan does not automatically rebuild or serialize external knowledge-base views.
 - **Publish only when explicitly requested:** run `pgx.mode.set` with mode `publish` and a reason before writing manifests or database materializations. Publish mode freezes semantic mutation so every output comes from one fixed database state. Return to `working` mode before continuing semantic work.
+- **Prefer bounded handoff publication:** in a managed workspace, `pgx.handoff.publish` validates and stages one database-plus-receipt directory, uses publish mode only for that operation, and automatically returns the authoritative source to working mode.
 - **Materialize a handoff deliberately:** a clean database copy is the normal handoff. PGX, Markdown, and other knowledge-base views are derived, cacheable projections and never replace the graph.
 - **Reconcile parallel work:** use lineage tools to compare corpus identity, semantic snapshots, and automatic workstreams. Parmesan identifies divergence; the operating LLM performs semantic reconciliation deliberately.
 - **Use session-local machinery:** PDF, OCR, experiment, or extraction helpers may be temporary. Capture durable findings and selected provenance in the corpus rather than treating local machinery as part of the package.
@@ -73,7 +74,7 @@ Create the target node before creating a note that links to it. Parmesan validat
 
 Use this sequence:
 
-1. Run `pgx.database.initialize` with a new SQLite path and a UUID request ID.
+1. For normal MIC work, run `pgx.workspace.initialize` with a new empty directory and a UUID request ID. It creates one declared database under `authoritative/`, plus separate `machinery/`, `resources/`, `projections/`, `scratch/`, and `handoffs/` areas. Use `pgx.database.initialize` only when a standalone SQLite corpus is preferable.
 2. Save the returned `head`. Fresh corpora contain reserved system pointers; do not reuse them.
 3. Run `pgx.graph.create` for each subject graph.
 4. Run `pgx.node.create` for target notes first, then notes that reference them.
@@ -112,7 +113,9 @@ The result notation is `[((K3):(O2):(K12)):(O3):(K143)]`. Inside traversal notat
 
 ## Finalize a clean corpus handoff
 
-Before returning a created or modified corpus:
+For a managed workspace, use `pgx.handoff.publish` with the authoritative database, current `expected_head`, workspace root, a safe handoff name, and a UUID request ID. It returns two distinct heads: `artifact_head` identifies the immutable handoff database, while `head` is the authoritative source after its automatic return to working mode. Before trusting a cold-opened or rehydrated artifact, run `pgx.handoff.inspect`; only `classification: exact` returns `authorized: true`.
+
+For a standalone corpus, before returning a created or modified database:
 
 1. Finish all Parmesan operations and close open store or SQLite connections.
 2. Package the authoritative `.sqlite` file, not transient `-wal`, `-shm`, or journal files.

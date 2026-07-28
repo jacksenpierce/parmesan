@@ -78,6 +78,13 @@ def describe_corpus(database: str | Path) -> dict[str, Any]:
             mode_row = connection.execute(
                 "SELECT mode_key,revision,updated_at,reason FROM operating_mode_state WHERE singleton_id=1"
             ).fetchone()
+        head_row = None
+        if connection.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='corpus_head'"
+        ).fetchone() is not None:
+            head_row = connection.execute(
+                "SELECT corpus_id,snapshot_uuid,database_sequence FROM corpus_head WHERE singleton_id=1"
+            ).fetchone()
     finally:
         connection.close()
 
@@ -106,8 +113,15 @@ def describe_corpus(database: str | Path) -> dict[str, Any]:
             "publication_enabled": bool(mode_row and mode_row["mode_key"] == "publish"),
             "reason": mode_row["reason"] if mode_row else "legacy corpus defaults safely to working mode",
         },
+        "head": dict(head_row) if head_row else None,
+        "mutation_authority": (
+            "Supply this exact head as expected_head, then carry each successful result head forward."
+            if head_row
+            else "Inspection only until the explicit authority migration is applied."
+        ),
         "next_actions": [
             "Remain in working mode for ordinary semantic work; external publication is disabled by default.",
+            "For mutation, supply the displayed head as expected_head and carry each returned head forward.",
             "Use pgx.graph.create before adding notes to a new subject graph.",
             "Create referenced target nodes before notes that link to them.",
             "Use pgx.database.validate after a mutation sequence.",

@@ -247,6 +247,69 @@ RESULT_SCHEMAS: dict[str, dict[str, Any]] = {
         ["graph_key", "pgx"],
         {"graph_key": _string(), "pgx": _string()},
     ),
+    "pgx.workspace.initialize": _object(
+        ["workspace", "manifest", "database", "head", "workspace_id", "mode"],
+        {
+            "workspace": _string(),
+            "manifest": _string(),
+            "database": _string(),
+            "head": HEAD_SCHEMA,
+            "workspace_id": _string(),
+            "mode": {"const": "working"},
+        },
+    ),
+    "pgx.workspace.inspect": _object(
+        ["valid", "workspace", "workspace_id", "database", "head", "mode", "errors", "warnings"],
+        {
+            "valid": {"type": "boolean"},
+            "workspace": _string(),
+            "workspace_id": _string(),
+            "database": _string(),
+            "head": {"anyOf": [HEAD_SCHEMA, {"type": "null"}]},
+            "mode": {"type": "object"},
+            "errors": {"type": "array", "items": {"type": "object"}},
+            "warnings": {"type": "array", "items": {"type": "object"}},
+        },
+    ),
+    "pgx.handoff.publish": _object(
+        ["publication", "database", "receipt", "classification", "artifact_head", "head", "database_sequence", "request_id", "idempotent_replay", "mode"],
+        {
+            "publication": _string(),
+            "database": _string(),
+            "receipt": _string(),
+            "classification": {"const": "exact"},
+            "artifact_head": HEAD_SCHEMA,
+            "head": HEAD_SCHEMA,
+            "database_sequence": {"type": "integer"},
+            "request_id": _string(),
+            "idempotent_replay": {"type": "boolean"},
+            "mode": {"const": "working"},
+        },
+    ),
+    "pgx.handoff.inspect": _object(
+        ["classification", "authorized", "candidate_database", "receipt", "receipt_head", "candidate_head", "database_sha256", "reasons"],
+        {
+            "classification": {
+                "enum": [
+                    "exact",
+                    "unverified",
+                    "nonmatching",
+                    "unexpected_descendant",
+                    "divergent",
+                    "different_corpus",
+                    "machinery_mismatch",
+                    "migration_required",
+                ]
+            },
+            "authorized": {"type": "boolean"},
+            "candidate_database": _string(),
+            "receipt": _string(),
+            "receipt_head": {"anyOf": [HEAD_SCHEMA, {"type": "null"}]},
+            "candidate_head": {"anyOf": [HEAD_SCHEMA, {"type": "null"}]},
+            "database_sha256": {"type": ["string", "null"]},
+            "reasons": {"type": "array", "items": {"type": "string"}},
+        },
+    ),
     "pgx.manifest.build": _object(
         ["product", "version", "generated_at", "database", "database_sha256", "metadata", "counts", "graphs", "validation"],
         {
@@ -270,6 +333,12 @@ def _request(tool: str, arguments: dict[str, Any], *, database: str | None = Non
         payload["database"] = database
     if request_id:
         payload["request_id"] = request_id
+        if database:
+            payload["expected_head"] = {
+                "corpus_id": "<last-observed-corpus-uuid>",
+                "snapshot_uuid": "<last-observed-snapshot-uuid>",
+                "database_sequence": 7,
+            }
     return payload
 
 
@@ -297,6 +366,42 @@ SUCCESS_EXAMPLES: dict[str, dict[str, Any]] = {
     "pgx.mode.set": {
         "request": _request("pgx.mode.set", {"mode": "publish", "reason": "prepare one explicit publication"}, database="knowledge.sqlite", request_id="12121212-1212-4212-8212-121212121212"),
         "result_excerpt": {"mode": "publish", "publication_enabled": True, "unchanged": False},
+    },
+    "pgx.workspace.initialize": {
+        "request": _request(
+            "pgx.workspace.initialize",
+            {"root": "my-mic-workspace"},
+            request_id="13131313-1313-4313-8313-131313131313",
+        ),
+        "result_excerpt": {
+            "workspace": "my-mic-workspace",
+            "database": "my-mic-workspace/authoritative/corpus.sqlite",
+            "mode": "working",
+        },
+    },
+    "pgx.workspace.inspect": {
+        "request": _request("pgx.workspace.inspect", {"root": "my-mic-workspace"}),
+        "result_excerpt": {"valid": True, "errors": []},
+    },
+    "pgx.handoff.publish": {
+        "request": _request(
+            "pgx.handoff.publish",
+            {"workspace_root": "my-mic-workspace", "name": "checkpoint-1"},
+            database="my-mic-workspace/authoritative/corpus.sqlite",
+            request_id="14141414-1414-4414-8414-141414141414",
+        ),
+        "result_excerpt": {
+            "classification": "exact",
+            "mode": "working",
+            "receipt": "my-mic-workspace/handoffs/checkpoint-1/HANDOFF.json",
+        },
+    },
+    "pgx.handoff.inspect": {
+        "request": _request(
+            "pgx.handoff.inspect",
+            {"receipt": "my-mic-workspace/handoffs/checkpoint-1/HANDOFF.json"},
+        ),
+        "result_excerpt": {"classification": "exact", "authorized": True},
     },
     "pgx.graph.create": {
         "request": _request("pgx.graph.create", {"graph_key": "cell-biology", "pointer_prefix": "CB", "declaration_pointer": "CB0", "title": "Cell biology", "description": "Domain graph for cell biology."}, database="knowledge.sqlite", request_id="22222222-2222-4222-8222-222222222222"),
@@ -415,6 +520,10 @@ NEXT_TOOLS: dict[str, list[str]] = {
     "pgx.database.describe": ["pgx.mode.show", "pgx.node.search", "pgx.graph.create", "pgx.database.validate"],
     "pgx.mode.show": ["pgx.graph.create", "pgx.mode.set"],
     "pgx.mode.set": ["pgx.mode.show", "pgx.manifest.build", "pgx.materialize.database"],
+    "pgx.workspace.initialize": ["pgx.workspace.inspect", "pgx.graph.create"],
+    "pgx.workspace.inspect": ["pgx.handoff.publish", "pgx.database.describe"],
+    "pgx.handoff.publish": ["pgx.handoff.inspect", "pgx.graph.create"],
+    "pgx.handoff.inspect": ["pgx.database.describe", "pgx.workspace.inspect"],
     "pgx.graph.create": ["pgx.node.create"],
     "pgx.node.create": ["pgx.node.create", "pgx.traversal.embed", "pgx.reference.validate", "pgx.database.validate"],
     "pgx.node.get": ["pgx.node.update", "pgx.traversal.embed", "pgx.context.build", "pgx.reference.list"],

@@ -9,6 +9,7 @@ from .manifest import build_manifest
 from .runtime import describe_corpus, doctor
 from .store import SQLitePGXStore
 from .tool_contracts import FAILURE_EXAMPLES, NEXT_TOOLS, RESULT_SCHEMAS, SUCCESS_EXAMPLES, response_schema
+from .workspace import initialize_workspace, inspect_handoff, inspect_workspace, publish_handoff
 
 
 class ToolArgs(BaseModel):
@@ -219,6 +220,25 @@ class ModeSetArgs(ToolArgs):
     reason: str = Field(min_length=1, max_length=500)
 
 
+class WorkspaceInitializeArgs(ToolArgs):
+    root: str
+    database_name: str = "corpus.sqlite"
+
+
+class WorkspaceInspectArgs(ToolArgs):
+    root: str
+
+
+class HandoffPublishArgs(ToolArgs):
+    workspace_root: str
+    name: str
+
+
+class HandoffInspectArgs(ToolArgs):
+    receipt: str
+    candidate_database: str | None = None
+
+
 class LineageCompareArgs(ToolArgs):
     other_database: str
 
@@ -301,6 +321,59 @@ def _mode_show(store, args, ctx):
 @register("pgx.mode.set", "Explicitly toggle between safe working mode and the bounded publication gate. Changing mode does not itself materialize anything.", ModeSetArgs, **MUTATION_META)
 def _mode_set(store, args: ModeSetArgs, ctx):
     return store.mode_set(request_id=ctx["request_id"], **args.model_dump())
+
+
+@register(
+    "pgx.workspace.initialize",
+    "Create a managed MIC workspace with one declared authoritative corpus and separate machinery, resources, projections, scratch, and handoff areas.",
+    WorkspaceInitializeArgs,
+    database_required=False,
+    mutates=True,
+    idempotency="filesystem create; managed workspaces are never overwritten in place",
+    transaction="creates the workspace skeleton, fresh authoritative database, then atomically writes its manifest",
+    max_output="one workspace identity, database path, and initial head",
+)
+def _workspace_initialize(store, args: WorkspaceInitializeArgs, ctx):
+    return initialize_workspace(**args.model_dump())
+
+
+@register(
+    "pgx.workspace.inspect",
+    "Verify a managed workspace's declared authority, corpus identity, immutable SQLite resources, and completed handoffs; unregistered SQLite files fail inspection.",
+    WorkspaceInspectArgs,
+    database_required=False,
+    max_output="one bounded workspace safety report",
+)
+def _workspace_inspect(store, args: WorkspaceInspectArgs, ctx):
+    return inspect_workspace(args.root)
+
+
+@register(
+    "pgx.handoff.publish",
+    "Atomically publish one database-and-receipt handoff from a managed workspace, using publish mode only for the bounded operation and automatically returning the source to working mode.",
+    HandoffPublishArgs,
+    **{
+        **MUTATION_META,
+        "idempotency": "the publication request UUID deterministically identifies the handoff; exact replay returns the verified existing result",
+        "transaction": "two authority transitions bracket one staged-and-atomically-renamed handoff directory",
+    },
+    preconditions=("request database is the workspace authority", "workspace inspection is valid", "source starts in working mode"),
+    postconditions=("handoff hash and head are receipted", "source returns to working mode"),
+    max_output="one handoff receipt and the source/artifact heads",
+)
+def _handoff_publish(store, args: HandoffPublishArgs, ctx):
+    return publish_handoff(store, request_id=ctx["request_id"], **args.model_dump())
+
+
+@register(
+    "pgx.handoff.inspect",
+    "Classify a handoff candidate by receipt, corpus identity, embedded head, lineage, byte hash, and machinery identity instead of trusting its path.",
+    HandoffInspectArgs,
+    database_required=False,
+    max_output="one exact/unverified/nonmatching/unexpected_descendant/divergent/different_corpus/machinery_mismatch/migration_required classification",
+)
+def _handoff_inspect(store, args: HandoffInspectArgs, ctx):
+    return inspect_handoff(args.receipt, args.candidate_database)
 
 
 @register("pgx.lineage.describe", "Describe the authoritative corpus identity, deterministic semantic snapshot, automatic workstreams, and prior materializations.", EmptyArgs, max_output="one bounded lineage report", profile="advanced")

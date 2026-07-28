@@ -1101,7 +1101,12 @@
           "description": "Domain graph for cell biology."
         },
         "database": "knowledge.sqlite",
-        "request_id": "22222222-2222-4222-8222-222222222222"
+        "request_id": "22222222-2222-4222-8222-222222222222",
+        "expected_head": {
+          "corpus_id": "<last-observed-corpus-uuid>",
+          "snapshot_uuid": "<last-observed-snapshot-uuid>",
+          "database_sequence": 7
+        }
       },
       "result_excerpt": {
         "graph_key": "cell-biology",
@@ -1118,6 +1123,619 @@
     },
     "likely_next_tools": [
       "pgx.node.create"
+    ]
+  },
+  {
+    "name": "pgx.handoff.inspect",
+    "profile": "core",
+    "status": "active",
+    "description": "Classify a handoff candidate by receipt, corpus identity, embedded head, lineage, byte hash, and machinery identity instead of trusting its path.",
+    "database_required": false,
+    "mutates": false,
+    "idempotency": "read-only",
+    "transaction_boundary": "none",
+    "preconditions": [],
+    "postconditions": [],
+    "error_codes": [],
+    "maximum_output": "one exact/unverified/nonmatching/unexpected_descendant/divergent/different_corpus/machinery_mismatch/migration_required classification",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "receipt": {
+          "title": "Receipt",
+          "type": "string"
+        },
+        "candidate_database": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Candidate Database"
+        }
+      },
+      "required": [
+        "receipt"
+      ],
+      "title": "HandoffInspectArgs",
+      "type": "object"
+    },
+    "result_schema": {
+      "type": "object",
+      "required": [
+        "classification",
+        "authorized",
+        "candidate_database",
+        "receipt",
+        "receipt_head",
+        "candidate_head",
+        "database_sha256",
+        "reasons"
+      ],
+      "properties": {
+        "classification": {
+          "enum": [
+            "exact",
+            "unverified",
+            "nonmatching",
+            "unexpected_descendant",
+            "divergent",
+            "different_corpus",
+            "machinery_mismatch",
+            "migration_required"
+          ]
+        },
+        "authorized": {
+          "type": "boolean"
+        },
+        "candidate_database": {
+          "type": "string"
+        },
+        "receipt": {
+          "type": "string"
+        },
+        "receipt_head": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "corpus_id",
+                "snapshot_uuid",
+                "database_sequence"
+              ],
+              "properties": {
+                "corpus_id": {
+                  "type": "string"
+                },
+                "snapshot_uuid": {
+                  "type": "string"
+                },
+                "database_sequence": {
+                  "type": "integer"
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "candidate_head": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "corpus_id",
+                "snapshot_uuid",
+                "database_sequence"
+              ],
+              "properties": {
+                "corpus_id": {
+                  "type": "string"
+                },
+                "snapshot_uuid": {
+                  "type": "string"
+                },
+                "database_sequence": {
+                  "type": "integer"
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "database_sha256": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "output_schema": {
+      "type": "object",
+      "required": [
+        "ok",
+        "tool",
+        "request_id",
+        "result",
+        "error",
+        "warnings",
+        "database_sequence",
+        "idempotent_replay"
+      ],
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "request_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "result": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "classification",
+                "authorized",
+                "candidate_database",
+                "receipt",
+                "receipt_head",
+                "candidate_head",
+                "database_sha256",
+                "reasons"
+              ],
+              "properties": {
+                "classification": {
+                  "enum": [
+                    "exact",
+                    "unverified",
+                    "nonmatching",
+                    "unexpected_descendant",
+                    "divergent",
+                    "different_corpus",
+                    "machinery_mismatch",
+                    "migration_required"
+                  ]
+                },
+                "authorized": {
+                  "type": "boolean"
+                },
+                "candidate_database": {
+                  "type": "string"
+                },
+                "receipt": {
+                  "type": "string"
+                },
+                "receipt_head": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "required": [
+                        "corpus_id",
+                        "snapshot_uuid",
+                        "database_sequence"
+                      ],
+                      "properties": {
+                        "corpus_id": {
+                          "type": "string"
+                        },
+                        "snapshot_uuid": {
+                          "type": "string"
+                        },
+                        "database_sequence": {
+                          "type": "integer"
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "candidate_head": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "required": [
+                        "corpus_id",
+                        "snapshot_uuid",
+                        "database_sequence"
+                      ],
+                      "properties": {
+                        "corpus_id": {
+                          "type": "string"
+                        },
+                        "snapshot_uuid": {
+                          "type": "string"
+                        },
+                        "database_sequence": {
+                          "type": "integer"
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "database_sha256": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "reasons": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "additionalProperties": true
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "database_sequence": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "idempotent_replay": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "contract_level": "guaranteed",
+    "success_example": {
+      "request": {
+        "tool": "pgx.handoff.inspect",
+        "arguments": {
+          "receipt": "my-mic-workspace/handoffs/checkpoint-1/HANDOFF.json"
+        }
+      },
+      "result_excerpt": {
+        "classification": "exact",
+        "authorized": true
+      }
+    },
+    "failure_example": {},
+    "likely_next_tools": [
+      "pgx.database.describe",
+      "pgx.workspace.inspect"
+    ]
+  },
+  {
+    "name": "pgx.handoff.publish",
+    "profile": "core",
+    "status": "active",
+    "description": "Atomically publish one database-and-receipt handoff from a managed workspace, using publish mode only for the bounded operation and automatically returning the source to working mode.",
+    "database_required": true,
+    "mutates": true,
+    "idempotency": "the publication request UUID deterministically identifies the handoff; exact replay returns the verified existing result",
+    "transaction_boundary": "two authority transitions bracket one staged-and-atomically-renamed handoff directory",
+    "preconditions": [
+      "request database is the workspace authority",
+      "workspace inspection is valid",
+      "source starts in working mode"
+    ],
+    "postconditions": [
+      "handoff hash and head are receipted",
+      "source returns to working mode"
+    ],
+    "error_codes": [
+      "input_validation",
+      "contract_error",
+      "conflict",
+      "stale_write",
+      "validation_failure"
+    ],
+    "maximum_output": "one handoff receipt and the source/artifact heads",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "workspace_root": {
+          "title": "Workspace Root",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "workspace_root",
+        "name"
+      ],
+      "title": "HandoffPublishArgs",
+      "type": "object"
+    },
+    "result_schema": {
+      "type": "object",
+      "required": [
+        "publication",
+        "database",
+        "receipt",
+        "classification",
+        "artifact_head",
+        "head",
+        "database_sequence",
+        "request_id",
+        "idempotent_replay",
+        "mode"
+      ],
+      "properties": {
+        "publication": {
+          "type": "string"
+        },
+        "database": {
+          "type": "string"
+        },
+        "receipt": {
+          "type": "string"
+        },
+        "classification": {
+          "const": "exact"
+        },
+        "artifact_head": {
+          "type": "object",
+          "required": [
+            "corpus_id",
+            "snapshot_uuid",
+            "database_sequence"
+          ],
+          "properties": {
+            "corpus_id": {
+              "type": "string"
+            },
+            "snapshot_uuid": {
+              "type": "string"
+            },
+            "database_sequence": {
+              "type": "integer"
+            }
+          },
+          "additionalProperties": false
+        },
+        "head": {
+          "type": "object",
+          "required": [
+            "corpus_id",
+            "snapshot_uuid",
+            "database_sequence"
+          ],
+          "properties": {
+            "corpus_id": {
+              "type": "string"
+            },
+            "snapshot_uuid": {
+              "type": "string"
+            },
+            "database_sequence": {
+              "type": "integer"
+            }
+          },
+          "additionalProperties": false
+        },
+        "database_sequence": {
+          "type": "integer"
+        },
+        "request_id": {
+          "type": "string"
+        },
+        "idempotent_replay": {
+          "type": "boolean"
+        },
+        "mode": {
+          "const": "working"
+        }
+      },
+      "additionalProperties": true
+    },
+    "output_schema": {
+      "type": "object",
+      "required": [
+        "ok",
+        "tool",
+        "request_id",
+        "result",
+        "error",
+        "warnings",
+        "database_sequence",
+        "idempotent_replay"
+      ],
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "request_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "result": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "publication",
+                "database",
+                "receipt",
+                "classification",
+                "artifact_head",
+                "head",
+                "database_sequence",
+                "request_id",
+                "idempotent_replay",
+                "mode"
+              ],
+              "properties": {
+                "publication": {
+                  "type": "string"
+                },
+                "database": {
+                  "type": "string"
+                },
+                "receipt": {
+                  "type": "string"
+                },
+                "classification": {
+                  "const": "exact"
+                },
+                "artifact_head": {
+                  "type": "object",
+                  "required": [
+                    "corpus_id",
+                    "snapshot_uuid",
+                    "database_sequence"
+                  ],
+                  "properties": {
+                    "corpus_id": {
+                      "type": "string"
+                    },
+                    "snapshot_uuid": {
+                      "type": "string"
+                    },
+                    "database_sequence": {
+                      "type": "integer"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "head": {
+                  "type": "object",
+                  "required": [
+                    "corpus_id",
+                    "snapshot_uuid",
+                    "database_sequence"
+                  ],
+                  "properties": {
+                    "corpus_id": {
+                      "type": "string"
+                    },
+                    "snapshot_uuid": {
+                      "type": "string"
+                    },
+                    "database_sequence": {
+                      "type": "integer"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "database_sequence": {
+                  "type": "integer"
+                },
+                "request_id": {
+                  "type": "string"
+                },
+                "idempotent_replay": {
+                  "type": "boolean"
+                },
+                "mode": {
+                  "const": "working"
+                }
+              },
+              "additionalProperties": true
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "database_sequence": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "idempotent_replay": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "contract_level": "guaranteed",
+    "success_example": {
+      "request": {
+        "tool": "pgx.handoff.publish",
+        "arguments": {
+          "workspace_root": "my-mic-workspace",
+          "name": "checkpoint-1"
+        },
+        "database": "my-mic-workspace/authoritative/corpus.sqlite",
+        "request_id": "14141414-1414-4414-8414-141414141414",
+        "expected_head": {
+          "corpus_id": "<last-observed-corpus-uuid>",
+          "snapshot_uuid": "<last-observed-snapshot-uuid>",
+          "database_sequence": 7
+        }
+      },
+      "result_excerpt": {
+        "classification": "exact",
+        "mode": "working",
+        "receipt": "my-mic-workspace/handoffs/checkpoint-1/HANDOFF.json"
+      }
+    },
+    "failure_example": {},
+    "likely_next_tools": [
+      "pgx.handoff.inspect",
+      "pgx.graph.create"
     ]
   },
   {
@@ -1630,7 +2248,12 @@
           "reason": "prepare one explicit publication"
         },
         "database": "knowledge.sqlite",
-        "request_id": "12121212-1212-4212-8212-121212121212"
+        "request_id": "12121212-1212-4212-8212-121212121212",
+        "expected_head": {
+          "corpus_id": "<last-observed-corpus-uuid>",
+          "snapshot_uuid": "<last-observed-snapshot-uuid>",
+          "database_sequence": 7
+        }
       },
       "result_excerpt": {
         "mode": "publish",
@@ -2051,7 +2674,12 @@
           "graph_key": "cell-biology"
         },
         "database": "knowledge.sqlite",
-        "request_id": "33333333-3333-4333-8333-333333333333"
+        "request_id": "33333333-3333-4333-8333-333333333333",
+        "expected_head": {
+          "corpus_id": "<last-observed-corpus-uuid>",
+          "snapshot_uuid": "<last-observed-snapshot-uuid>",
+          "database_sequence": 7
+        }
       },
       "result_excerpt": {
         "pointer": "CB1",
@@ -2967,7 +3595,12 @@
           "reason": "clarify definition"
         },
         "database": "knowledge.sqlite",
-        "request_id": "44444444-4444-4444-8444-444444444444"
+        "request_id": "44444444-4444-4444-8444-444444444444",
+        "expected_head": {
+          "corpus_id": "<last-observed-corpus-uuid>",
+          "snapshot_uuid": "<last-observed-snapshot-uuid>",
+          "database_sequence": 7
+        }
       },
       "result_excerpt": {
         "pointer": "CB1",
@@ -4308,7 +4941,12 @@
           "expected_revision_uuid": "<current-revision-uuid>"
         },
         "database": "knowledge.sqlite",
-        "request_id": "55555555-5555-4555-8555-555555555555"
+        "request_id": "55555555-5555-4555-8555-555555555555",
+        "expected_head": {
+          "corpus_id": "<last-observed-corpus-uuid>",
+          "snapshot_uuid": "<last-observed-snapshot-uuid>",
+          "database_sequence": 7
+        }
       },
       "result_excerpt": {
         "node_pointer": "CB4",
@@ -4333,6 +4971,455 @@
     "likely_next_tools": [
       "pgx.node.get",
       "pgx.database.validate"
+    ]
+  },
+  {
+    "name": "pgx.workspace.initialize",
+    "profile": "core",
+    "status": "active",
+    "description": "Create a managed MIC workspace with one declared authoritative corpus and separate machinery, resources, projections, scratch, and handoff areas.",
+    "database_required": false,
+    "mutates": true,
+    "idempotency": "filesystem create; managed workspaces are never overwritten in place",
+    "transaction_boundary": "creates the workspace skeleton, fresh authoritative database, then atomically writes its manifest",
+    "preconditions": [],
+    "postconditions": [],
+    "error_codes": [],
+    "maximum_output": "one workspace identity, database path, and initial head",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "root": {
+          "title": "Root",
+          "type": "string"
+        },
+        "database_name": {
+          "default": "corpus.sqlite",
+          "title": "Database Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "root"
+      ],
+      "title": "WorkspaceInitializeArgs",
+      "type": "object"
+    },
+    "result_schema": {
+      "type": "object",
+      "required": [
+        "workspace",
+        "manifest",
+        "database",
+        "head",
+        "workspace_id",
+        "mode"
+      ],
+      "properties": {
+        "workspace": {
+          "type": "string"
+        },
+        "manifest": {
+          "type": "string"
+        },
+        "database": {
+          "type": "string"
+        },
+        "head": {
+          "type": "object",
+          "required": [
+            "corpus_id",
+            "snapshot_uuid",
+            "database_sequence"
+          ],
+          "properties": {
+            "corpus_id": {
+              "type": "string"
+            },
+            "snapshot_uuid": {
+              "type": "string"
+            },
+            "database_sequence": {
+              "type": "integer"
+            }
+          },
+          "additionalProperties": false
+        },
+        "workspace_id": {
+          "type": "string"
+        },
+        "mode": {
+          "const": "working"
+        }
+      },
+      "additionalProperties": true
+    },
+    "output_schema": {
+      "type": "object",
+      "required": [
+        "ok",
+        "tool",
+        "request_id",
+        "result",
+        "error",
+        "warnings",
+        "database_sequence",
+        "idempotent_replay"
+      ],
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "request_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "result": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "workspace",
+                "manifest",
+                "database",
+                "head",
+                "workspace_id",
+                "mode"
+              ],
+              "properties": {
+                "workspace": {
+                  "type": "string"
+                },
+                "manifest": {
+                  "type": "string"
+                },
+                "database": {
+                  "type": "string"
+                },
+                "head": {
+                  "type": "object",
+                  "required": [
+                    "corpus_id",
+                    "snapshot_uuid",
+                    "database_sequence"
+                  ],
+                  "properties": {
+                    "corpus_id": {
+                      "type": "string"
+                    },
+                    "snapshot_uuid": {
+                      "type": "string"
+                    },
+                    "database_sequence": {
+                      "type": "integer"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "workspace_id": {
+                  "type": "string"
+                },
+                "mode": {
+                  "const": "working"
+                }
+              },
+              "additionalProperties": true
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "database_sequence": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "idempotent_replay": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "contract_level": "guaranteed",
+    "success_example": {
+      "request": {
+        "tool": "pgx.workspace.initialize",
+        "arguments": {
+          "root": "my-mic-workspace"
+        },
+        "request_id": "13131313-1313-4313-8313-131313131313"
+      },
+      "result_excerpt": {
+        "workspace": "my-mic-workspace",
+        "database": "my-mic-workspace/authoritative/corpus.sqlite",
+        "mode": "working"
+      }
+    },
+    "failure_example": {},
+    "likely_next_tools": [
+      "pgx.workspace.inspect",
+      "pgx.graph.create"
+    ]
+  },
+  {
+    "name": "pgx.workspace.inspect",
+    "profile": "core",
+    "status": "active",
+    "description": "Verify a managed workspace's declared authority, corpus identity, immutable SQLite resources, and completed handoffs; unregistered SQLite files fail inspection.",
+    "database_required": false,
+    "mutates": false,
+    "idempotency": "read-only",
+    "transaction_boundary": "none",
+    "preconditions": [],
+    "postconditions": [],
+    "error_codes": [],
+    "maximum_output": "one bounded workspace safety report",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "root": {
+          "title": "Root",
+          "type": "string"
+        }
+      },
+      "required": [
+        "root"
+      ],
+      "title": "WorkspaceInspectArgs",
+      "type": "object"
+    },
+    "result_schema": {
+      "type": "object",
+      "required": [
+        "valid",
+        "workspace",
+        "workspace_id",
+        "database",
+        "head",
+        "mode",
+        "errors",
+        "warnings"
+      ],
+      "properties": {
+        "valid": {
+          "type": "boolean"
+        },
+        "workspace": {
+          "type": "string"
+        },
+        "workspace_id": {
+          "type": "string"
+        },
+        "database": {
+          "type": "string"
+        },
+        "head": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "corpus_id",
+                "snapshot_uuid",
+                "database_sequence"
+              ],
+              "properties": {
+                "corpus_id": {
+                  "type": "string"
+                },
+                "snapshot_uuid": {
+                  "type": "string"
+                },
+                "database_sequence": {
+                  "type": "integer"
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "mode": {
+          "type": "object"
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "output_schema": {
+      "type": "object",
+      "required": [
+        "ok",
+        "tool",
+        "request_id",
+        "result",
+        "error",
+        "warnings",
+        "database_sequence",
+        "idempotent_replay"
+      ],
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "request_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "result": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "valid",
+                "workspace",
+                "workspace_id",
+                "database",
+                "head",
+                "mode",
+                "errors",
+                "warnings"
+              ],
+              "properties": {
+                "valid": {
+                  "type": "boolean"
+                },
+                "workspace": {
+                  "type": "string"
+                },
+                "workspace_id": {
+                  "type": "string"
+                },
+                "database": {
+                  "type": "string"
+                },
+                "head": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "required": [
+                        "corpus_id",
+                        "snapshot_uuid",
+                        "database_sequence"
+                      ],
+                      "properties": {
+                        "corpus_id": {
+                          "type": "string"
+                        },
+                        "snapshot_uuid": {
+                          "type": "string"
+                        },
+                        "database_sequence": {
+                          "type": "integer"
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "mode": {
+                  "type": "object"
+                },
+                "errors": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                },
+                "warnings": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              },
+              "additionalProperties": true
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "database_sequence": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "idempotent_replay": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "contract_level": "guaranteed",
+    "success_example": {
+      "request": {
+        "tool": "pgx.workspace.inspect",
+        "arguments": {
+          "root": "my-mic-workspace"
+        }
+      },
+      "result_excerpt": {
+        "valid": true,
+        "errors": []
+      }
+    },
+    "failure_example": {},
+    "likely_next_tools": [
+      "pgx.handoff.publish",
+      "pgx.database.describe"
     ]
   }
 ]
