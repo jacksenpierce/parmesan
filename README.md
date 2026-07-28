@@ -58,9 +58,23 @@ Use the core tools to initialize a database, create graphs and nodes, retrieve b
 from parmesan import catalog, dispatch, doctor, initialize_corpus, open_corpus
 ```
 
+Initialization returns an embedded corpus `head`. Every later mutation must explicitly supply that value as `expected_head`, then carry the successful response's new `head` into the next request. Parmesan does not infer write authority from a filesystem path. Missing or stale heads fail without mutation, preventing stale live-chat context or a copied path from silently targeting the wrong database state.
+
+For MIC work, `pgx.workspace.initialize` is the preferred starting point. It declares exactly one authoritative database and separates resources, machinery, projections, scratch work, and handoffs. `pgx.workspace.inspect` rejects unregistered SQLite candidates rather than guessing which same-named file is current.
+
+When a coherent pass may outlive one chat turn, `pgx.change_set.open` persists its intent and base head. Related mutation requests carry the change-set ID and receive ordered compact receipts. The work can be rediscovered with `pgx.change_set.list` and resumed with `pgx.change_set.show`; publication remains blocked until every open change set is explicitly resolved.
+
+For an already-decided cluster, `pgx.batch.preflight` validates up to 50 node, revision, traversal, and relation operations with zero persistent writes. `pgx.batch.apply` then commits all members or none, advances one authority head, and records one compact change-set receipt when attached. Semantic selection remains the LLM's responsibility.
+
+Legacy or project-extended corpora are adopted with `pgx.workspace.adopt`, never migrated in place. Adoption records the untouched source hash and preserved semantic counts, and requires explicit classification of every private table. Registered extension schema fingerprints are checked before mutation, so unknown tables or machinery/schema drift cannot silently fall outside corpus authority.
+
 ### Materialize a handoff or compare parallel work
 
-Use the advanced lineage and materialization tools when a clean database copy, a projection, or a comparison between independently continued copies is needed. A materialization receives its own identity while retaining its corpus and semantic-snapshot lineage.
+Ordinary work remains in the default `working` mode and never automatically rebuilds or serializes an external knowledge base. When a clean database copy or another publication surface is explicitly needed, use `pgx.mode.set` to enter `publish` mode before invoking the advanced materialization tools. Publish mode freezes semantic mutation so each output comes from one fixed database state. Return to `working` mode afterward.
+
+A materialization receives its own identity while retaining its corpus and semantic-snapshot lineage. Use lineage comparison when independently continued copies need deliberate LLM reconciliation.
+
+Managed workspaces provide the safer normal path: `pgx.handoff.publish` performs one bounded, atomic database-plus-receipt publication and returns the source to working mode automatically. `pgx.handoff.inspect` compares corpus identity, embedded head, lineage, byte hash, and machinery identity; filenames and volatile attachment paths confer no authority.
 
 ### Release a corpus directory
 

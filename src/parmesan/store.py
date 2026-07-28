@@ -8,6 +8,7 @@ from collections import deque
 from pathlib import Path
 from typing import Any, Callable
 
+from .authority import CorpusHead
 from .errors import ConflictError, ContractError, NotFoundError, StaleWriteError, ValidationFailure
 from .identity import derived_uuid, node_uuid, sha256_text, validate_pointer
 from .legacy_reference import rewrite_legacy_references
@@ -15,7 +16,7 @@ from .models import ReferenceValidationModel
 from .pgx import parse_node, roundtrip_equal, serialize_node
 from .reference import BARE_POINTER_TEMPLATE, ReferenceEngine, ReferenceProfile
 from .reference_discipline import bare_pointer_profile, rewrite_to_bare_pointer_links
-from .schema import DEFAULT_POINTER_PATTERN, DEFAULT_URI_TEMPLATE, SCHEMA_VERSION, create_empty_database, connect
+from .schema import CORE_TABLE_NAMES, DEFAULT_POINTER_PATTERN, DEFAULT_URI_TEMPLATE, SCHEMA_VERSION, create_empty_database, connect
 from .timeutil import is_rfc3339_ns, now_rfc3339_ns, unique_timestamp
 from .traversal import pointer_roles, render_embedding, serialize_expression, tree_from_mapping
 from .version import __release_id__
@@ -30,11 +31,29 @@ def _row(row: sqlite3.Row | None) -> dict[str, Any] | None:
 
 
 class SQLitePGXStore:
-    def __init__(self, path: str | Path, *, workstream_id: str | None = None):
+    def __init__(
+        self,
+        path: str | Path,
+        *,
+        workstream_id: str | None = None,
+        expected_head: CorpusHead | dict[str, Any] | None = None,
+        change_set_id: str | None = None,
+    ):
         self.path = Path(path)
         if not self.path.exists():
             raise FileNotFoundError(self.path)
         self.workstream_id = str(uuid.UUID(workstream_id)) if workstream_id else str(uuid.uuid4())
+        self.expected_head = (
+            expected_head
+            if isinstance(expected_head, CorpusHead)
+            else CorpusHead.model_validate(expected_head)
+            if expected_head is not None
+            else None
+        )
+        try:
+            self.change_set_id = str(uuid.UUID(change_set_id)) if change_set_id else None
+        except ValueError as exc:
+            raise ContractError("change_set_id must be a UUID", {"change_set_id": change_set_id}) from exc
 
     @classmethod
     def initialize(
@@ -54,10 +73,11 @@ class SQLitePGXStore:
         try:
             store = cls(path)
             store._seed_fresh(connection)
+            head = store._initialize_authority_head(connection)
             connection.commit()
         finally:
             connection.close()
-        return cls(path)
+        return cls(path, expected_head=head)
 
     def _metadata(self, connection: sqlite3.Connection) -> dict[str, str]:
         return {r["key"]: r["value"] for r in connection.execute("SELECT key,value FROM metadata")}
@@ -98,13 +118,520 @@ class SQLitePGXStore:
             (corpus_id,),
         )
         connection.execute(
-            "INSERT INTO metadata(key,value) VALUES ('parmesan_schema_version',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
-            (str(SCHEMA_VERSION),),
+            "INSERT INTO metadata(key,value) VALUES ('parmesan_schema_version','5') ON CONFLICT(key) DO NOTHING",
         )
         connection.execute(
             "INSERT OR IGNORE INTO schema_migrations(version,applied_at,description) VALUES (?,?,?)",
-            (SCHEMA_VERSION, unique_timestamp(connection, "schema_migrations", "applied_at"), "Parmesan 2.7 lineage and materialization metadata"),
+            (5, unique_timestamp(connection, "schema_migrations", "applied_at"), "Parmesan 2.7 lineage and materialization metadata"),
         )
+        self._ensure_operating_mode_schema(connection)
+
+    def _ensure_operating_mode_schema(self, connection: sqlite3.Connection) -> None:
+        """Install the safe default-off publication gate for legacy corpora."""
+        connection.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS operating_mode_state (
+              singleton_id INTEGER NOT NULL PRIMARY KEY CHECK(singleton_id=1),
+              mode_key TEXT NOT NULL CHECK(mode_key IN ('working','publish')),
+              revision INTEGER NOT NULL CHECK(revision>=1),
+              updated_at TEXT NOT NULL UNIQUE,
+              reason TEXT NOT NULL
+            ) STRICT, WITHOUT ROWID;
+            CREATE TABLE IF NOT EXISTS operating_mode_history (
+              transition_uuid TEXT NOT NULL PRIMARY KEY,
+              from_mode_key TEXT CHECK(from_mode_key IN ('working','publish')),
+              to_mode_key TEXT NOT NULL CHECK(to_mode_key IN ('working','publish')),
+              revision INTEGER NOT NULL UNIQUE CHECK(revision>=1),
+              changed_at TEXT NOT NULL UNIQUE,
+              reason TEXT NOT NULL,
+              request_uuid TEXT
+            ) STRICT, WITHOUT ROWID;
+            """
+        )
+        if connection.execute("SELECT 1 FROM operating_mode_state WHERE singleton_id=1").fetchone() is None:
+            changed_at = unique_timestamp(connection, "operating_mode_history", "changed_at")
+            transition_uuid = str(uuid.uuid4())
+            connection.execute(
+                """INSERT INTO operating_mode_state(singleton_id,mode_key,revision,updated_at,reason)
+                   VALUES (1,'working',1,?,'default safe working mode')""",
+                (changed_at,),
+            )
+            connection.execute(
+                """INSERT INTO operating_mode_history
+                   (transition_uuid,from_mode_key,to_mode_key,revision,changed_at,reason,request_uuid)
+                   VALUES (?,NULL,'working',1,?,'default safe working mode',NULL)""",
+                (transition_uuid, changed_at),
+            )
+
+    def _ensure_authority_schema(self, connection: sqlite3.Connection) -> None:
+        connection.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS semantic_snapshots (
+              snapshot_uuid TEXT NOT NULL PRIMARY KEY,
+              parent_snapshot_uuid TEXT REFERENCES semantic_snapshots(snapshot_uuid) ON UPDATE RESTRICT ON DELETE RESTRICT,
+              corpus_id TEXT NOT NULL,
+              database_sequence INTEGER NOT NULL CHECK(database_sequence>=0),
+              transition_digest TEXT NOT NULL,
+              request_uuid TEXT,
+              tool_name TEXT NOT NULL,
+              created_at TEXT NOT NULL UNIQUE,
+              UNIQUE(corpus_id,database_sequence)
+            ) STRICT, WITHOUT ROWID;
+            CREATE TABLE IF NOT EXISTS corpus_head (
+              singleton_id INTEGER NOT NULL PRIMARY KEY CHECK(singleton_id=1),
+              corpus_id TEXT NOT NULL,
+              snapshot_uuid TEXT NOT NULL REFERENCES semantic_snapshots(snapshot_uuid) ON UPDATE RESTRICT ON DELETE RESTRICT,
+              database_sequence INTEGER NOT NULL CHECK(database_sequence>=0),
+              last_request_uuid TEXT,
+              updated_at TEXT NOT NULL
+            ) STRICT, WITHOUT ROWID;
+            CREATE TRIGGER IF NOT EXISTS semantic_snapshots_append_only_update
+            BEFORE UPDATE ON semantic_snapshots BEGIN SELECT RAISE(ABORT,'semantic snapshots are append-only'); END;
+            CREATE TRIGGER IF NOT EXISTS semantic_snapshots_append_only_delete
+            BEFORE DELETE ON semantic_snapshots BEGIN SELECT RAISE(ABORT,'semantic snapshots are append-only'); END;
+            CREATE TRIGGER IF NOT EXISTS corpus_head_no_delete
+            BEFORE DELETE ON corpus_head BEGIN SELECT RAISE(ABORT,'corpus head cannot be deleted'); END;
+            """
+        )
+        ledger_columns = {
+            row["name"] for row in connection.execute("PRAGMA table_info(operation_ledger)")
+        }
+        for name in ("input_snapshot_uuid", "output_snapshot_uuid", "transition_digest", "change_set_uuid"):
+            if name not in ledger_columns:
+                connection.execute(f"ALTER TABLE operation_ledger ADD COLUMN {name} TEXT")
+
+    def _head_row(self, connection: sqlite3.Connection) -> sqlite3.Row | None:
+        if connection.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='corpus_head'"
+        ).fetchone() is None:
+            return None
+        return connection.execute(
+            "SELECT corpus_id,snapshot_uuid,database_sequence,last_request_uuid,updated_at "
+            "FROM corpus_head WHERE singleton_id=1"
+        ).fetchone()
+
+    def _initialize_authority_head(self, connection: sqlite3.Connection) -> CorpusHead:
+        self._ensure_authority_schema(connection)
+        existing = self._head_row(connection)
+        if existing is not None:
+            return CorpusHead(
+                corpus_id=existing["corpus_id"],
+                snapshot_uuid=existing["snapshot_uuid"],
+                database_sequence=existing["database_sequence"],
+            )
+        metadata = self._metadata(connection)
+        corpus_id = metadata.get("corpus_id") or metadata.get("database_uuid")
+        if not corpus_id:
+            raise ValidationFailure("database is missing corpus identity")
+        sequence = int(metadata.get("database_sequence", "0"))
+        transition_digest = sha256_text(
+            _canonical_json({"kind": "genesis", "corpus_id": corpus_id, "database_sequence": sequence})
+        )
+        snapshot_uuid = str(uuid.uuid5(uuid.UUID(corpus_id), f"snapshot:{sequence}:{transition_digest}"))
+        created_at = now_rfc3339_ns()
+        connection.execute(
+            """INSERT INTO semantic_snapshots
+               (snapshot_uuid,parent_snapshot_uuid,corpus_id,database_sequence,transition_digest,request_uuid,tool_name,created_at)
+               VALUES (?,NULL,?,?,?,NULL,'parmesan.authority.genesis',?)""",
+            (snapshot_uuid, corpus_id, sequence, transition_digest, created_at),
+        )
+        connection.execute(
+            """INSERT INTO corpus_head
+               (singleton_id,corpus_id,snapshot_uuid,database_sequence,last_request_uuid,updated_at)
+               VALUES (1,?,?,?,NULL,?)""",
+            (corpus_id, snapshot_uuid, sequence, created_at),
+        )
+        return CorpusHead(corpus_id=corpus_id, snapshot_uuid=snapshot_uuid, database_sequence=sequence)
+
+    def current_head(self) -> dict[str, Any] | None:
+        connection = connect(self.path, readonly=True)
+        try:
+            row = self._head_row(connection)
+            if row is None:
+                return None
+            return CorpusHead(
+                corpus_id=row["corpus_id"],
+                snapshot_uuid=row["snapshot_uuid"],
+                database_sequence=row["database_sequence"],
+            ).model_dump()
+        finally:
+            connection.close()
+
+    def _require_expected_head(self, connection: sqlite3.Connection) -> sqlite3.Row:
+        current = self._head_row(connection)
+        if current is None:
+            raise ContractError(
+                "corpus authority migration is required before mutation",
+                {"database": str(self.path), "inspection_allowed": True},
+            )
+        if self.expected_head is None:
+            raise ContractError(
+                "mutation requires an externally supplied expected head",
+                {"current_head": dict(current), "inspection_allowed": True},
+            )
+        candidate = (
+            current["corpus_id"],
+            current["snapshot_uuid"],
+            int(current["database_sequence"]),
+        )
+        if candidate != self.expected_head.semantic_key():
+            raise ConflictError(
+                "expected head does not match the current corpus head",
+                {
+                    "expected_head": self.expected_head.model_dump(),
+                    "current_head": {
+                        "corpus_id": current["corpus_id"],
+                        "snapshot_uuid": current["snapshot_uuid"],
+                        "database_sequence": current["database_sequence"],
+                    },
+                },
+            )
+        return current
+
+    def _mode_row(self, connection: sqlite3.Connection) -> sqlite3.Row | None:
+        if connection.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='operating_mode_state'"
+        ).fetchone() is None:
+            return None
+        return connection.execute(
+            "SELECT mode_key,revision,updated_at,reason FROM operating_mode_state WHERE singleton_id=1"
+        ).fetchone()
+
+    def mode_show(self) -> dict[str, Any]:
+        connection = connect(self.path, readonly=True)
+        try:
+            row = self._mode_row(connection)
+            if row is None:
+                return {
+                    "mode": "working",
+                    "revision": 0,
+                    "persisted": False,
+                    "publication_enabled": False,
+                    "reason": "legacy corpus defaults safely to working mode",
+                }
+            return {
+                "mode": row["mode_key"],
+                "revision": row["revision"],
+                "updated_at": row["updated_at"],
+                "reason": row["reason"],
+                "persisted": True,
+                "publication_enabled": row["mode_key"] == "publish",
+            }
+        finally:
+            connection.close()
+
+    def mode_set(self, *, request_id: str | None, mode: str, reason: str) -> dict[str, Any]:
+        if mode not in {"working", "publish"}:
+            raise ContractError("unknown operating mode", {"mode": mode, "allowed": ["working", "publish"]})
+        payload = {"mode": mode, "reason": reason}
+
+        def action(connection: sqlite3.Connection, req: str) -> dict[str, Any]:
+            self._ensure_operating_mode_schema(connection)
+            current = self._mode_row(connection)
+            assert current is not None
+            if mode == "publish":
+                open_sets = self._open_change_set_count(connection)
+                if open_sets:
+                    raise ConflictError(
+                        "publication is blocked while a change set is open",
+                        {
+                            "open_change_sets": open_sets,
+                            "next_action": "Complete, abandon, or supersede every open change set before publishing.",
+                        },
+                    )
+            if current["mode_key"] == mode:
+                return {
+                    "mode": mode,
+                    "revision": current["revision"],
+                    "unchanged": True,
+                    "publication_enabled": mode == "publish",
+                }
+            revision = int(current["revision"]) + 1
+            changed_at = unique_timestamp(connection, "operating_mode_history", "changed_at")
+            transition_uuid = str(uuid.uuid4())
+            connection.execute(
+                """INSERT INTO operating_mode_history
+                   (transition_uuid,from_mode_key,to_mode_key,revision,changed_at,reason,request_uuid)
+                   VALUES (?,?,?,?,?,?,?)""",
+                (transition_uuid, current["mode_key"], mode, revision, changed_at, reason, req),
+            )
+            connection.execute(
+                """UPDATE operating_mode_state
+                   SET mode_key=?,revision=?,updated_at=?,reason=?
+                   WHERE singleton_id=1""",
+                (mode, revision, changed_at, reason),
+            )
+            self._audit(
+                connection,
+                request_uuid=req,
+                operation_type="mode.set",
+                details={"from": current["mode_key"], "to": mode, "revision": revision, "reason": reason},
+            )
+            return {
+                "mode": mode,
+                "revision": revision,
+                "transition_uuid": transition_uuid,
+                "unchanged": False,
+                "publication_enabled": mode == "publish",
+            }
+
+        return self._mutate("pgx.mode.set", request_id, payload, action)
+
+    def _change_set_schema_present(self, connection: sqlite3.Connection) -> bool:
+        return connection.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='change_sets'"
+        ).fetchone() is not None
+
+    def extension_inspect(self) -> dict[str, Any]:
+        connection = connect(self.path, readonly=True)
+        try:
+            return self._extension_state(connection)
+        finally:
+            connection.close()
+
+    def _extension_state(self, connection: sqlite3.Connection) -> dict[str, Any]:
+        tables = {
+            row["name"]
+            for row in connection.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+            )
+        }
+        registry_present = {"extension_registry", "extension_tables"}.issubset(tables)
+        registered_tables: set[str] = set()
+        extensions: list[dict[str, Any]] = []
+        invalid_extensions: list[str] = []
+        if registry_present:
+            for extension in connection.execute(
+                """SELECT extension_key,extension_version,schema_fingerprint,
+                          required_machinery,registered_at
+                   FROM extension_registry ORDER BY extension_key"""
+            ):
+                item = dict(extension)
+                item["tables"] = [
+                    dict(row)
+                    for row in connection.execute(
+                        """SELECT table_name,classification FROM extension_tables
+                           WHERE extension_key=? ORDER BY table_name""",
+                        (extension["extension_key"],),
+                    )
+                ]
+                schema_rows = (
+                    [
+                        dict(row)
+                        for row in connection.execute(
+                            f"""SELECT name,sql FROM sqlite_master
+                                WHERE type='table' AND name IN ({','.join('?' for _ in item['tables'])})
+                                ORDER BY name""",
+                            [table["table_name"] for table in item["tables"]],
+                        )
+                    ]
+                    if item["tables"]
+                    else []
+                )
+                item["actual_schema_fingerprint"] = sha256_text(_canonical_json(schema_rows))
+                item["schema_matches"] = item["actual_schema_fingerprint"] == item["schema_fingerprint"]
+                if not item["schema_matches"]:
+                    invalid_extensions.append(item["extension_key"])
+                registered_tables.update(table["table_name"] for table in item["tables"])
+                extensions.append(item)
+        unknown = sorted(tables - CORE_TABLE_NAMES - registered_tables)
+        return {
+            "migration_required": not registry_present,
+            "valid": registry_present and not unknown and not invalid_extensions,
+            "extensions": extensions,
+            "unknown_tables": unknown,
+            "invalid_extensions": invalid_extensions,
+        }
+
+    def _open_change_set_count(self, connection: sqlite3.Connection) -> int:
+        if not self._change_set_schema_present(connection):
+            return 0
+        return int(connection.execute(
+            "SELECT COUNT(*) FROM change_sets WHERE status='open'"
+        ).fetchone()[0])
+
+    def change_set_open(self, *, request_id: str | None, title: str, intent: str) -> dict[str, Any]:
+        payload = {"title": title, "intent": intent}
+
+        def action(connection: sqlite3.Connection, req: str) -> dict[str, Any]:
+            if not self._change_set_schema_present(connection):
+                raise ContractError(
+                    "change-set migration is required before opening durable work",
+                    {"inspection_allowed": True},
+                )
+            head = self._head_row(connection)
+            assert head is not None
+            change_set_uuid = str(uuid.uuid5(uuid.UUID(req), "parmesan-change-set"))
+            created_at = now_rfc3339_ns()
+            connection.execute(
+                """INSERT INTO change_sets
+                   (change_set_uuid,title,intent,status,base_snapshot_uuid,created_at,resolved_at,resolution)
+                   VALUES (?,?,?,'open',?,?,NULL,'')""",
+                (change_set_uuid, title, intent, head["snapshot_uuid"], created_at),
+            )
+            self._audit(
+                connection,
+                request_uuid=req,
+                operation_type="change_set.open",
+                details={"change_set_id": change_set_uuid, "title": title},
+            )
+            return {
+                "change_set_id": change_set_uuid,
+                "title": title,
+                "intent": intent,
+                "status": "open",
+                "base_snapshot_uuid": head["snapshot_uuid"],
+                "operation_count": 0,
+            }
+
+        return self._mutate("pgx.change_set.open", request_id, payload, action)
+
+    def change_set_list(self, *, status: str | None = None, limit: int = 50) -> dict[str, Any]:
+        connection = connect(self.path, readonly=True)
+        try:
+            if not self._change_set_schema_present(connection):
+                return {"migration_required": True, "change_sets": [], "total": 0}
+            parameters: list[Any] = []
+            where = ""
+            if status is not None:
+                where = "WHERE cs.status=?"
+                parameters.append(status)
+            total = int(connection.execute(
+                f"SELECT COUNT(*) FROM change_sets cs {where}", parameters
+            ).fetchone()[0])
+            parameters.append(limit)
+            rows = connection.execute(
+                f"""SELECT cs.change_set_uuid AS change_set_id,cs.title,cs.intent,cs.status,
+                           cs.base_snapshot_uuid,cs.created_at,cs.resolved_at,cs.resolution,
+                           COUNT(csr.request_uuid) AS operation_count
+                    FROM change_sets cs
+                    LEFT JOIN change_set_receipts csr ON csr.change_set_uuid=cs.change_set_uuid
+                    {where}
+                    GROUP BY cs.change_set_uuid
+                    ORDER BY cs.created_at DESC
+                    LIMIT ?""",
+                parameters,
+            ).fetchall()
+            return {
+                "migration_required": False,
+                "total": total,
+                "change_sets": [dict(row) for row in rows],
+            }
+        finally:
+            connection.close()
+
+    def change_set_show(self, change_set_id: str, *, receipt_limit: int = 100) -> dict[str, Any]:
+        try:
+            change_set_uuid = str(uuid.UUID(change_set_id))
+        except ValueError as exc:
+            raise ContractError("change_set_id must be a UUID", {"change_set_id": change_set_id}) from exc
+        connection = connect(self.path, readonly=True)
+        try:
+            if not self._change_set_schema_present(connection):
+                raise ContractError("change-set migration is required", {"inspection_allowed": True})
+            row = connection.execute(
+                """SELECT change_set_uuid AS change_set_id,title,intent,status,base_snapshot_uuid,
+                          created_at,resolved_at,resolution
+                   FROM change_sets WHERE change_set_uuid=?""",
+                (change_set_uuid,),
+            ).fetchone()
+            if row is None:
+                raise NotFoundError("change set does not exist", {"change_set_id": change_set_uuid})
+            receipts = [
+                dict(item)
+                for item in connection.execute(
+                    """SELECT ordinal,request_uuid AS request_id,tool_name,database_sequence,output_snapshot_uuid
+                       FROM change_set_receipts WHERE change_set_uuid=?
+                       ORDER BY ordinal LIMIT ?""",
+                    (change_set_uuid, receipt_limit),
+                )
+            ]
+            total = int(connection.execute(
+                "SELECT COUNT(*) FROM change_set_receipts WHERE change_set_uuid=?",
+                (change_set_uuid,),
+            ).fetchone()[0])
+            return {**dict(row), "operation_count": total, "receipts": receipts}
+        finally:
+            connection.close()
+
+    def change_set_resolve(
+        self,
+        *,
+        request_id: str | None,
+        change_set_id: str,
+        status: str,
+        resolution: str,
+    ) -> dict[str, Any]:
+        if status not in {"completed", "abandoned", "superseded"}:
+            raise ContractError(
+                "change set resolution status is invalid",
+                {"status": status, "allowed": ["completed", "abandoned", "superseded"]},
+            )
+        try:
+            change_set_uuid = str(uuid.UUID(change_set_id))
+        except ValueError as exc:
+            raise ContractError("change_set_id must be a UUID", {"change_set_id": change_set_id}) from exc
+        self.change_set_id = change_set_uuid
+        payload = {
+            "change_set_id": change_set_uuid,
+            "status": status,
+            "resolution": resolution,
+        }
+
+        def action(connection: sqlite3.Connection, req: str) -> dict[str, Any]:
+            row = connection.execute(
+                "SELECT status,title,intent,base_snapshot_uuid FROM change_sets WHERE change_set_uuid=?",
+                (change_set_uuid,),
+            ).fetchone()
+            if row is None:
+                raise NotFoundError("change set does not exist", {"change_set_id": change_set_uuid})
+            if row["status"] != "open":
+                raise ConflictError(
+                    "only an open change set can be resolved",
+                    {"change_set_id": change_set_uuid, "status": row["status"]},
+                )
+            resolved_at = now_rfc3339_ns()
+            connection.execute(
+                """UPDATE change_sets SET status=?,resolved_at=?,resolution=?
+                   WHERE change_set_uuid=?""",
+                (status, resolved_at, resolution, change_set_uuid),
+            )
+            self._audit(
+                connection,
+                request_uuid=req,
+                operation_type="change_set.resolve",
+                details={"change_set_id": change_set_uuid, "status": status, "resolution": resolution},
+            )
+            operation_count = int(connection.execute(
+                "SELECT COUNT(*) FROM change_set_receipts WHERE change_set_uuid=?",
+                (change_set_uuid,),
+            ).fetchone()[0]) + 1
+            return {
+                "change_set_id": change_set_uuid,
+                "title": row["title"],
+                "intent": row["intent"],
+                "status": status,
+                "base_snapshot_uuid": row["base_snapshot_uuid"],
+                "resolved_at": resolved_at,
+                "resolution": resolution,
+                "operation_count": operation_count,
+            }
+
+        result = self._mutate("pgx.change_set.resolve", request_id, payload, action)
+        self.change_set_id = None
+        return result
+
+    def require_publish_mode(self, operation: str) -> None:
+        state = self.mode_show()
+        if state["mode"] != "publish":
+            raise ContractError(
+                "external materialization is disabled in working mode",
+                {
+                    "operation": operation,
+                    "mode": state["mode"],
+                    "next_action": "Explicitly set publish mode, run the publication operation, then return to working mode.",
+                },
+            )
 
     def _semantic_snapshot(self, connection: sqlite3.Connection) -> dict[str, str]:
         """Return a deterministic identity for semantic state, excluding operational metadata."""
@@ -127,7 +654,26 @@ class SQLitePGXStore:
 
     def _ensure_workstream(self, connection: sqlite3.Connection) -> dict[str, str]:
         self._ensure_lineage_schema(connection)
-        snapshot = self._semantic_snapshot(connection)
+        existing = connection.execute(
+            "SELECT corpus_id,base_snapshot_id FROM corpus_workstreams WHERE workstream_id=?",
+            (self.workstream_id,),
+        ).fetchone()
+        if existing is not None:
+            return {
+                "corpus_id": existing["corpus_id"],
+                "snapshot_id": existing["base_snapshot_id"],
+                "snapshot_fingerprint": "",
+            }
+        head = self._head_row(connection)
+        snapshot = (
+            {
+                "corpus_id": head["corpus_id"],
+                "snapshot_id": head["snapshot_uuid"],
+                "snapshot_fingerprint": "",
+            }
+            if head is not None
+            else self._semantic_snapshot(connection)
+        )
         connection.execute(
             """INSERT INTO corpus_workstreams(workstream_id,corpus_id,base_snapshot_id,created_at,package_release_id)
                VALUES (?,?,?,?,?) ON CONFLICT(workstream_id) DO NOTHING""",
@@ -313,7 +859,11 @@ class SQLitePGXStore:
         fn: Callable[[sqlite3.Connection, str], dict[str, Any]],
     ) -> dict[str, Any]:
         request_uuid = self._validate_request_uuid(request_id)
-        input_hash = sha256_text(_canonical_json({"tool": tool_name, "arguments": payload}))
+        input_hash = sha256_text(_canonical_json({
+            "tool": tool_name,
+            "arguments": payload,
+            "change_set_id": self.change_set_id,
+        }))
         connection = connect(self.path)
         try:
             connection.execute("BEGIN IMMEDIATE")
@@ -330,15 +880,68 @@ class SQLitePGXStore:
                     result = json.loads(existing["result_json"])
                     connection.rollback()
                     result["idempotent_replay"] = True
+                    if result.get("head"):
+                        self.expected_head = CorpusHead.model_validate(result["head"])
                     return result
                 raise ConflictError("request is already in progress", {"request_id": request_uuid})
+            input_head = self._require_expected_head(connection)
+            extension_state = self._extension_state(connection)
+            if extension_state["migration_required"]:
+                raise ContractError(
+                    "extension registry migration is required before mutation",
+                    {"inspection_allowed": True},
+                )
+            if extension_state["unknown_tables"]:
+                raise ContractError(
+                    "mutation is blocked by unclassified extension tables",
+                    {
+                        "unknown_tables": extension_state["unknown_tables"],
+                        "next_action": "Adopt the corpus into a new workspace with explicit extension classifications.",
+                    },
+                )
+            if extension_state["invalid_extensions"]:
+                raise ContractError(
+                    "mutation is blocked by extension schema drift",
+                    {
+                        "invalid_extensions": extension_state["invalid_extensions"],
+                        "next_action": "Restore the registered extension schema or perform a new explicit adoption.",
+                    },
+                )
+            active_change_set = None
+            if self.change_set_id is not None:
+                if not self._change_set_schema_present(connection):
+                    raise ContractError(
+                        "change-set migration is required before attaching durable work",
+                        {"change_set_id": self.change_set_id},
+                    )
+                active_change_set = connection.execute(
+                    "SELECT change_set_uuid,status FROM change_sets WHERE change_set_uuid=?",
+                    (self.change_set_id,),
+                ).fetchone()
+                if active_change_set is None:
+                    raise NotFoundError(
+                        "change set does not exist",
+                        {"change_set_id": self.change_set_id},
+                    )
+                if active_change_set["status"] != "open":
+                    raise ConflictError(
+                        "mutation cannot attach to a resolved change set",
+                        {"change_set_id": self.change_set_id, "status": active_change_set["status"]},
+                    )
+            self._ensure_operating_mode_schema(connection)
+            mode = self._mode_row(connection)
+            if tool_name != "pgx.mode.set" and mode is not None and mode["mode_key"] == "publish":
+                raise ConflictError(
+                    "semantic mutation is disabled while publish mode is active",
+                    {"tool": tool_name, "next_action": "Return to working mode before changing canonical corpus state."},
+                )
             self._ensure_workstream(connection)
             started = unique_timestamp(connection, "operation_ledger", "started_at")
             connection.execute(
                 """INSERT INTO operation_ledger
-                (request_uuid,tool_name,input_hash,status,result_json,started_at,committed_at,database_sequence)
-                VALUES (?,?,?,'started',NULL,?,NULL,NULL)""",
-                (request_uuid, tool_name, input_hash, started),
+                (request_uuid,tool_name,input_hash,status,result_json,started_at,committed_at,database_sequence,change_set_uuid)
+                VALUES (?,?,?,'started',NULL,?,NULL,NULL,?)""",
+                (request_uuid, tool_name, input_hash, started, self.change_set_id),
             )
             result = fn(connection, request_uuid)
             sequence = self._increment_sequence(connection)
@@ -347,19 +950,95 @@ class SQLitePGXStore:
                 (self.workstream_id,),
             )
             result = dict(result)
+            transition_digest = sha256_text(
+                _canonical_json(
+                    {
+                        "parent_snapshot_uuid": input_head["snapshot_uuid"],
+                        "request_uuid": request_uuid,
+                        "tool_name": tool_name,
+                        "input_hash": input_hash,
+                        "database_sequence": sequence,
+                        "result": result,
+                    }
+                )
+            )
+            output_snapshot_uuid = str(
+                uuid.uuid5(
+                    uuid.UUID(input_head["corpus_id"]),
+                    f"snapshot:{input_head['snapshot_uuid']}:{sequence}:{transition_digest}:{request_uuid}",
+                )
+            )
+            head_created_at = now_rfc3339_ns()
+            connection.execute(
+                """INSERT INTO semantic_snapshots
+                   (snapshot_uuid,parent_snapshot_uuid,corpus_id,database_sequence,transition_digest,request_uuid,tool_name,created_at)
+                   VALUES (?,?,?,?,?,?,?,?)""",
+                (
+                    output_snapshot_uuid,
+                    input_head["snapshot_uuid"],
+                    input_head["corpus_id"],
+                    sequence,
+                    transition_digest,
+                    request_uuid,
+                    tool_name,
+                    head_created_at,
+                ),
+            )
+            connection.execute(
+                """UPDATE corpus_head
+                   SET snapshot_uuid=?,database_sequence=?,last_request_uuid=?,updated_at=?
+                   WHERE singleton_id=1""",
+                (output_snapshot_uuid, sequence, request_uuid, head_created_at),
+            )
+            output_head = CorpusHead(
+                corpus_id=input_head["corpus_id"],
+                snapshot_uuid=output_snapshot_uuid,
+                database_sequence=sequence,
+            )
             result.update({
                 "request_id": request_uuid,
                 "database_sequence": sequence,
                 "idempotent_replay": False,
                 "workstream_id": self.workstream_id,
+                "head": output_head.model_dump(),
             })
+            if self.change_set_id is not None:
+                result["change_set_id"] = self.change_set_id
+                ordinal = int(connection.execute(
+                    "SELECT COUNT(*) FROM change_set_receipts WHERE change_set_uuid=?",
+                    (self.change_set_id,),
+                ).fetchone()[0]) + 1
+                connection.execute(
+                    """INSERT INTO change_set_receipts
+                       (change_set_uuid,ordinal,request_uuid,tool_name,database_sequence,output_snapshot_uuid)
+                       VALUES (?,?,?,?,?,?)""",
+                    (
+                        self.change_set_id,
+                        ordinal,
+                        request_uuid,
+                        tool_name,
+                        sequence,
+                        output_snapshot_uuid,
+                    ),
+                )
             committed = now_rfc3339_ns()
             connection.execute(
-                """UPDATE operation_ledger SET status='committed',result_json=?,committed_at=?,database_sequence=?
+                """UPDATE operation_ledger
+                   SET status='committed',result_json=?,committed_at=?,database_sequence=?,
+                       input_snapshot_uuid=?,output_snapshot_uuid=?,transition_digest=?
                 WHERE request_uuid=?""",
-                (_canonical_json(result), committed, sequence, request_uuid),
+                (
+                    _canonical_json(result),
+                    committed,
+                    sequence,
+                    input_head["snapshot_uuid"],
+                    output_snapshot_uuid,
+                    transition_digest,
+                    request_uuid,
+                ),
             )
             connection.commit()
+            self.expected_head = output_head
             return result
         except Exception:
             connection.rollback()
@@ -449,11 +1128,33 @@ class SQLitePGXStore:
             raise NotFoundError("graph namespace not found", {"pointer_prefix": pointer_prefix})
         return row
 
-    def _check_graph_pointer(self, graph: sqlite3.Row, pointer: str) -> None:
-        if not pointer.startswith(graph["pointer_prefix"]):
+    def _resolve_graph_namespace(self, connection: sqlite3.Connection, pointer: str) -> sqlite3.Row | None:
+        """Resolve a pointer to the uniquely longest registered graph prefix."""
+        return connection.execute(
+            """SELECT * FROM graphs
+               WHERE ? LIKE pointer_prefix || '%'
+               ORDER BY length(pointer_prefix) DESC, pointer_prefix
+               LIMIT 1""",
+            (pointer,),
+        ).fetchone()
+
+    def _check_graph_pointer(self, connection: sqlite3.Connection, graph: sqlite3.Row, pointer: str) -> None:
+        resolved = self._resolve_graph_namespace(connection, pointer)
+        if resolved is None:
             raise ContractError(
                 "pointer does not belong to graph namespace",
                 {"pointer": pointer, "graph_key": graph["graph_key"], "required_prefix": graph["pointer_prefix"]},
+            )
+        if resolved["graph_uuid"] != graph["graph_uuid"]:
+            raise ContractError(
+                "pointer resolves to a more specific graph namespace",
+                {
+                    "pointer": pointer,
+                    "requested_graph_key": graph["graph_key"],
+                    "requested_prefix": graph["pointer_prefix"],
+                    "resolved_graph_key": resolved["graph_key"],
+                    "resolved_prefix": resolved["pointer_prefix"],
+                },
             )
 
     def _next_ordinal(self, connection: sqlite3.Connection, graph_uuid: str) -> int:
@@ -548,6 +1249,8 @@ class SQLitePGXStore:
                 "INSERT INTO graphs(graph_uuid,graph_key,pointer_prefix,description) VALUES (?,?,?,?)",
                 (node, graph_key, pointer_prefix, description),
             )
+            graph = self._graph(con, graph_key)
+            self._check_graph_pointer(con, graph, declaration_pointer)
             con.execute("INSERT INTO graph_membership(graph_uuid,node_uuid,ordinal) VALUES (?,?,0)", (node, node))
             self._replace_references(con, source_node_uuid=node, source_revision_uuid=rev, description=description, strict=True)
             self._refresh_fts(con, node)
@@ -558,27 +1261,66 @@ class SQLitePGXStore:
     def create_node(self, *, request_id: str | None, pointer: str, title: str, description: str, graph_key: str) -> dict[str, Any]:
         payload = {"pointer": pointer, "title": title, "description": description, "graph_key": graph_key}
         def action(con: sqlite3.Connection, req: str) -> dict[str, Any]:
-            graph = self._graph(con, graph_key)
-            self._check_graph_pointer(graph, pointer)
-            node, rev = self._insert_identity(
-                con, pointer=pointer, title=title, description=description,
-                lifecycle_state="promoted", request_uuid=req, reason="node creation",
+            return self._create_node_in_transaction(
+                con,
+                req,
+                pointer=pointer,
+                title=title,
+                description=description,
+                graph_key=graph_key,
             )
-            report = self._replace_references(con, source_node_uuid=node, source_revision_uuid=rev, description=description, strict=True)
-            con.execute(
-                "INSERT INTO graph_membership(graph_uuid,node_uuid,ordinal) VALUES (?,?,?)",
-                (graph["graph_uuid"], node, self._next_ordinal(con, graph["graph_uuid"])),
-            )
-            self._refresh_fts(con, node)
-            self._audit(con, request_uuid=req, operation_type="node.create", node_uuid_value=node, new_revision_uuid=rev, details={"graph_key": graph_key, "reference_count": len(report.occurrences)})
-            return {"pointer": pointer, "uuid": node, "revision_uuid": rev, "graph_key": graph_key, "reference_count": len(report.occurrences)}
         return self._mutate("pgx.node.create", request_id, payload, action)
+
+    def _create_node_in_transaction(
+        self,
+        con: sqlite3.Connection,
+        req: str,
+        *,
+        pointer: str,
+        title: str,
+        description: str,
+        graph_key: str,
+    ) -> dict[str, Any]:
+        graph = self._graph(con, graph_key)
+        self._check_graph_pointer(con, graph, pointer)
+        node, rev = self._insert_identity(
+            con, pointer=pointer, title=title, description=description,
+            lifecycle_state="promoted", request_uuid=req, reason="node creation",
+        )
+        report = self._replace_references(
+            con,
+            source_node_uuid=node,
+            source_revision_uuid=rev,
+            description=description,
+            strict=True,
+        )
+        con.execute(
+            "INSERT INTO graph_membership(graph_uuid,node_uuid,ordinal) VALUES (?,?,?)",
+            (graph["graph_uuid"], node, self._next_ordinal(con, graph["graph_uuid"])),
+        )
+        self._refresh_fts(con, node)
+        self._audit(
+            con,
+            request_uuid=req,
+            operation_type="node.create",
+            node_uuid_value=node,
+            new_revision_uuid=rev,
+            details={"graph_key": graph_key, "reference_count": len(report.occurrences)},
+        )
+        return {
+            "pointer": pointer,
+            "uuid": node,
+            "revision_uuid": rev,
+            "graph_key": graph_key,
+            "reference_count": len(report.occurrences),
+        }
 
     def stage_node(self, *, request_id: str | None, pointer: str, title: str, description: str, intended_graph_key: str | None = None, tracking_note: str = "") -> dict[str, Any]:
         payload = {"pointer": pointer, "title": title, "description": description, "intended_graph_key": intended_graph_key, "tracking_note": tracking_note}
         def action(con: sqlite3.Connection, req: str) -> dict[str, Any]:
             if intended_graph_key is not None:
-                self._graph(con, intended_graph_key)
+                intended_graph = self._graph(con, intended_graph_key)
+                self._check_graph_pointer(con, intended_graph, pointer)
             node, rev = self._insert_identity(
                 con, pointer=pointer, title=title, description=description,
                 lifecycle_state="staged", request_uuid=req, reason="staged node creation",
@@ -613,7 +1355,7 @@ class SQLitePGXStore:
             if not target_graph:
                 raise ContractError("promotion requires a graph_key")
             graph = self._graph(con, target_graph)
-            self._check_graph_pointer(graph, pointer)
+            self._check_graph_pointer(con, graph, pointer)
             report = self._replace_references(
                 con, source_node_uuid=current["uuid"], source_revision_uuid=current["revision_uuid"],
                 description=current["description"], strict=True,
@@ -633,39 +1375,109 @@ class SQLitePGXStore:
     def update_node(self, *, request_id: str | None, pointer: str, title: str | None = None, description: str | None = None, expected_revision_uuid: str | None = None, reason: str = "") -> dict[str, Any]:
         payload = {"pointer": pointer, "title": title, "description": description, "expected_revision_uuid": expected_revision_uuid, "reason": reason}
         def action(con: sqlite3.Connection, req: str) -> dict[str, Any]:
-            current = self._current(con, pointer)
-            if expected_revision_uuid and current["revision_uuid"] != expected_revision_uuid:
-                raise StaleWriteError("expected revision is not current", {"expected": expected_revision_uuid, "current": current["revision_uuid"]})
-            new_title = title if title is not None else current["title"]
-            new_description = description if description is not None else current["description"]
-            if new_title == current["title"] and new_description == current["description"]:
-                return {"pointer": pointer, "uuid": current["uuid"], "revision_uuid": current["revision_uuid"], "unchanged": True}
-            rev = self._new_revision(
-                con, node_uuid_value=current["uuid"], title=new_title, description=new_description,
-                previous_revision_uuid=current["revision_uuid"], request_uuid=req, reason=reason or "node update",
+            return self._update_node_in_transaction(
+                con,
+                req,
+                pointer=pointer,
+                title=title,
+                description=description,
+                expected_revision_uuid=expected_revision_uuid,
+                reason=reason,
             )
-            strict = current["lifecycle_state"] == "promoted"
-            report = self._replace_references(con, source_node_uuid=current["uuid"], source_revision_uuid=rev, description=new_description, strict=strict)
-            con.execute("UPDATE node_identity SET current_revision_uuid=? WHERE uuid=?", (rev, current["uuid"]))
-            if strict:
-                self._refresh_fts(con, current["uuid"])
-            else:
-                con.execute("DELETE FROM staging_issues WHERE node_uuid=?", (current["uuid"],))
-                status = "pending"
-                if report.errors:
-                    status = "blocked"
-                    namespace = self._namespace(con)
-                    for idx, issue in enumerate(report.errors):
-                        timestamp = unique_timestamp(con, "staging_issues")
-                        issue_uuid = derived_uuid(namespace, "staging-issue", f"{current['uuid']}|{rev}|{idx}|{timestamp}")
-                        con.execute(
-                            "INSERT INTO staging_issues(issue_uuid,node_uuid,issue_code,details_json,created_at,resolved_at) VALUES (?,?,?,?,?,NULL)",
-                            (issue_uuid, current["uuid"], issue.get("code", "reference_error"), _canonical_json(issue), timestamp),
-                        )
-                con.execute("UPDATE staging_queue SET status=? WHERE node_uuid=?", (status, current["uuid"]))
-            self._audit(con, request_uuid=req, operation_type="node.update", node_uuid_value=current["uuid"], previous_revision_uuid=current["revision_uuid"], new_revision_uuid=rev, details={"reason": reason, "reference_count": len(report.occurrences)})
-            return {"pointer": pointer, "uuid": current["uuid"], "previous_revision_uuid": current["revision_uuid"], "revision_uuid": rev, "reference_count": len(report.occurrences), "warnings": report.warnings}
         return self._mutate("pgx.node.update", request_id, payload, action)
+
+    def _update_node_in_transaction(
+        self,
+        con: sqlite3.Connection,
+        req: str,
+        *,
+        pointer: str,
+        title: str | None = None,
+        description: str | None = None,
+        expected_revision_uuid: str | None = None,
+        reason: str = "",
+    ) -> dict[str, Any]:
+        current = self._current(con, pointer)
+        if expected_revision_uuid and current["revision_uuid"] != expected_revision_uuid:
+            raise StaleWriteError(
+                "expected revision is not current",
+                {"expected": expected_revision_uuid, "current": current["revision_uuid"]},
+            )
+        new_title = title if title is not None else current["title"]
+        new_description = description if description is not None else current["description"]
+        if new_title == current["title"] and new_description == current["description"]:
+            return {
+                "pointer": pointer,
+                "uuid": current["uuid"],
+                "revision_uuid": current["revision_uuid"],
+                "unchanged": True,
+            }
+        rev = self._new_revision(
+            con,
+            node_uuid_value=current["uuid"],
+            title=new_title,
+            description=new_description,
+            previous_revision_uuid=current["revision_uuid"],
+            request_uuid=req,
+            reason=reason or "node update",
+        )
+        strict = current["lifecycle_state"] == "promoted"
+        report = self._replace_references(
+            con,
+            source_node_uuid=current["uuid"],
+            source_revision_uuid=rev,
+            description=new_description,
+            strict=strict,
+        )
+        con.execute(
+            "UPDATE node_identity SET current_revision_uuid=? WHERE uuid=?",
+            (rev, current["uuid"]),
+        )
+        if strict:
+            self._refresh_fts(con, current["uuid"])
+        else:
+            con.execute("DELETE FROM staging_issues WHERE node_uuid=?", (current["uuid"],))
+            status = "pending"
+            if report.errors:
+                status = "blocked"
+                namespace = self._namespace(con)
+                for idx, issue in enumerate(report.errors):
+                    timestamp = unique_timestamp(con, "staging_issues")
+                    issue_uuid = derived_uuid(
+                        namespace,
+                        "staging-issue",
+                        f"{current['uuid']}|{rev}|{idx}|{timestamp}",
+                    )
+                    con.execute(
+                        """INSERT INTO staging_issues
+                           (issue_uuid,node_uuid,issue_code,details_json,created_at,resolved_at)
+                           VALUES (?,?,?,?,?,NULL)""",
+                        (
+                            issue_uuid,
+                            current["uuid"],
+                            issue.get("code", "reference_error"),
+                            _canonical_json(issue),
+                            timestamp,
+                        ),
+                    )
+            con.execute("UPDATE staging_queue SET status=? WHERE node_uuid=?", (status, current["uuid"]))
+        self._audit(
+            con,
+            request_uuid=req,
+            operation_type="node.update",
+            node_uuid_value=current["uuid"],
+            previous_revision_uuid=current["revision_uuid"],
+            new_revision_uuid=rev,
+            details={"reason": reason, "reference_count": len(report.occurrences)},
+        )
+        return {
+            "pointer": pointer,
+            "uuid": current["uuid"],
+            "previous_revision_uuid": current["revision_uuid"],
+            "revision_uuid": rev,
+            "reference_count": len(report.occurrences),
+            "warnings": report.warnings,
+        }
 
     def embed_traversal(
         self,
@@ -677,10 +1489,6 @@ class SQLitePGXStore:
         expected_revision_uuid: str | None = None,
         reason: str = "embed lawful PGX traversal expression",
     ) -> dict[str, Any]:
-        tree = tree_from_mapping(expression)
-        notation = serialize_expression(tree)
-        roles = pointer_roles(tree)
-        block = render_embedding(notation, read)
         payload = {
             "node_pointer": node_pointer,
             "expression": expression,
@@ -690,90 +1498,120 @@ class SQLitePGXStore:
         }
 
         def action(con: sqlite3.Connection, req: str) -> dict[str, Any]:
-            current = self._current(con, node_pointer)
-            if expected_revision_uuid and current["revision_uuid"] != expected_revision_uuid:
-                raise StaleWriteError(
-                    "expected revision is not current",
-                    {"expected": expected_revision_uuid, "current": current["revision_uuid"]},
-                )
-
-            pointer_pattern = self._pointer_pattern(con)
-            resolved = []
-            for pointer in sorted(roles):
-                validate_pointer(pointer, pointer_pattern)
-                row = self._current(con, pointer)
-                resolved.append({
-                    "pointer": pointer,
-                    "title": row["title"],
-                    "roles": sorted(roles[pointer]),
-                })
-
-            separator = "" if not current["description"].strip() else "\n\n"
-            new_description = current["description"].rstrip() + separator + block
-            rev = self._new_revision(
+            return self._embed_traversal_in_transaction(
                 con,
-                node_uuid_value=current["uuid"],
-                title=current["title"],
-                description=new_description,
-                previous_revision_uuid=current["revision_uuid"],
-                request_uuid=req,
+                req,
+                node_pointer=node_pointer,
+                expression=expression,
+                read=read,
+                expected_revision_uuid=expected_revision_uuid,
                 reason=reason,
             )
-            strict = current["lifecycle_state"] == "promoted"
-            report = self._replace_references(
-                con,
-                source_node_uuid=current["uuid"],
-                source_revision_uuid=rev,
-                description=new_description,
-                strict=strict,
-            )
-            con.execute(
-                "UPDATE node_identity SET current_revision_uuid=? WHERE uuid=?",
-                (rev, current["uuid"]),
-            )
-            if strict:
-                self._refresh_fts(con, current["uuid"])
-            else:
-                con.execute("DELETE FROM staging_issues WHERE node_uuid=?", (current["uuid"],))
-                status = "pending"
-                if report.errors:
-                    status = "blocked"
-                    namespace = self._namespace(con)
-                    for idx, issue in enumerate(report.errors):
-                        timestamp = unique_timestamp(con, "staging_issues")
-                        issue_uuid = derived_uuid(
-                            namespace,
-                            "staging-issue",
-                            f"{current['uuid']}|{rev}|{idx}|{timestamp}",
-                        )
-                        con.execute(
-                            "INSERT INTO staging_issues(issue_uuid,node_uuid,issue_code,details_json,created_at,resolved_at) VALUES (?,?,?,?,?,NULL)",
-                            (issue_uuid, current["uuid"], issue.get("code", "reference_error"), _canonical_json(issue), timestamp),
-                        )
-                con.execute("UPDATE staging_queue SET status=? WHERE node_uuid=?", (status, current["uuid"]))
-
-            self._audit(
-                con,
-                request_uuid=req,
-                operation_type="traversal.embed",
-                node_uuid_value=current["uuid"],
-                previous_revision_uuid=current["revision_uuid"],
-                new_revision_uuid=rev,
-                details={"notation": notation, "resolved_pointers": [item["pointer"] for item in resolved]},
-            )
-            return {
-                "node_pointer": node_pointer,
-                "uuid": current["uuid"],
-                "previous_revision_uuid": current["revision_uuid"],
-                "revision_uuid": rev,
-                "notation": notation,
-                "markdown": block,
-                "resolved_pointers": resolved,
-                "reference_count": len(report.occurrences),
-                "warnings": report.warnings,
-            }
 
         return self._mutate("pgx.traversal.embed", request_id, payload, action)
+
+    def _embed_traversal_in_transaction(
+        self,
+        con: sqlite3.Connection,
+        req: str,
+        *,
+        node_pointer: str,
+        expression: dict[str, Any],
+        read: str | None = None,
+        expected_revision_uuid: str | None = None,
+        reason: str = "embed lawful PGX traversal expression",
+    ) -> dict[str, Any]:
+        tree = tree_from_mapping(expression)
+        notation = serialize_expression(tree)
+        roles = pointer_roles(tree)
+        block = render_embedding(notation, read)
+        current = self._current(con, node_pointer)
+        if expected_revision_uuid and current["revision_uuid"] != expected_revision_uuid:
+            raise StaleWriteError(
+                "expected revision is not current",
+                {"expected": expected_revision_uuid, "current": current["revision_uuid"]},
+            )
+        pointer_pattern = self._pointer_pattern(con)
+        resolved = []
+        for pointer in sorted(roles):
+            validate_pointer(pointer, pointer_pattern)
+            row = self._current(con, pointer)
+            resolved.append({
+                "pointer": pointer,
+                "title": row["title"],
+                "roles": sorted(roles[pointer]),
+            })
+        separator = "" if not current["description"].strip() else "\n\n"
+        new_description = current["description"].rstrip() + separator + block
+        rev = self._new_revision(
+            con,
+            node_uuid_value=current["uuid"],
+            title=current["title"],
+            description=new_description,
+            previous_revision_uuid=current["revision_uuid"],
+            request_uuid=req,
+            reason=reason,
+        )
+        strict = current["lifecycle_state"] == "promoted"
+        report = self._replace_references(
+            con,
+            source_node_uuid=current["uuid"],
+            source_revision_uuid=rev,
+            description=new_description,
+            strict=strict,
+        )
+        con.execute(
+            "UPDATE node_identity SET current_revision_uuid=? WHERE uuid=?",
+            (rev, current["uuid"]),
+        )
+        if strict:
+            self._refresh_fts(con, current["uuid"])
+        else:
+            con.execute("DELETE FROM staging_issues WHERE node_uuid=?", (current["uuid"],))
+            status = "pending"
+            if report.errors:
+                status = "blocked"
+                namespace = self._namespace(con)
+                for idx, issue in enumerate(report.errors):
+                    timestamp = unique_timestamp(con, "staging_issues")
+                    issue_uuid = derived_uuid(
+                        namespace,
+                        "staging-issue",
+                        f"{current['uuid']}|{rev}|{idx}|{timestamp}",
+                    )
+                    con.execute(
+                        """INSERT INTO staging_issues
+                           (issue_uuid,node_uuid,issue_code,details_json,created_at,resolved_at)
+                           VALUES (?,?,?,?,?,NULL)""",
+                        (
+                            issue_uuid,
+                            current["uuid"],
+                            issue.get("code", "reference_error"),
+                            _canonical_json(issue),
+                            timestamp,
+                        ),
+                    )
+            con.execute("UPDATE staging_queue SET status=? WHERE node_uuid=?", (status, current["uuid"]))
+        self._audit(
+            con,
+            request_uuid=req,
+            operation_type="traversal.embed",
+            node_uuid_value=current["uuid"],
+            previous_revision_uuid=current["revision_uuid"],
+            new_revision_uuid=rev,
+            details={"notation": notation, "resolved_pointers": [item["pointer"] for item in resolved]},
+        )
+        return {
+            "node_pointer": node_pointer,
+            "uuid": current["uuid"],
+            "previous_revision_uuid": current["revision_uuid"],
+            "revision_uuid": rev,
+            "notation": notation,
+            "markdown": block,
+            "resolved_pointers": resolved,
+            "reference_count": len(report.occurrences),
+            "warnings": report.warnings,
+        }
 
     def revert_node(self, *, request_id: str | None, pointer: str, target_revision_uuid: str, expected_revision_uuid: str | None = None, reason: str = "revert") -> dict[str, Any]:
         with connect(self.path, readonly=True) as read:
@@ -795,33 +1633,168 @@ class SQLitePGXStore:
     def add_triple(self, *, request_id: str | None, subject_pointer: str, predicate_pointer: str, object_pointer: str) -> dict[str, Any]:
         payload = {"subject_pointer": subject_pointer, "predicate_pointer": predicate_pointer, "object_pointer": object_pointer}
         def action(con: sqlite3.Connection, req: str) -> dict[str, Any]:
-            subject = self._current(con, subject_pointer)
-            predicate = self._current(con, predicate_pointer)
-            obj = self._current(con, object_pointer)
-            if not con.execute("SELECT 1 FROM predicate_registry WHERE predicate_uuid=?", (predicate["uuid"],)).fetchone():
-                raise ContractError("predicate pointer is not registered", {"pointer": predicate_pointer})
-            existing = con.execute(
-                "SELECT triple_uuid,created_at FROM triples WHERE subject_uuid=? AND predicate_uuid=? AND object_uuid=?",
-                (subject["uuid"], predicate["uuid"], obj["uuid"]),
-            ).fetchone()
-            if existing:
-                return {"triple_uuid": existing["triple_uuid"], "already_present": True}
-            namespace = self._namespace(con)
-            triple_uuid = derived_uuid(namespace, "triple", f"{subject['uuid']}|{predicate['uuid']}|{obj['uuid']}")
-            created = unique_timestamp(con, "triples")
-            con.execute(
-                "INSERT INTO triples(triple_uuid,subject_uuid,predicate_uuid,object_uuid,created_at,request_uuid) VALUES (?,?,?,?,?,?)",
-                (triple_uuid, subject["uuid"], predicate["uuid"], obj["uuid"], created, req),
+            return self._add_triple_in_transaction(
+                con,
+                req,
+                subject_pointer=subject_pointer,
+                predicate_pointer=predicate_pointer,
+                object_pointer=object_pointer,
             )
-            self._audit(con, request_uuid=req, operation_type="triple.add", details={"triple_uuid": triple_uuid, **payload})
-            return {"triple_uuid": triple_uuid, "already_present": False}
         return self._mutate("pgx.triple.add", request_id, payload, action)
+
+    def _add_triple_in_transaction(
+        self,
+        con: sqlite3.Connection,
+        req: str,
+        *,
+        subject_pointer: str,
+        predicate_pointer: str,
+        object_pointer: str,
+    ) -> dict[str, Any]:
+        payload = {
+            "subject_pointer": subject_pointer,
+            "predicate_pointer": predicate_pointer,
+            "object_pointer": object_pointer,
+        }
+        subject = self._current(con, subject_pointer)
+        predicate = self._current(con, predicate_pointer)
+        obj = self._current(con, object_pointer)
+        if not con.execute(
+            "SELECT 1 FROM predicate_registry WHERE predicate_uuid=?",
+            (predicate["uuid"],),
+        ).fetchone():
+            raise ContractError("predicate pointer is not registered", {"pointer": predicate_pointer})
+        existing = con.execute(
+            """SELECT triple_uuid,created_at FROM triples
+               WHERE subject_uuid=? AND predicate_uuid=? AND object_uuid=?""",
+            (subject["uuid"], predicate["uuid"], obj["uuid"]),
+        ).fetchone()
+        if existing:
+            return {"triple_uuid": existing["triple_uuid"], "already_present": True}
+        namespace = self._namespace(con)
+        triple_uuid = derived_uuid(
+            namespace,
+            "triple",
+            f"{subject['uuid']}|{predicate['uuid']}|{obj['uuid']}",
+        )
+        created = unique_timestamp(con, "triples")
+        con.execute(
+            """INSERT INTO triples
+               (triple_uuid,subject_uuid,predicate_uuid,object_uuid,created_at,request_uuid)
+               VALUES (?,?,?,?,?,?)""",
+            (triple_uuid, subject["uuid"], predicate["uuid"], obj["uuid"], created, req),
+        )
+        self._audit(
+            con,
+            request_uuid=req,
+            operation_type="triple.add",
+            details={"triple_uuid": triple_uuid, **payload},
+        )
+        return {"triple_uuid": triple_uuid, "already_present": False}
+
+    def _apply_batch_operations(
+        self,
+        connection: sqlite3.Connection,
+        request_uuid: str,
+        operations: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        results: list[dict[str, Any]] = []
+        for index, operation in enumerate(operations):
+            operation_name = operation["operation"]
+            arguments = operation["arguments"]
+            if operation_name == "node.create":
+                result = self._create_node_in_transaction(connection, request_uuid, **arguments)
+            elif operation_name == "node.update":
+                result = self._update_node_in_transaction(connection, request_uuid, **arguments)
+            elif operation_name == "traversal.embed":
+                result = self._embed_traversal_in_transaction(connection, request_uuid, **arguments)
+            elif operation_name == "triple.add":
+                result = self._add_triple_in_transaction(connection, request_uuid, **arguments)
+            else:
+                raise ContractError(
+                    "batch operation is not supported",
+                    {"index": index, "operation": operation_name},
+                )
+            results.append({"index": index, "operation": operation_name, "result": result})
+        return results
+
+    def batch_preflight(self, operations: list[dict[str, Any]]) -> dict[str, Any]:
+        if not 1 <= len(operations) <= 50:
+            raise ContractError("batch must contain between 1 and 50 operations")
+        connection = connect(self.path)
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            head = self._require_expected_head(connection)
+            extension_state = self._extension_state(connection)
+            if not extension_state["valid"]:
+                raise ContractError(
+                    "batch is blocked by extension registry state",
+                    {
+                        "unknown_tables": extension_state["unknown_tables"],
+                        "invalid_extensions": extension_state["invalid_extensions"],
+                    },
+                )
+            mode = self._mode_row(connection)
+            if mode is not None and mode["mode_key"] == "publish":
+                raise ConflictError("batch mutation is disabled while publish mode is active")
+            if self.change_set_id is not None:
+                change_set = connection.execute(
+                    "SELECT status FROM change_sets WHERE change_set_uuid=?",
+                    (self.change_set_id,),
+                ).fetchone()
+                if change_set is None:
+                    raise NotFoundError("change set does not exist", {"change_set_id": self.change_set_id})
+                if change_set["status"] != "open":
+                    raise ConflictError(
+                        "batch cannot attach to a resolved change set",
+                        {"change_set_id": self.change_set_id, "status": change_set["status"]},
+                    )
+            trial_request = str(uuid.uuid4())
+            self._apply_batch_operations(connection, trial_request, operations)
+            return {
+                "valid": True,
+                "operation_count": len(operations),
+                "operations": [
+                    {"index": index, "operation": operation["operation"]}
+                    for index, operation in enumerate(operations)
+                ],
+                "head": {
+                    "corpus_id": head["corpus_id"],
+                    "snapshot_uuid": head["snapshot_uuid"],
+                    "database_sequence": head["database_sequence"],
+                },
+                "would_advance_database_sequence_to": int(head["database_sequence"]) + 1,
+                "semantic_writes": 0,
+            }
+        finally:
+            connection.rollback()
+            connection.close()
+
+    def batch_apply(
+        self,
+        *,
+        request_id: str | None,
+        operations: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        if not 1 <= len(operations) <= 50:
+            raise ContractError("batch must contain between 1 and 50 operations")
+        payload = {"operations": operations}
+
+        def action(connection: sqlite3.Connection, req: str) -> dict[str, Any]:
+            results = self._apply_batch_operations(connection, req, operations)
+            return {
+                "operation_count": len(results),
+                "results": results,
+                "atomic": True,
+            }
+
+        return self._mutate("pgx.batch.apply", request_id, payload, action)
 
     def create_tag(self, *, request_id: str | None, pointer: str, title: str, description: str) -> dict[str, Any]:
         payload = {"pointer": pointer, "title": title, "description": description}
         def action(con: sqlite3.Connection, req: str) -> dict[str, Any]:
             graph = self._graph_by_prefix(con, "TGN")
-            self._check_graph_pointer(graph, pointer)
+            self._check_graph_pointer(con, graph, pointer)
             node, rev = self._insert_identity(con, pointer=pointer, title=title, description=description, lifecycle_state="promoted", request_uuid=req, reason="tag creation")
             self._replace_references(con, source_node_uuid=node, source_revision_uuid=rev, description=description, strict=True)
             con.execute("INSERT INTO graph_membership(graph_uuid,node_uuid,ordinal) VALUES (?,?,?)", (graph["graph_uuid"], node, self._next_ordinal(con, graph["graph_uuid"])))
@@ -1521,10 +2494,24 @@ class SQLitePGXStore:
             if missing_members: errors.append({"code":"promoted_without_graph","pointers":missing_members[:50],"count":len(missing_members)})
             staged_members=[r[0] for r in connection.execute("SELECT pointer FROM node_identity i WHERE lifecycle_state='staged' AND EXISTS(SELECT 1 FROM graph_membership gm WHERE gm.node_uuid=i.uuid)")]
             if staged_members: errors.append({"code":"staged_in_graph","pointers":staged_members})
-            prefix_bad=[]
-            for r in connection.execute("""SELECT i.pointer,g.pointer_prefix,g.graph_key FROM graph_membership gm JOIN node_identity i ON i.uuid=gm.node_uuid JOIN graphs g ON g.graph_uuid=gm.graph_uuid"""):
-                if not r["pointer"].startswith(r["pointer_prefix"]): prefix_bad.append(dict(r))
-            if prefix_bad: errors.append({"code":"graph_prefix","rows":prefix_bad[:50],"count":len(prefix_bad)})
+            namespace_bad=[]
+            for r in connection.execute(
+                """SELECT i.pointer,g.graph_uuid,g.pointer_prefix,g.graph_key
+                   FROM graph_membership gm
+                   JOIN node_identity i ON i.uuid=gm.node_uuid
+                   JOIN graphs g ON g.graph_uuid=gm.graph_uuid"""
+            ):
+                resolved = self._resolve_graph_namespace(connection, r["pointer"])
+                if resolved is None or resolved["graph_uuid"] != r["graph_uuid"]:
+                    namespace_bad.append({
+                        "pointer": r["pointer"],
+                        "assigned_graph_key": r["graph_key"],
+                        "assigned_prefix": r["pointer_prefix"],
+                        "resolved_graph_key": resolved["graph_key"] if resolved else None,
+                        "resolved_prefix": resolved["pointer_prefix"] if resolved else None,
+                    })
+            if namespace_bad:
+                errors.append({"code":"graph_namespace","rows":namespace_bad[:50],"count":len(namespace_bad)})
             if full:
                 ref_mismatches=[]; ref_errors=[]; roundtrip=[]
                 profile=self._profile(connection)
@@ -1547,6 +2534,78 @@ class SQLitePGXStore:
             checks["triples"]=connection.execute("SELECT COUNT(*) FROM triples").fetchone()[0]
             checks["tags"]=connection.execute("SELECT COUNT(*) FROM tag_registry").fetchone()[0]
             checks["database_sequence"]=int(meta.get("database_sequence","-1"))
+            if self._change_set_schema_present(connection):
+                checks["open_change_sets"] = self._open_change_set_count(connection)
+                orphan_receipts = int(connection.execute(
+                    """SELECT COUNT(*) FROM change_set_receipts csr
+                       LEFT JOIN operation_ledger ol ON ol.request_uuid=csr.request_uuid
+                       WHERE ol.request_uuid IS NULL
+                          OR ol.change_set_uuid IS NOT csr.change_set_uuid
+                          OR ol.database_sequence IS NOT csr.database_sequence"""
+                ).fetchone()[0])
+                checks["change_set_receipt_errors"] = orphan_receipts
+                if orphan_receipts:
+                    errors.append({"code": "change_set_receipts", "count": orphan_receipts})
+            else:
+                checks["open_change_sets"] = 0
+            extension_state = self._extension_state(connection)
+            checks["extension_registry"] = {
+                "migration_required": extension_state["migration_required"],
+                "extension_count": len(extension_state["extensions"]),
+                "unknown_tables": extension_state["unknown_tables"],
+                "invalid_extensions": extension_state["invalid_extensions"],
+            }
+            if extension_state["unknown_tables"]:
+                errors.append({
+                    "code": "unclassified_extension_tables",
+                    "tables": extension_state["unknown_tables"],
+                })
+            elif extension_state["migration_required"]:
+                warnings.append({
+                    "code": "extension_registry_migration_required",
+                    "message": "Inspection is allowed, but mutation requires safe workspace adoption.",
+                })
+            if extension_state["invalid_extensions"]:
+                errors.append({
+                    "code": "extension_schema_drift",
+                    "extensions": extension_state["invalid_extensions"],
+                })
+            head = self._head_row(connection)
+            if head is None:
+                checks["authority_head"] = "migration_required"
+                warnings.append({
+                    "code": "authority_migration_required",
+                    "message": "Inspection is allowed, but mutation requires an explicit authority migration.",
+                })
+            else:
+                checks["authority_head"] = {
+                    "corpus_id": head["corpus_id"],
+                    "snapshot_uuid": head["snapshot_uuid"],
+                    "database_sequence": head["database_sequence"],
+                }
+                snapshot = connection.execute(
+                    """SELECT corpus_id,database_sequence FROM semantic_snapshots
+                       WHERE snapshot_uuid=?""",
+                    (head["snapshot_uuid"],),
+                ).fetchone()
+                authority_mismatches = []
+                expected_corpus = meta.get("corpus_id") or meta.get("database_uuid")
+                if head["corpus_id"] != expected_corpus:
+                    authority_mismatches.append("corpus_id")
+                if int(head["database_sequence"]) != checks["database_sequence"]:
+                    authority_mismatches.append("database_sequence")
+                if snapshot is None:
+                    authority_mismatches.append("snapshot_uuid")
+                elif (
+                    snapshot["corpus_id"] != head["corpus_id"]
+                    or int(snapshot["database_sequence"]) != int(head["database_sequence"])
+                ):
+                    authority_mismatches.append("snapshot_metadata")
+                if authority_mismatches:
+                    errors.append({
+                        "code": "authority_head_mismatch",
+                        "fields": authority_mismatches,
+                    })
             return {"valid":not errors,"checks":checks,"errors":errors,"warnings":warnings}
         finally:
             connection.close()
@@ -1573,7 +2632,7 @@ class SQLitePGXStore:
         def action(connection: sqlite3.Connection, req: str) -> dict[str, Any]:
             self._ensure_lineage_schema(connection)
             graph = self._ensure_sentinel_graph(connection, req)
-            self._check_graph_pointer(graph, pointer)
+            self._check_graph_pointer(connection, graph, pointer)
             node, revision = self._insert_identity(connection, pointer=pointer, title=title, description=guidance, lifecycle_state="promoted", request_uuid=req, reason="create advisory sentinel")
             connection.execute("INSERT INTO graph_membership(graph_uuid,node_uuid,ordinal) VALUES (?,?,?)", (graph["graph_uuid"], node, self._next_ordinal(connection, graph["graph_uuid"])))
             connection.execute("INSERT INTO sentinel_guidance(node_uuid,scope,active,created_at) VALUES (?,?,1,?)", (node, scope, unique_timestamp(connection, "sentinel_guidance", "created_at")))
@@ -1624,6 +2683,7 @@ class SQLitePGXStore:
             connection.close()
 
     def materialize_database(self, output: str | Path, *, overwrite: bool = False) -> dict[str, Any]:
+        self.require_publish_mode("pgx.materialize.database")
         target = Path(output).expanduser().resolve()
         if target == self.path.resolve():
             raise ContractError("materialization output must differ from the authoritative database", {"output": str(target)})

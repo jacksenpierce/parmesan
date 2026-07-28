@@ -26,8 +26,8 @@ def test_catalog_profiles_hide_secondary_tools_by_default():
     all_tools = parmesan.catalog("all")
     compatibility = parmesan.catalog("compatibility")
 
-    assert len(core) == 17
-    assert len(all_tools) == 40
+    assert len(core) == 31
+    assert len(all_tools) == 54
     assert all(item["profile"] == "core" for item in core)
     assert all(item["contract_level"] == "guaranteed" for item in core)
     assert all(item["success_example"] for item in core)
@@ -39,6 +39,18 @@ def test_catalog_profiles_hide_secondary_tools_by_default():
         "pgx.node.create",
         "pgx.database.validate",
         "pgx.traversal.embed",
+        "pgx.workspace.initialize",
+        "pgx.workspace.inspect",
+        "pgx.handoff.publish",
+        "pgx.handoff.inspect",
+        "pgx.change_set.open",
+        "pgx.change_set.list",
+        "pgx.change_set.show",
+        "pgx.change_set.resolve",
+        "pgx.workspace.adopt",
+        "pgx.extension.inspect",
+        "pgx.batch.preflight",
+        "pgx.batch.apply",
     }
     assert all(item["status"] == "deprecated" for item in compatibility)
 
@@ -113,6 +125,8 @@ def test_zero_context_docs_cover_observed_handoff_failures():
     release = json.loads((package_root / "RELEASE.json").read_text(encoding="utf-8"))
 
     assert "expected_revision_uuid" in start
+    assert "expected_head" in start
+    assert "pgx.handoff.publish" in start
     assert 'response["result"]["pgx"]' in start
     assert "-wal" in start and "-shm" in start
     assert 'response["result"]["pgx"]' in contract

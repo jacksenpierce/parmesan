@@ -14,6 +14,7 @@ def test_materializations_share_semantic_snapshot_and_have_unique_identity(tmp_p
         request_id=str(uuid.uuid4()), graph_key="knowledge", pointer_prefix="K", declaration_pointer="K0",
         title="Knowledge", description="A graph used to test lineage.",
     )
+    store.mode_set(request_id=str(uuid.uuid4()), mode="publish", reason="test explicit materialization")
     first = store.materialize_database(tmp_path / "first.sqlite")
     second = store.materialize_database(tmp_path / "second.sqlite")
     assert first["corpus_id"] == second["corpus_id"]
@@ -28,12 +29,17 @@ def test_independent_workstreams_compare_as_reconciliation_candidates(tmp_path: 
         request_id=str(uuid.uuid4()), graph_key="knowledge", pointer_prefix="K", declaration_pointer="K0",
         title="Knowledge", description="A graph used to test divergence.",
     )
+    store.mode_set(request_id=str(uuid.uuid4()), mode="publish", reason="test explicit branch materialization")
     left_path = tmp_path / "left.sqlite"
     right_path = tmp_path / "right.sqlite"
     store.materialize_database(left_path)
     shutil.copy2(left_path, right_path)
-    left = SQLitePGXStore(left_path)
-    right = SQLitePGXStore(right_path)
+    left_inspector = SQLitePGXStore(left_path)
+    right_inspector = SQLitePGXStore(right_path)
+    left = SQLitePGXStore(left_path, expected_head=left_inspector.current_head())
+    right = SQLitePGXStore(right_path, expected_head=right_inspector.current_head())
+    left.mode_set(request_id=str(uuid.uuid4()), mode="working", reason="continue left branch")
+    right.mode_set(request_id=str(uuid.uuid4()), mode="working", reason="continue right branch")
     left.create_node(request_id=str(uuid.uuid4()), pointer="K1", title="Left", description="Left branch evidence.", graph_key="knowledge")
     right.create_node(request_id=str(uuid.uuid4()), pointer="K2", title="Right", description="Right branch evidence.", graph_key="knowledge")
     comparison = left.compare_lineage(right_path)

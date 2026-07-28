@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## 3.0.0
+
+MIC-ready authority and workflow release.
+
+- Added copy-only legacy workspace adoption with source-hash and count attestations, explicit extension table classification, schema fingerprints, machinery declarations, and fail-closed unknown-table/schema-drift checks. Existing sentinel graph members are adopted regardless of historical pointer-prefix convention.
+- Added durable resumable change sets with persisted intent, base snapshot, ordered mutation receipts, explicit resolution states, and a publication interlock for unfinished work. Added bounded batch preflight with zero persistent writes and atomic apply for prepared node, revision, traversal, and relation plans; successful batches advance one head.
+- Added managed MIC workspaces and bounded handoff publication. Workspaces declare one authoritative corpus and reject unregistered SQLite candidates; each atomic handoff carries a receipt with corpus, head, byte hash, and machinery identity, while publication automatically returns the source to working mode.
+- Added an embedded, append-only corpus-head chain and required callers to supply the last observed head for every mutation. Missing and stale heads now fail closed, while each normal write advances authority using an O(delta) transition digest instead of rescanning or serializing the knowledge base.
+- Added persistent working and publish modes. Fresh and legacy corpora default safely to working mode; external manifests and database materializations require an explicit publish-mode transition, while publish mode freezes semantic mutation.
+- Resolved overlapping graph namespaces by assigning pointers to the uniquely longest registered prefix and validating memberships against that canonical resolution.
 - Documented the small-branch, pull-request, and periodic-release workflow for maintainers.
 - Added the complete agent-facing “Construal Engineering with Parmesan” guide verbatim to the required operating context.
 - Added an annotated corpus-artifact intake area and preserved the quarantined Lexicon Lab as a focused Construal Engineering experiment lobe.

@@ -47,6 +47,7 @@ def test_embed_tool_composes_resolves_and_appends_atomically(store):
         "tool": "pgx.traversal.embed",
         "database": str(store.path),
         "request_id": request_id,
+        "expected_head": store.current_head(),
         "arguments": {
             "node_pointer": "E4",
             "expression": _nested_expression(),
@@ -90,6 +91,7 @@ def test_embed_tool_rejects_unresolved_expression_pointer_without_revision(store
         "tool": "pgx.traversal.embed",
         "database": str(store.path),
         "request_id": str(uuid.uuid4()),
+        "expected_head": store.current_head(),
         "arguments": {
             "node_pointer": "E2",
             "expression": {
@@ -111,6 +113,7 @@ def test_embed_tool_rejects_raw_string_operands(store):
         "tool": "pgx.traversal.embed",
         "database": str(store.path),
         "request_id": str(uuid.uuid4()),
+        "expected_head": store.current_head(),
         "arguments": {
             "node_pointer": "E0",
             "expression": {

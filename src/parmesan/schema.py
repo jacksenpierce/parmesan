@@ -6,10 +6,46 @@ from pathlib import Path
 
 from .timeutil import now_rfc3339_ns
 
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 6
 PRODUCT = "Parmesan"
 DEFAULT_POINTER_PATTERN = r"[A-Za-z][A-Za-z0-9._-]*"
 DEFAULT_URI_TEMPLATE = "{pointer}"
+
+CORE_TABLE_NAMES = frozenset({
+    "audit_event",
+    "change_set_receipts",
+    "change_sets",
+    "corpus_head",
+    "corpus_workstreams",
+    "extension_registry",
+    "extension_tables",
+    "graph_membership",
+    "graphs",
+    "materializations",
+    "metadata",
+    "node_fts",
+    "node_fts_config",
+    "node_fts_content",
+    "node_fts_data",
+    "node_fts_docsize",
+    "node_fts_idx",
+    "node_identity",
+    "node_revision",
+    "node_tags",
+    "operating_mode_history",
+    "operating_mode_state",
+    "operation_ledger",
+    "predicate_registry",
+    "reference_occurrences",
+    "reference_profiles",
+    "schema_migrations",
+    "semantic_snapshots",
+    "sentinel_guidance",
+    "staging_issues",
+    "staging_queue",
+    "tag_registry",
+    "triples",
+})
 
 DDL = r"""
 PRAGMA foreign_keys=ON;
@@ -146,7 +182,11 @@ CREATE TABLE operation_ledger (
   result_json TEXT,
   started_at TEXT NOT NULL UNIQUE,
   committed_at TEXT,
-  database_sequence INTEGER
+  database_sequence INTEGER,
+  input_snapshot_uuid TEXT,
+  output_snapshot_uuid TEXT,
+  transition_digest TEXT,
+  change_set_uuid TEXT REFERENCES change_sets(change_set_uuid) ON UPDATE RESTRICT ON DELETE RESTRICT
 ) STRICT, WITHOUT ROWID;
 
 CREATE TABLE audit_event (
@@ -193,6 +233,94 @@ CREATE TABLE sentinel_guidance (
   active INTEGER NOT NULL DEFAULT 1 CHECK(active IN (0,1)),
   created_at TEXT NOT NULL UNIQUE
 ) STRICT, WITHOUT ROWID;
+
+CREATE TABLE operating_mode_state (
+  singleton_id INTEGER NOT NULL PRIMARY KEY CHECK(singleton_id=1),
+  mode_key TEXT NOT NULL CHECK(mode_key IN ('working','publish')),
+  revision INTEGER NOT NULL CHECK(revision>=1),
+  updated_at TEXT NOT NULL UNIQUE,
+  reason TEXT NOT NULL
+) STRICT, WITHOUT ROWID;
+
+CREATE TABLE operating_mode_history (
+  transition_uuid TEXT NOT NULL PRIMARY KEY,
+  from_mode_key TEXT CHECK(from_mode_key IN ('working','publish')),
+  to_mode_key TEXT NOT NULL CHECK(to_mode_key IN ('working','publish')),
+  revision INTEGER NOT NULL UNIQUE CHECK(revision>=1),
+  changed_at TEXT NOT NULL UNIQUE,
+  reason TEXT NOT NULL,
+  request_uuid TEXT
+) STRICT, WITHOUT ROWID;
+
+CREATE TABLE semantic_snapshots (
+  snapshot_uuid TEXT NOT NULL PRIMARY KEY,
+  parent_snapshot_uuid TEXT REFERENCES semantic_snapshots(snapshot_uuid) ON UPDATE RESTRICT ON DELETE RESTRICT,
+  corpus_id TEXT NOT NULL,
+  database_sequence INTEGER NOT NULL CHECK(database_sequence>=0),
+  transition_digest TEXT NOT NULL,
+  request_uuid TEXT,
+  tool_name TEXT NOT NULL,
+  created_at TEXT NOT NULL UNIQUE,
+  UNIQUE(corpus_id,database_sequence)
+) STRICT, WITHOUT ROWID;
+
+CREATE TABLE corpus_head (
+  singleton_id INTEGER NOT NULL PRIMARY KEY CHECK(singleton_id=1),
+  corpus_id TEXT NOT NULL,
+  snapshot_uuid TEXT NOT NULL REFERENCES semantic_snapshots(snapshot_uuid) ON UPDATE RESTRICT ON DELETE RESTRICT,
+  database_sequence INTEGER NOT NULL CHECK(database_sequence>=0),
+  last_request_uuid TEXT,
+  updated_at TEXT NOT NULL
+) STRICT, WITHOUT ROWID;
+
+CREATE TABLE change_sets (
+  change_set_uuid TEXT NOT NULL PRIMARY KEY,
+  title TEXT NOT NULL,
+  intent TEXT NOT NULL,
+  status TEXT NOT NULL CHECK(status IN ('open','completed','abandoned','superseded')),
+  base_snapshot_uuid TEXT NOT NULL REFERENCES semantic_snapshots(snapshot_uuid) ON UPDATE RESTRICT ON DELETE RESTRICT,
+  created_at TEXT NOT NULL UNIQUE,
+  resolved_at TEXT,
+  resolution TEXT NOT NULL DEFAULT ''
+) STRICT, WITHOUT ROWID;
+
+CREATE TABLE change_set_receipts (
+  change_set_uuid TEXT NOT NULL REFERENCES change_sets(change_set_uuid) ON UPDATE RESTRICT ON DELETE RESTRICT,
+  ordinal INTEGER NOT NULL CHECK(ordinal>=1),
+  request_uuid TEXT NOT NULL UNIQUE REFERENCES operation_ledger(request_uuid) ON UPDATE RESTRICT ON DELETE RESTRICT,
+  tool_name TEXT NOT NULL,
+  database_sequence INTEGER NOT NULL CHECK(database_sequence>=1),
+  output_snapshot_uuid TEXT NOT NULL REFERENCES semantic_snapshots(snapshot_uuid) ON UPDATE RESTRICT ON DELETE RESTRICT,
+  PRIMARY KEY(change_set_uuid,ordinal)
+) STRICT, WITHOUT ROWID;
+
+CREATE TABLE extension_registry (
+  extension_key TEXT NOT NULL PRIMARY KEY,
+  extension_version TEXT NOT NULL,
+  schema_fingerprint TEXT NOT NULL,
+  required_machinery TEXT NOT NULL,
+  registered_at TEXT NOT NULL UNIQUE
+) STRICT, WITHOUT ROWID;
+
+CREATE TABLE extension_tables (
+  table_name TEXT NOT NULL PRIMARY KEY,
+  extension_key TEXT NOT NULL REFERENCES extension_registry(extension_key) ON UPDATE RESTRICT ON DELETE RESTRICT,
+  classification TEXT NOT NULL CHECK(classification IN ('semantic','operational','derived','excluded'))
+) STRICT, WITHOUT ROWID;
+
+CREATE TRIGGER change_sets_no_delete
+BEFORE DELETE ON change_sets BEGIN SELECT RAISE(ABORT,'change sets cannot be deleted'); END;
+CREATE TRIGGER change_set_receipts_append_only_update
+BEFORE UPDATE ON change_set_receipts BEGIN SELECT RAISE(ABORT,'change set receipts are append-only'); END;
+CREATE TRIGGER change_set_receipts_append_only_delete
+BEFORE DELETE ON change_set_receipts BEGIN SELECT RAISE(ABORT,'change set receipts are append-only'); END;
+
+CREATE TRIGGER semantic_snapshots_append_only_update
+BEFORE UPDATE ON semantic_snapshots BEGIN SELECT RAISE(ABORT,'semantic snapshots are append-only'); END;
+CREATE TRIGGER semantic_snapshots_append_only_delete
+BEFORE DELETE ON semantic_snapshots BEGIN SELECT RAISE(ABORT,'semantic snapshots are append-only'); END;
+CREATE TRIGGER corpus_head_no_delete
+BEFORE DELETE ON corpus_head BEGIN SELECT RAISE(ABORT,'corpus head cannot be deleted'); END;
 
 CREATE VIRTUAL TABLE node_fts USING fts5(
   pointer,
@@ -361,7 +489,20 @@ def create_empty_database(
     connection.executemany("INSERT INTO metadata(key,value) VALUES (?,?)", metadata.items())
     connection.execute(
         "INSERT INTO schema_migrations(version,applied_at,description) VALUES (?,?,?)",
-        (SCHEMA_VERSION, now_rfc3339_ns(), "Parmesan 2.7 lineage, materialization, and advisory sentinel metadata"),
+        (SCHEMA_VERSION, now_rfc3339_ns(), "Parmesan 3.0 authority, modes, workspaces, change sets, and extensions"),
+    )
+    initial_mode_at = now_rfc3339_ns()
+    initial_transition_uuid = str(uuid.uuid4())
+    connection.execute(
+        """INSERT INTO operating_mode_state(singleton_id,mode_key,revision,updated_at,reason)
+           VALUES (1,'working',1,?,'default safe working mode')""",
+        (initial_mode_at,),
+    )
+    connection.execute(
+        """INSERT INTO operating_mode_history
+           (transition_uuid,from_mode_key,to_mode_key,revision,changed_at,reason,request_uuid)
+           VALUES (?,NULL,'working',1,?,'default safe working mode',NULL)""",
+        (initial_transition_uuid, initial_mode_at),
     )
     connection.execute(
         """INSERT INTO reference_profiles

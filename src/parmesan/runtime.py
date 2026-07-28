@@ -71,10 +71,36 @@ def describe_corpus(database: str | Path) -> dict[str, Any]:
                 """SELECT n.pointer,n.title,n.description,s.scope FROM sentinel_guidance s
                    JOIN current_nodes n ON n.uuid=s.node_uuid WHERE s.active=1 ORDER BY s.created_at,n.pointer LIMIT 20"""
             )]
+        mode_row = None
+        if connection.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='operating_mode_state'"
+        ).fetchone() is not None:
+            mode_row = connection.execute(
+                "SELECT mode_key,revision,updated_at,reason FROM operating_mode_state WHERE singleton_id=1"
+            ).fetchone()
+        head_row = None
+        if connection.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='corpus_head'"
+        ).fetchone() is not None:
+            head_row = connection.execute(
+                "SELECT corpus_id,snapshot_uuid,database_sequence FROM corpus_head WHERE singleton_id=1"
+            ).fetchone()
+        open_change_sets = []
+        if connection.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='change_sets'"
+        ).fetchone() is not None:
+            open_change_sets = [
+                dict(row)
+                for row in connection.execute(
+                    """SELECT change_set_uuid AS change_set_id,title,intent,created_at
+                       FROM change_sets WHERE status='open' ORDER BY created_at LIMIT 20"""
+                )
+            ]
     finally:
         connection.close()
 
     metadata = manifest["metadata"]
+    extension_state = SQLitePGXStore(path).extension_inspect()
     return {
         "database": str(path),
         "product": manifest["product"],
@@ -92,7 +118,25 @@ def describe_corpus(database: str | Path) -> dict[str, Any]:
         "network_behavior": metadata.get("reference_network_behavior", "none"),
         "reserved_seed_pointers": reserved,
         "active_sentinels": sentinel_rows,
+        "operating_mode": {
+            "mode": mode_row["mode_key"] if mode_row else "working",
+            "revision": mode_row["revision"] if mode_row else 0,
+            "persisted": mode_row is not None,
+            "publication_enabled": bool(mode_row and mode_row["mode_key"] == "publish"),
+            "reason": mode_row["reason"] if mode_row else "legacy corpus defaults safely to working mode",
+        },
+        "head": dict(head_row) if head_row else None,
+        "mutation_authority": (
+            "Supply this exact head as expected_head, then carry each successful result head forward."
+            if head_row
+            else "Inspection only until the explicit authority migration is applied."
+        ),
+        "open_change_sets": open_change_sets,
+        "extension_registry": extension_state,
         "next_actions": [
+            "Remain in working mode for ordinary semantic work; external publication is disabled by default.",
+            "For mutation, supply the displayed head as expected_head and carry each returned head forward.",
+            "Resume or explicitly resolve any open change set before publication.",
             "Use pgx.graph.create before adding notes to a new subject graph.",
             "Create referenced target nodes before notes that link to them.",
             "Use pgx.database.validate after a mutation sequence.",

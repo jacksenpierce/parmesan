@@ -9,6 +9,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+from datetime import datetime, timezone
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -27,10 +28,18 @@ def main() -> None:
     run("generate_release_metadata.py")
     run("build_catalogs.py")
     shutil.rmtree(ROOT / "dist", ignore_errors=True)
+    release = json.loads((ROOT / "RELEASE_MANIFEST.json").read_text(encoding="utf-8"))
+    built_at = datetime.fromisoformat(str(release["built_at_utc"]).replace("Z", "+00:00"))
+    build_environment = {
+        **os.environ,
+        "PIP_DISABLE_PIP_VERSION_CHECK": "1",
+        "PYTHONHASHSEED": "0",
+        "SOURCE_DATE_EPOCH": str(int(built_at.astimezone(timezone.utc).timestamp())),
+    }
     subprocess.run(
         [sys.executable, "-m", "pip", "wheel", ".", "--no-deps", "--no-build-isolation", "--wheel-dir", "dist"],
         cwd=ROOT,
-        env={**os.environ, "PIP_DISABLE_PIP_VERSION_CHECK": "1"},
+        env=build_environment,
         check=True,
     )
     run("validate_release.py")

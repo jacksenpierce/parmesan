@@ -14,12 +14,21 @@ sys.path.insert(0, str(ROOT / "src"))
 from parmesan import dispatch, doctor  # noqa: E402
 
 
-def call(tool: str, arguments: dict, *, database: Path | None = None, mutates: bool = False) -> dict:
+def call(
+    tool: str,
+    arguments: dict,
+    *,
+    database: Path | None = None,
+    mutates: bool = False,
+    expected_head: dict | None = None,
+) -> dict:
     request = {"tool": tool, "arguments": arguments}
     if database is not None:
         request["database"] = str(database)
     if mutates:
         request["request_id"] = str(uuid.uuid4())
+        if tool != "pgx.database.initialize":
+            request["expected_head"] = expected_head
     response = dispatch(request)
     if not response["ok"]:
         raise RuntimeError(json.dumps(response, indent=2))
@@ -38,8 +47,9 @@ def main() -> None:
     if not readiness["ready"]:
         raise RuntimeError(json.dumps(readiness, indent=2))
 
-    call("pgx.database.initialize", {"path": str(database)}, mutates=True)
-    call(
+    initialized = call("pgx.database.initialize", {"path": str(database)}, mutates=True)
+    head = initialized["head"]
+    created_graph = call(
         "pgx.graph.create",
         {
             "graph_key": "cell-biology",
@@ -50,8 +60,10 @@ def main() -> None:
         },
         database=database,
         mutates=True,
+        expected_head=head,
     )
-    call(
+    head = created_graph["head"]
+    created_membrane = call(
         "pgx.node.create",
         {
             "pointer": "CB1",
@@ -61,8 +73,10 @@ def main() -> None:
         },
         database=database,
         mutates=True,
+        expected_head=head,
     )
-    call(
+    head = created_membrane["head"]
+    created_transport = call(
         "pgx.node.create",
         {
             "pointer": "CB2",
@@ -72,11 +86,13 @@ def main() -> None:
         },
         database=database,
         mutates=True,
+        expected_head=head,
     )
+    head = created_transport["head"]
     validation = call("pgx.database.validate", {}, database=database)
     context = call("pgx.context.build", {"pointer": "CB2"}, database=database)
 
-    print(json.dumps({"database": str(database), "validation": validation, "context": context}, indent=2))
+    print(json.dumps({"database": str(database), "head": head, "validation": validation, "context": context}, indent=2))
 
 
 if __name__ == "__main__":

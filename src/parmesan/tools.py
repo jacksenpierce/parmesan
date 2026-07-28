@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any, Callable, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -9,6 +9,7 @@ from .manifest import build_manifest
 from .runtime import describe_corpus, doctor
 from .store import SQLitePGXStore
 from .tool_contracts import FAILURE_EXAMPLES, NEXT_TOOLS, RESULT_SCHEMAS, SUCCESS_EXAMPLES, response_schema
+from .workspace import adopt_workspace, initialize_workspace, inspect_handoff, inspect_workspace, publish_handoff
 
 
 class ToolArgs(BaseModel):
@@ -197,6 +198,35 @@ class TraversalEmbedArgs(ToolArgs):
     reason: str = "embed lawful PGX traversal expression"
 
 
+class BatchNodeCreateOperation(ToolArgs):
+    operation: Literal["node.create"]
+    arguments: NodeCreateArgs
+
+
+class BatchNodeUpdateOperation(ToolArgs):
+    operation: Literal["node.update"]
+    arguments: NodeUpdateArgs
+
+
+class BatchTraversalEmbedOperation(ToolArgs):
+    operation: Literal["traversal.embed"]
+    arguments: TraversalEmbedArgs
+
+
+class BatchTripleAddOperation(ToolArgs):
+    operation: Literal["triple.add"]
+    arguments: TripleAddArgs
+
+
+class BatchPlanArgs(ToolArgs):
+    operations: list[
+        BatchNodeCreateOperation
+        | BatchNodeUpdateOperation
+        | BatchTraversalEmbedOperation
+        | BatchTripleAddOperation
+    ] = Field(min_length=1, max_length=50)
+
+
 class ContextArgs(ToolArgs):
     pointer: str
     max_nodes: int = Field(default=20, ge=1, le=50)
@@ -212,6 +242,69 @@ class ManifestArgs(ToolArgs):
 class MaterializeDatabaseArgs(ToolArgs):
     output: str
     overwrite: bool = False
+
+
+class ModeSetArgs(ToolArgs):
+    mode: Literal["working", "publish"]
+    reason: str = Field(min_length=1, max_length=500)
+
+
+class WorkspaceInitializeArgs(ToolArgs):
+    root: str
+    database_name: str = "corpus.sqlite"
+
+
+class WorkspaceInspectArgs(ToolArgs):
+    root: str
+
+
+class ExtensionTableArgs(ToolArgs):
+    table_name: str
+    classification: Literal["semantic", "operational", "derived", "excluded"]
+
+
+class ExtensionRegistrationArgs(ToolArgs):
+    extension_key: str
+    extension_version: str
+    required_machinery: str = ""
+    tables: list[ExtensionTableArgs] = Field(min_length=1)
+
+
+class WorkspaceAdoptArgs(ToolArgs):
+    source_database: str
+    root: str
+    extensions: list[ExtensionRegistrationArgs] = Field(default_factory=list)
+
+
+class HandoffPublishArgs(ToolArgs):
+    workspace_root: str
+    name: str
+
+
+class HandoffInspectArgs(ToolArgs):
+    receipt: str
+    candidate_database: str | None = None
+
+
+class ChangeSetOpenArgs(ToolArgs):
+    title: str = Field(min_length=1, max_length=200)
+    intent: str = Field(min_length=1, max_length=4000)
+
+
+class ChangeSetListArgs(ToolArgs):
+    status: Literal["open", "completed", "abandoned", "superseded"] | None = None
+    limit: int = Field(default=50, ge=1, le=100)
+
+
+class ChangeSetShowArgs(ToolArgs):
+    change_set_id: str
+    receipt_limit: int = Field(default=100, ge=1, le=200)
+
+
+class ChangeSetResolveArgs(ToolArgs):
+    change_set_id: str
+    status: Literal["completed", "abandoned", "superseded"]
+    resolution: str = Field(min_length=1, max_length=4000)
 
 
 class LineageCompareArgs(ToolArgs):
@@ -277,6 +370,7 @@ def _init(_, args: InitArgs, ctx):
     store = SQLitePGXStore.initialize(args.path, overwrite=args.overwrite, uri_template=args.uri_template, resolver_status=args.resolver_status)
     return {
         "database": str(store.path),
+        "head": store.current_head(),
         "validation": store.validate_database(full=True),
         "description": describe_corpus(store.path),
     }
@@ -285,6 +379,135 @@ def _init(_, args: InitArgs, ctx):
 @register("pgx.database.describe", "Orient the operating LLM to an existing corpus: counts, graphs, pointer grammar, reserved seed pointers, and next actions.", EmptyArgs, max_output="one compact corpus orientation report")
 def _describe(store, args, ctx):
     return describe_corpus(store.path)
+
+
+@register("pgx.mode.show", "Show the persistent operating mode. Working mode is the safe default and disables external materialization.", EmptyArgs, max_output="one mode state")
+def _mode_show(store, args, ctx):
+    return store.mode_show()
+
+
+@register("pgx.mode.set", "Explicitly toggle between safe working mode and the bounded publication gate. Changing mode does not itself materialize anything.", ModeSetArgs, **MUTATION_META)
+def _mode_set(store, args: ModeSetArgs, ctx):
+    return store.mode_set(request_id=ctx["request_id"], **args.model_dump())
+
+
+@register(
+    "pgx.workspace.initialize",
+    "Create a managed MIC workspace with one declared authoritative corpus and separate machinery, resources, projections, scratch, and handoff areas.",
+    WorkspaceInitializeArgs,
+    database_required=False,
+    mutates=True,
+    idempotency="filesystem create; managed workspaces are never overwritten in place",
+    transaction="creates the workspace skeleton, fresh authoritative database, then atomically writes its manifest",
+    max_output="one workspace identity, database path, and initial head",
+)
+def _workspace_initialize(store, args: WorkspaceInitializeArgs, ctx):
+    return initialize_workspace(**args.model_dump())
+
+
+@register(
+    "pgx.workspace.inspect",
+    "Verify a managed workspace's declared authority, corpus identity, immutable SQLite resources, and completed handoffs; unregistered SQLite files fail inspection.",
+    WorkspaceInspectArgs,
+    database_required=False,
+    max_output="one bounded workspace safety report",
+)
+def _workspace_inspect(store, args: WorkspaceInspectArgs, ctx):
+    return inspect_workspace(args.root)
+
+
+@register(
+    "pgx.workspace.adopt",
+    "Adopt a legacy corpus into a new managed workspace without modifying the supplied source; every private table must be explicitly classified as an extension.",
+    WorkspaceAdoptArgs,
+    database_required=False,
+    mutates=True,
+    idempotency="filesystem create; adoption always requires a new destination",
+    transaction="SQLite backup into a new workspace followed by copy-local migration and atomic attestations; failures remove the new workspace",
+    max_output="one adopted workspace, source attestation, head, and preserved semantic counts",
+)
+def _workspace_adopt(store, args: WorkspaceAdoptArgs, ctx):
+    return adopt_workspace(**args.model_dump())
+
+
+@register(
+    "pgx.extension.inspect",
+    "Inspect registered extension versions, required machinery, table classifications, and any unknown tables that block mutation.",
+    EmptyArgs,
+    max_output="one bounded extension registry report",
+)
+def _extension_inspect(store, args, ctx):
+    return store.extension_inspect()
+
+
+@register(
+    "pgx.handoff.publish",
+    "Atomically publish one database-and-receipt handoff from a managed workspace, using publish mode only for the bounded operation and automatically returning the source to working mode.",
+    HandoffPublishArgs,
+    **{
+        **MUTATION_META,
+        "idempotency": "the publication request UUID deterministically identifies the handoff; exact replay returns the verified existing result",
+        "transaction": "two authority transitions bracket one staged-and-atomically-renamed handoff directory",
+    },
+    preconditions=("request database is the workspace authority", "workspace inspection is valid", "source starts in working mode"),
+    postconditions=("handoff hash and head are receipted", "source returns to working mode"),
+    max_output="one handoff receipt and the source/artifact heads",
+)
+def _handoff_publish(store, args: HandoffPublishArgs, ctx):
+    return publish_handoff(store, request_id=ctx["request_id"], **args.model_dump())
+
+
+@register(
+    "pgx.handoff.inspect",
+    "Classify a handoff candidate by receipt, corpus identity, embedded head, lineage, byte hash, and machinery identity instead of trusting its path.",
+    HandoffInspectArgs,
+    database_required=False,
+    max_output="one exact/unverified/nonmatching/unexpected_descendant/divergent/different_corpus/machinery_mismatch/migration_required classification",
+)
+def _handoff_inspect(store, args: HandoffInspectArgs, ctx):
+    return inspect_handoff(args.receipt, args.candidate_database)
+
+
+@register(
+    "pgx.change_set.open",
+    "Persist the intent and base head of a resumable multi-turn unit of work; later mutations attach by supplying its change_set_id in the request envelope.",
+    ChangeSetOpenArgs,
+    **MUTATION_META,
+    max_output="one open change-set identity and base snapshot",
+)
+def _change_set_open(store, args: ChangeSetOpenArgs, ctx):
+    return store.change_set_open(request_id=ctx["request_id"], **args.model_dump())
+
+
+@register(
+    "pgx.change_set.list",
+    "List bounded durable change-set summaries so interrupted work can be found without conversational memory.",
+    ChangeSetListArgs,
+    max_output="at most 100 compact change-set summaries",
+)
+def _change_set_list(store, args: ChangeSetListArgs, ctx):
+    return store.change_set_list(**args.model_dump())
+
+
+@register(
+    "pgx.change_set.show",
+    "Inspect one change set and its ordered compact mutation receipts.",
+    ChangeSetShowArgs,
+    max_output="one change set with at most 200 compact receipts",
+)
+def _change_set_show(store, args: ChangeSetShowArgs, ctx):
+    return store.change_set_show(**args.model_dump())
+
+
+@register(
+    "pgx.change_set.resolve",
+    "Explicitly complete, abandon, or supersede an open change set so publication can proceed.",
+    ChangeSetResolveArgs,
+    **MUTATION_META,
+    max_output="one resolved change-set summary",
+)
+def _change_set_resolve(store, args: ChangeSetResolveArgs, ctx):
+    return store.change_set_resolve(request_id=ctx["request_id"], **args.model_dump())
 
 
 @register("pgx.lineage.describe", "Describe the authoritative corpus identity, deterministic semantic snapshot, automatic workstreams, and prior materializations.", EmptyArgs, max_output="one bounded lineage report", profile="advanced")
@@ -473,6 +696,32 @@ def _traversal_embed(store, args, ctx):
     return store.embed_traversal(request_id=ctx["request_id"], **args.model_dump())
 
 
+@register(
+    "pgx.batch.preflight",
+    "Validate a bounded, already-decided node/revision/traversal/relation plan inside a transaction that is always rolled back.",
+    BatchPlanArgs,
+    max_output="at most 50 ordered operation acknowledgements; always zero semantic writes",
+)
+def _batch_preflight(store, args: BatchPlanArgs, ctx):
+    return store.batch_preflight(args.model_dump()["operations"])
+
+
+@register(
+    "pgx.batch.apply",
+    "Apply a preflighted bounded node/revision/traversal/relation plan atomically; any invalid member rolls back every member and a success advances one head.",
+    BatchPlanArgs,
+    **MUTATION_META,
+    preconditions=("all semantic choices are already decided", "at most 50 supported operations"),
+    postconditions=("all members commit or none do", "the authorized corpus head advances exactly once"),
+    max_output="at most 50 ordered compact operation results",
+)
+def _batch_apply(store, args: BatchPlanArgs, ctx):
+    return store.batch_apply(
+        request_id=ctx["request_id"],
+        operations=args.model_dump()["operations"],
+    )
+
+
 @register("pgx.context.build", "Build a bounded reference-and-triple context pack from one pointer.", ContextArgs, max_output="hard bounded by max_nodes and max_chars")
 def _context(store, args, ctx):
     return store.context_pack(**args.model_dump())
@@ -480,6 +729,8 @@ def _context(store, args, ctx):
 
 @register("pgx.manifest.build", "Generate JSON and optional Markdown manifests from authoritative SQLite state.", ManifestArgs, max_output="metadata and graph summaries")
 def _manifest(store, args, ctx):
+    if args.output_json or args.output_markdown:
+        store.require_publish_mode("pgx.manifest.build")
     return build_manifest(store.path, args.output_json, args.output_markdown)
 
 

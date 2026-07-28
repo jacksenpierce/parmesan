@@ -37,6 +37,9 @@ Thumbs.db
 *-shm
 *.journal
 
+# Local project evidence is deliberately not part of the Parmesan software release.
+/resources/
+
 # Local environment and secret files
 .env
 .env.*

@@ -11,6 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 EXCLUDED_PARTS = {".git", "__pycache__", ".pytest_cache", "build", "parmesan.egg-info"}
 EXCLUDED_SUFFIXES = ("-wal", "-shm", "-journal")
+EXCLUDED_TOP_LEVEL = {"resources"}
 
 
 def release_files() -> list[Path]:
@@ -22,6 +23,8 @@ def release_files() -> list[Path]:
             continue
         rel = path.relative_to(ROOT)
         if any(part in EXCLUDED_PARTS for part in rel.parts):
+            continue
+        if rel.parts[0] in EXCLUDED_TOP_LEVEL:
             continue
         if path.name.endswith(EXCLUDED_SUFFIXES):
             continue

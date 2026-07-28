@@ -100,11 +100,26 @@ def dispatch_request(payload: dict[str, Any]) -> dict[str, Any]:
                     suggested_action="Replace request_id with a valid UUIDv4 and retry the unchanged request.",
                 )
         args = definition.input_model.model_validate(request.arguments)
-        store = SQLitePGXStore(request.database, workstream_id=RUNTIME_WORKSTREAM_ID) if request.database else None
+        store = (
+            SQLitePGXStore(
+                request.database,
+                workstream_id=RUNTIME_WORKSTREAM_ID,
+                expected_head=request.expected_head,
+                change_set_id=request.change_set_id,
+            )
+            if request.database
+            else None
+        )
         result = definition.handler(
             store,
             args,
-            {"request_id": request.request_id, "database": request.database, "workstream_id": RUNTIME_WORKSTREAM_ID},
+            {
+                "request_id": request.request_id,
+                "database": request.database,
+                "workstream_id": RUNTIME_WORKSTREAM_ID,
+                "expected_head": request.expected_head.model_dump() if request.expected_head else None,
+                "change_set_id": request.change_set_id,
+            },
         )
         warnings = result.get("warnings", []) if isinstance(result, dict) else []
         sequence = result.get("database_sequence") if isinstance(result, dict) else None
@@ -139,8 +154,27 @@ def dispatch_request(payload: dict[str, Any]) -> dict[str, Any]:
             error.setdefault("suggested_tool", "pgx.node.get")
             error.setdefault("suggested_action", "Read the current revision, then retry with its revision UUID.")
         elif exc.code == "validation_failure":
-            error.setdefault("suggested_tool", "pgx.reference.validate")
-            error.setdefault("suggested_action", "Validate the proposed description and repair unresolved or malformed references.")
+            if error.get("details", {}).get("current_head"):
+                error.setdefault("suggested_tool", "pgx.workspace.inspect")
+                error.setdefault(
+                    "suggested_action",
+                    "Publication was safely closed and the source returned to working mode. Carry the reported current head forward, inspect the workspace, and repair the validation failure before retrying.",
+                )
+            else:
+                error.setdefault("suggested_tool", "pgx.reference.validate")
+                error.setdefault("suggested_action", "Validate the proposed description and repair unresolved or malformed references.")
+        elif exc.code == "contract_error" and error.get("details", {}).get("current_head"):
+            error.setdefault("suggested_tool", "pgx.database.describe")
+            error.setdefault(
+                "suggested_action",
+                "Confirm this is the intended authoritative database, then supply its displayed head as expected_head.",
+            )
+        elif exc.code == "conflict" and error.get("details", {}).get("current_head"):
+            error.setdefault("suggested_tool", "pgx.database.describe")
+            error.setdefault(
+                "suggested_action",
+                "Do not retry blindly. Reorient to the current corpus head and reconcile any intervening work.",
+            )
         return {
             "ok": False,
             "tool": tool_name,

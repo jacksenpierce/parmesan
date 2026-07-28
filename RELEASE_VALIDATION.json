@@ -1,8 +1,8 @@
 {
   "valid": true,
-  "version": "2.7.1",
-  "release_id": "94414256-87db-4b36-9571-d09028606853",
-  "artifact_filename": "PARMESAN_v2_7_1.zip",
+  "version": "3.0.0",
+  "release_id": "e670026f-0159-44d7-af31-d1b98346a77f",
+  "artifact_filename": "PARMESAN_v3_0_0.zip",
   "checks": {
     "required_files": true,
     "release_metadata_consistency": {
@@ -52,14 +52,17 @@
       "4c_model": true,
       "source_documents": true,
       "pgx_traversal_guidance": true,
-      "interpretation_boundary": true
+      "interpretation_boundary": true,
+      "extended_guide_linked": true,
+      "extended_guide_content": true
     },
     "release_tree_hygiene": {
       "no_sqlite_transients": true,
-      "package_excludes_build_artifacts": true
+      "package_excludes_build_artifacts": true,
+      "local_resources_excluded": true
     },
-    "core_tool_count": 17,
-    "all_tool_count": 40,
+    "core_tool_count": 31,
+    "all_tool_count": 54,
     "core_contracts_guaranteed": true,
     "doctor_ready": true,
     "corpus_operations": {
@@ -80,12 +83,12 @@
     },
     "wheel_exists": true,
     "wheel_import": {
-      "version": "2.7.1",
-      "release_id": "94414256-87db-4b36-9571-d09028606853",
-      "artifact_filename": "PARMESAN_v2_7_1.zip",
-      "core_tool_count": 17,
+      "version": "3.0.0",
+      "release_id": "e670026f-0159-44d7-af31-d1b98346a77f",
+      "artifact_filename": "PARMESAN_v3_0_0.zip",
+      "core_tool_count": 31,
       "doctor_ready": true
     },
-    "tests": ".................................................                        [100%]"
+    "tests": "........................................................................ [ 87%]\n..........                                                               [100%]"
   }
 }

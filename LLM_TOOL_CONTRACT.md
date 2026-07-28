@@ -20,9 +20,15 @@ The default `core` catalog contains the normal corpus-building and retrieval too
 
 ## Requests and mutations
 
-Every dispatched request contains a tool name, arguments, a database path when required, and a UUID request ID for mutations. Mutations use one `BEGIN IMMEDIATE` transaction. Identity changes, revisions, reference validation, occurrence indexing, graph membership, FTS, audit records, operation-ledger state, and sequence advancement commit together or roll back together.
+Every dispatched request contains a tool name, arguments, a database path when required, and a UUID request ID for mutations. After initialization, a mutation also carries the exact last-observed corpus `expected_head`; the successful result's `head` becomes the authority token for the next mutation. A database path alone never grants write authority. Ordinary semantic mutations use one `BEGIN IMMEDIATE` transaction. Identity changes, revisions, reference validation, occurrence indexing, graph membership, FTS, audit records, operation-ledger state, and sequence advancement commit together or roll back together.
 
 The request UUID is the idempotency key. Replaying the same UUID and input returns the earlier committed result; reuse with different input is rejected.
+
+For multi-turn work, `pgx.change_set.open` stores durable intent and a base snapshot. Put its `change_set_id` in the top-level request envelope of each related mutation. Parmesan appends ordered compact receipts without holding a long-lived SQLite transaction. `pgx.change_set.show` is the restart surface; publication is blocked until open work is completed, abandoned, or superseded.
+
+`pgx.batch.preflight` and `pgx.batch.apply` accept at most 50 already-decided node-create, node-update, traversal-embed, and triple-add operations. Preflight rolls back unconditionally. Apply uses one `BEGIN IMMEDIATE` boundary and one authority transition; any member failure rolls back the whole batch. These tools optimize prepared execution, not semantic selection.
+
+Legacy adoption is copy-only. `pgx.workspace.adopt` backs the supplied database into a new workspace, records source identity and preserved counts, and installs current authority structures only in the copy. Every non-core table must be registered with an extension version, required machinery, and semantic/operational/derived/excluded classification. Unknown tables and extension schema drift fail closed.
 
 Errors are structured and may include `retryable`, `suggested_tool`, and `suggested_action` fields. Follow those hints before improvising.
 
@@ -73,6 +79,8 @@ Tools outside the core profile may expose a bounded result contract rather than 
 `pgx.serialize.graph` returns the reversible graph text in `response["result"]["pgx"]`. Do not guess an alternate field such as `text`.
 
 Before delivering a corpus, close connections, exclude SQLite `-wal`, `-shm`, and journal files, validate the exact final `.sqlite` file, and generate hashes only after the last mutation. The SQLite file is the primary corpus artifact; exports are generated views.
+
+For MIC work, prefer a managed workspace and `pgx.handoff.publish`. It stages and atomically installs one database plus `HANDOFF.json`, then automatically returns the authoritative source to working mode. On cold open, `pgx.handoff.inspect` authorizes only an exact receipt/head/hash match; stale descendants, divergent copies, different corpora, machinery mismatches, and migration-required artifacts are classified without trusting their paths.
 
 ## Release identity
 

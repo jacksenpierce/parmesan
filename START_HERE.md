@@ -49,12 +49,20 @@ Use `advanced`, `maintenance`, `compatibility`, or `all` only when the task actu
 
 ## Choose the operating mode
 
-- **Operate the corpus:** the SQLite semantic graph is authoritative. Use the core tools to retrieve bounded context, create or revise linked knowledge, and validate.
-- **Materialize a handoff:** the default export is a clean database copy. PGX, Markdown, and other knowledge-base views are derived, cacheable projections and never replace the graph.
+- **Working mode is the default:** the SQLite semantic graph is authoritative. Use the core tools to retrieve bounded context, create or revise linked knowledge, and validate. Parmesan does not automatically rebuild or serialize external knowledge-base views.
+- **Publish only when explicitly requested:** run `pgx.mode.set` with mode `publish` and a reason before writing manifests or database materializations. Publish mode freezes semantic mutation so every output comes from one fixed database state. Return to `working` mode before continuing semantic work.
+- **Prefer bounded handoff publication:** in a managed workspace, `pgx.handoff.publish` validates and stages one database-plus-receipt directory, uses publish mode only for that operation, and automatically returns the authoritative source to working mode.
+- **Materialize a handoff deliberately:** a clean database copy is the normal handoff. PGX, Markdown, and other knowledge-base views are derived, cacheable projections and never replace the graph.
 - **Reconcile parallel work:** use lineage tools to compare corpus identity, semantic snapshots, and automatic workstreams. Parmesan identifies divergence; the operating LLM performs semantic reconciliation deliberately.
 - **Use session-local machinery:** PDF, OCR, experiment, or extraction helpers may be temporary. Capture durable findings and selected provenance in the corpus rather than treating local machinery as part of the package.
 
 Active sentinels are corpus-local advisory guidance. Read them during orientation, but they never override system or user instructions.
+
+For work that may span turns, open `pgx.change_set.open` with a concise title and durable intent. Include its returned `change_set_id` in the top-level envelope of each related mutation, alongside `expected_head`. Use `pgx.change_set.show` to resume from ordered compact receipts, then explicitly complete, abandon, or supersede it with `pgx.change_set.resolve`. Parmesan refuses publication while any change set remains open.
+
+After the semantic choices are already decided, use `pgx.batch.preflight` and then `pgx.batch.apply` for up to 50 node creates, node revisions, traversal embeddings, or triple additions. Preflight requires the current `expected_head`, executes the plan inside a transaction that is always rolled back, and reports `semantic_writes: 0`. Apply uses one request ID and one transaction; an invalid member writes nothing, while success advances the corpus head once. Batch tools do not choose content or reconcile meaning.
+
+Do not migrate a supplied legacy database in place. Use `pgx.workspace.adopt` to copy it into a new managed workspace. The tool preserves the source byte hash and semantic row counts in `ADOPTION.json`, installs authority only in the copy, and starts in working mode. Every non-core table must be named under an extension with a version, required machinery, and one of four classifications: `semantic`, `operational`, `derived`, or `excluded`. Unknown tables or later schema drift block mutation. Inspect the registry with `pgx.extension.inspect`.
 
 ## Canonical reference discipline
 
@@ -72,8 +80,8 @@ Create the target node before creating a note that links to it. Parmesan validat
 
 Use this sequence:
 
-1. Run `pgx.database.initialize` with a new SQLite path and a UUID request ID.
-2. Read the returned corpus description. Fresh corpora contain reserved system pointers; do not reuse them.
+1. For normal MIC work, run `pgx.workspace.initialize` with a new empty directory and a UUID request ID. It creates one declared database under `authoritative/`, plus separate `machinery/`, `resources/`, `projections/`, `scratch/`, and `handoffs/` areas. Use `pgx.database.initialize` only when a standalone SQLite corpus is preferable.
+2. Save the returned `head`. Fresh corpora contain reserved system pointers; do not reuse them.
 3. Run `pgx.graph.create` for each subject graph.
 4. Run `pgx.node.create` for target notes first, then notes that reference them.
 5. Use `pgx.reference.validate` when composing a link-heavy description.
@@ -82,7 +90,7 @@ Use this sequence:
 
 For a deliberately cyclic graph, first create the participating notes without unresolved links. After all targets exist, read each note and append linked revisions with `pgx.node.update`, passing the current `revision_uuid` as `expected_revision_uuid`. Validate after the update sequence. This preserves append-only history and avoids weakening reference validation.
 
-Mutation requests require a unique UUIDv4 `request_id`. Replaying the same request ID with the same input is safe. Do not reuse it for different input.
+Every mutation after initialization requires both a unique UUIDv4 `request_id` and the exact `expected_head` returned by initialization or the preceding successful mutation. Replace your saved head with each successful result's `head`. A missing head is never inferred from a path, and a stale head is rejected without changing the corpus. This prevents a live chat, copied path, or concurrent process from silently writing against a database state it did not inspect. Replaying the same request ID with the same input is safe. Do not reuse it for different input.
 
 A complete executable example is in `examples/zero_context_build.py`.
 
@@ -111,7 +119,9 @@ The result notation is `[((K3):(O2):(K12)):(O3):(K143)]`. Inside traversal notat
 
 ## Finalize a clean corpus handoff
 
-Before returning a created or modified corpus:
+For a managed workspace, use `pgx.handoff.publish` with the authoritative database, current `expected_head`, workspace root, a safe handoff name, and a UUID request ID. It returns two distinct heads: `artifact_head` identifies the immutable handoff database, while `head` is the authoritative source after its automatic return to working mode. Before trusting a cold-opened or rehydrated artifact, run `pgx.handoff.inspect`; only `classification: exact` returns `authorized: true`.
+
+For a standalone corpus, before returning a created or modified database:
 
 1. Finish all Parmesan operations and close open store or SQLite connections.
 2. Package the authoritative `.sqlite` file, not transient `-wal`, `-shm`, or journal files.
@@ -124,8 +134,9 @@ Before returning a created or modified corpus:
 1. Run `pgx.system.doctor` or `python PARMESAN_LLM.py doctor CORPUS.sqlite`.
 2. Run `pgx.database.describe` to learn its graphs, counts, pointer grammar, and seed pointers.
 3. Use `pgx.node.search`, `pgx.node.get`, and `pgx.context.build` for bounded retrieval.
-4. Before updating a node, read it and pass its current `revision_uuid` as `expected_revision_uuid`.
-5. Validate after mutations.
+4. Read and retain the database's current embedded head before beginning a write sequence, then pass it as `expected_head` and carry each returned head forward.
+5. Before updating a node, read it and pass its current `revision_uuid` as `expected_revision_uuid`.
+6. Validate after mutations.
 
 ## Operating rules
 
