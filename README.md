@@ -64,6 +64,8 @@ For MIC work, `pgx.workspace.initialize` is the preferred starting point. It dec
 
 When a coherent pass may outlive one chat turn, `pgx.change_set.open` persists its intent and base head. Related mutation requests carry the change-set ID and receive ordered compact receipts. The work can be rediscovered with `pgx.change_set.list` and resumed with `pgx.change_set.show`; publication remains blocked until every open change set is explicitly resolved.
 
+For an already-decided cluster, `pgx.batch.preflight` validates up to 50 node, revision, traversal, and relation operations with zero persistent writes. `pgx.batch.apply` then commits all members or none, advances one authority head, and records one compact change-set receipt when attached. Semantic selection remains the LLM's responsibility.
+
 Legacy or project-extended corpora are adopted with `pgx.workspace.adopt`, never migrated in place. Adoption records the untouched source hash and preserved semantic counts, and requires explicit classification of every private table. Registered extension schema fingerprints are checked before mutation, so unknown tables or machinery/schema drift cannot silently fall outside corpus authority.
 
 ### Materialize a handoff or compare parallel work

@@ -198,6 +198,35 @@ class TraversalEmbedArgs(ToolArgs):
     reason: str = "embed lawful PGX traversal expression"
 
 
+class BatchNodeCreateOperation(ToolArgs):
+    operation: Literal["node.create"]
+    arguments: NodeCreateArgs
+
+
+class BatchNodeUpdateOperation(ToolArgs):
+    operation: Literal["node.update"]
+    arguments: NodeUpdateArgs
+
+
+class BatchTraversalEmbedOperation(ToolArgs):
+    operation: Literal["traversal.embed"]
+    arguments: TraversalEmbedArgs
+
+
+class BatchTripleAddOperation(ToolArgs):
+    operation: Literal["triple.add"]
+    arguments: TripleAddArgs
+
+
+class BatchPlanArgs(ToolArgs):
+    operations: list[
+        BatchNodeCreateOperation
+        | BatchNodeUpdateOperation
+        | BatchTraversalEmbedOperation
+        | BatchTripleAddOperation
+    ] = Field(min_length=1, max_length=50)
+
+
 class ContextArgs(ToolArgs):
     pointer: str
     max_nodes: int = Field(default=20, ge=1, le=50)
@@ -665,6 +694,32 @@ def _parse(store, args, ctx):
 )
 def _traversal_embed(store, args, ctx):
     return store.embed_traversal(request_id=ctx["request_id"], **args.model_dump())
+
+
+@register(
+    "pgx.batch.preflight",
+    "Validate a bounded, already-decided node/revision/traversal/relation plan inside a transaction that is always rolled back.",
+    BatchPlanArgs,
+    max_output="at most 50 ordered operation acknowledgements; always zero semantic writes",
+)
+def _batch_preflight(store, args: BatchPlanArgs, ctx):
+    return store.batch_preflight(args.model_dump()["operations"])
+
+
+@register(
+    "pgx.batch.apply",
+    "Apply a preflighted bounded node/revision/traversal/relation plan atomically; any invalid member rolls back every member and a success advances one head.",
+    BatchPlanArgs,
+    **MUTATION_META,
+    preconditions=("all semantic choices are already decided", "at most 50 supported operations"),
+    postconditions=("all members commit or none do", "the authorized corpus head advances exactly once"),
+    max_output="at most 50 ordered compact operation results",
+)
+def _batch_apply(store, args: BatchPlanArgs, ctx):
+    return store.batch_apply(
+        request_id=ctx["request_id"],
+        operations=args.model_dump()["operations"],
+    )
 
 
 @register("pgx.context.build", "Build a bounded reference-and-triple context pack from one pointer.", ContextArgs, max_output="hard bounded by max_nodes and max_chars")

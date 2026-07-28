@@ -26,8 +26,8 @@ def test_catalog_profiles_hide_secondary_tools_by_default():
     all_tools = parmesan.catalog("all")
     compatibility = parmesan.catalog("compatibility")
 
-    assert len(core) == 29
-    assert len(all_tools) == 52
+    assert len(core) == 31
+    assert len(all_tools) == 54
     assert all(item["profile"] == "core" for item in core)
     assert all(item["contract_level"] == "guaranteed" for item in core)
     assert all(item["success_example"] for item in core)
@@ -49,6 +49,8 @@ def test_catalog_profiles_hide_secondary_tools_by_default():
         "pgx.change_set.resolve",
         "pgx.workspace.adopt",
         "pgx.extension.inspect",
+        "pgx.batch.preflight",
+        "pgx.batch.apply",
     }
     assert all(item["status"] == "deprecated" for item in compatibility)
 

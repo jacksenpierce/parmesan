@@ -1261,21 +1261,59 @@ class SQLitePGXStore:
     def create_node(self, *, request_id: str | None, pointer: str, title: str, description: str, graph_key: str) -> dict[str, Any]:
         payload = {"pointer": pointer, "title": title, "description": description, "graph_key": graph_key}
         def action(con: sqlite3.Connection, req: str) -> dict[str, Any]:
-            graph = self._graph(con, graph_key)
-            self._check_graph_pointer(con, graph, pointer)
-            node, rev = self._insert_identity(
-                con, pointer=pointer, title=title, description=description,
-                lifecycle_state="promoted", request_uuid=req, reason="node creation",
+            return self._create_node_in_transaction(
+                con,
+                req,
+                pointer=pointer,
+                title=title,
+                description=description,
+                graph_key=graph_key,
             )
-            report = self._replace_references(con, source_node_uuid=node, source_revision_uuid=rev, description=description, strict=True)
-            con.execute(
-                "INSERT INTO graph_membership(graph_uuid,node_uuid,ordinal) VALUES (?,?,?)",
-                (graph["graph_uuid"], node, self._next_ordinal(con, graph["graph_uuid"])),
-            )
-            self._refresh_fts(con, node)
-            self._audit(con, request_uuid=req, operation_type="node.create", node_uuid_value=node, new_revision_uuid=rev, details={"graph_key": graph_key, "reference_count": len(report.occurrences)})
-            return {"pointer": pointer, "uuid": node, "revision_uuid": rev, "graph_key": graph_key, "reference_count": len(report.occurrences)}
         return self._mutate("pgx.node.create", request_id, payload, action)
+
+    def _create_node_in_transaction(
+        self,
+        con: sqlite3.Connection,
+        req: str,
+        *,
+        pointer: str,
+        title: str,
+        description: str,
+        graph_key: str,
+    ) -> dict[str, Any]:
+        graph = self._graph(con, graph_key)
+        self._check_graph_pointer(con, graph, pointer)
+        node, rev = self._insert_identity(
+            con, pointer=pointer, title=title, description=description,
+            lifecycle_state="promoted", request_uuid=req, reason="node creation",
+        )
+        report = self._replace_references(
+            con,
+            source_node_uuid=node,
+            source_revision_uuid=rev,
+            description=description,
+            strict=True,
+        )
+        con.execute(
+            "INSERT INTO graph_membership(graph_uuid,node_uuid,ordinal) VALUES (?,?,?)",
+            (graph["graph_uuid"], node, self._next_ordinal(con, graph["graph_uuid"])),
+        )
+        self._refresh_fts(con, node)
+        self._audit(
+            con,
+            request_uuid=req,
+            operation_type="node.create",
+            node_uuid_value=node,
+            new_revision_uuid=rev,
+            details={"graph_key": graph_key, "reference_count": len(report.occurrences)},
+        )
+        return {
+            "pointer": pointer,
+            "uuid": node,
+            "revision_uuid": rev,
+            "graph_key": graph_key,
+            "reference_count": len(report.occurrences),
+        }
 
     def stage_node(self, *, request_id: str | None, pointer: str, title: str, description: str, intended_graph_key: str | None = None, tracking_note: str = "") -> dict[str, Any]:
         payload = {"pointer": pointer, "title": title, "description": description, "intended_graph_key": intended_graph_key, "tracking_note": tracking_note}
@@ -1337,39 +1375,109 @@ class SQLitePGXStore:
     def update_node(self, *, request_id: str | None, pointer: str, title: str | None = None, description: str | None = None, expected_revision_uuid: str | None = None, reason: str = "") -> dict[str, Any]:
         payload = {"pointer": pointer, "title": title, "description": description, "expected_revision_uuid": expected_revision_uuid, "reason": reason}
         def action(con: sqlite3.Connection, req: str) -> dict[str, Any]:
-            current = self._current(con, pointer)
-            if expected_revision_uuid and current["revision_uuid"] != expected_revision_uuid:
-                raise StaleWriteError("expected revision is not current", {"expected": expected_revision_uuid, "current": current["revision_uuid"]})
-            new_title = title if title is not None else current["title"]
-            new_description = description if description is not None else current["description"]
-            if new_title == current["title"] and new_description == current["description"]:
-                return {"pointer": pointer, "uuid": current["uuid"], "revision_uuid": current["revision_uuid"], "unchanged": True}
-            rev = self._new_revision(
-                con, node_uuid_value=current["uuid"], title=new_title, description=new_description,
-                previous_revision_uuid=current["revision_uuid"], request_uuid=req, reason=reason or "node update",
+            return self._update_node_in_transaction(
+                con,
+                req,
+                pointer=pointer,
+                title=title,
+                description=description,
+                expected_revision_uuid=expected_revision_uuid,
+                reason=reason,
             )
-            strict = current["lifecycle_state"] == "promoted"
-            report = self._replace_references(con, source_node_uuid=current["uuid"], source_revision_uuid=rev, description=new_description, strict=strict)
-            con.execute("UPDATE node_identity SET current_revision_uuid=? WHERE uuid=?", (rev, current["uuid"]))
-            if strict:
-                self._refresh_fts(con, current["uuid"])
-            else:
-                con.execute("DELETE FROM staging_issues WHERE node_uuid=?", (current["uuid"],))
-                status = "pending"
-                if report.errors:
-                    status = "blocked"
-                    namespace = self._namespace(con)
-                    for idx, issue in enumerate(report.errors):
-                        timestamp = unique_timestamp(con, "staging_issues")
-                        issue_uuid = derived_uuid(namespace, "staging-issue", f"{current['uuid']}|{rev}|{idx}|{timestamp}")
-                        con.execute(
-                            "INSERT INTO staging_issues(issue_uuid,node_uuid,issue_code,details_json,created_at,resolved_at) VALUES (?,?,?,?,?,NULL)",
-                            (issue_uuid, current["uuid"], issue.get("code", "reference_error"), _canonical_json(issue), timestamp),
-                        )
-                con.execute("UPDATE staging_queue SET status=? WHERE node_uuid=?", (status, current["uuid"]))
-            self._audit(con, request_uuid=req, operation_type="node.update", node_uuid_value=current["uuid"], previous_revision_uuid=current["revision_uuid"], new_revision_uuid=rev, details={"reason": reason, "reference_count": len(report.occurrences)})
-            return {"pointer": pointer, "uuid": current["uuid"], "previous_revision_uuid": current["revision_uuid"], "revision_uuid": rev, "reference_count": len(report.occurrences), "warnings": report.warnings}
         return self._mutate("pgx.node.update", request_id, payload, action)
+
+    def _update_node_in_transaction(
+        self,
+        con: sqlite3.Connection,
+        req: str,
+        *,
+        pointer: str,
+        title: str | None = None,
+        description: str | None = None,
+        expected_revision_uuid: str | None = None,
+        reason: str = "",
+    ) -> dict[str, Any]:
+        current = self._current(con, pointer)
+        if expected_revision_uuid and current["revision_uuid"] != expected_revision_uuid:
+            raise StaleWriteError(
+                "expected revision is not current",
+                {"expected": expected_revision_uuid, "current": current["revision_uuid"]},
+            )
+        new_title = title if title is not None else current["title"]
+        new_description = description if description is not None else current["description"]
+        if new_title == current["title"] and new_description == current["description"]:
+            return {
+                "pointer": pointer,
+                "uuid": current["uuid"],
+                "revision_uuid": current["revision_uuid"],
+                "unchanged": True,
+            }
+        rev = self._new_revision(
+            con,
+            node_uuid_value=current["uuid"],
+            title=new_title,
+            description=new_description,
+            previous_revision_uuid=current["revision_uuid"],
+            request_uuid=req,
+            reason=reason or "node update",
+        )
+        strict = current["lifecycle_state"] == "promoted"
+        report = self._replace_references(
+            con,
+            source_node_uuid=current["uuid"],
+            source_revision_uuid=rev,
+            description=new_description,
+            strict=strict,
+        )
+        con.execute(
+            "UPDATE node_identity SET current_revision_uuid=? WHERE uuid=?",
+            (rev, current["uuid"]),
+        )
+        if strict:
+            self._refresh_fts(con, current["uuid"])
+        else:
+            con.execute("DELETE FROM staging_issues WHERE node_uuid=?", (current["uuid"],))
+            status = "pending"
+            if report.errors:
+                status = "blocked"
+                namespace = self._namespace(con)
+                for idx, issue in enumerate(report.errors):
+                    timestamp = unique_timestamp(con, "staging_issues")
+                    issue_uuid = derived_uuid(
+                        namespace,
+                        "staging-issue",
+                        f"{current['uuid']}|{rev}|{idx}|{timestamp}",
+                    )
+                    con.execute(
+                        """INSERT INTO staging_issues
+                           (issue_uuid,node_uuid,issue_code,details_json,created_at,resolved_at)
+                           VALUES (?,?,?,?,?,NULL)""",
+                        (
+                            issue_uuid,
+                            current["uuid"],
+                            issue.get("code", "reference_error"),
+                            _canonical_json(issue),
+                            timestamp,
+                        ),
+                    )
+            con.execute("UPDATE staging_queue SET status=? WHERE node_uuid=?", (status, current["uuid"]))
+        self._audit(
+            con,
+            request_uuid=req,
+            operation_type="node.update",
+            node_uuid_value=current["uuid"],
+            previous_revision_uuid=current["revision_uuid"],
+            new_revision_uuid=rev,
+            details={"reason": reason, "reference_count": len(report.occurrences)},
+        )
+        return {
+            "pointer": pointer,
+            "uuid": current["uuid"],
+            "previous_revision_uuid": current["revision_uuid"],
+            "revision_uuid": rev,
+            "reference_count": len(report.occurrences),
+            "warnings": report.warnings,
+        }
 
     def embed_traversal(
         self,
@@ -1381,10 +1489,6 @@ class SQLitePGXStore:
         expected_revision_uuid: str | None = None,
         reason: str = "embed lawful PGX traversal expression",
     ) -> dict[str, Any]:
-        tree = tree_from_mapping(expression)
-        notation = serialize_expression(tree)
-        roles = pointer_roles(tree)
-        block = render_embedding(notation, read)
         payload = {
             "node_pointer": node_pointer,
             "expression": expression,
@@ -1394,90 +1498,120 @@ class SQLitePGXStore:
         }
 
         def action(con: sqlite3.Connection, req: str) -> dict[str, Any]:
-            current = self._current(con, node_pointer)
-            if expected_revision_uuid and current["revision_uuid"] != expected_revision_uuid:
-                raise StaleWriteError(
-                    "expected revision is not current",
-                    {"expected": expected_revision_uuid, "current": current["revision_uuid"]},
-                )
-
-            pointer_pattern = self._pointer_pattern(con)
-            resolved = []
-            for pointer in sorted(roles):
-                validate_pointer(pointer, pointer_pattern)
-                row = self._current(con, pointer)
-                resolved.append({
-                    "pointer": pointer,
-                    "title": row["title"],
-                    "roles": sorted(roles[pointer]),
-                })
-
-            separator = "" if not current["description"].strip() else "\n\n"
-            new_description = current["description"].rstrip() + separator + block
-            rev = self._new_revision(
+            return self._embed_traversal_in_transaction(
                 con,
-                node_uuid_value=current["uuid"],
-                title=current["title"],
-                description=new_description,
-                previous_revision_uuid=current["revision_uuid"],
-                request_uuid=req,
+                req,
+                node_pointer=node_pointer,
+                expression=expression,
+                read=read,
+                expected_revision_uuid=expected_revision_uuid,
                 reason=reason,
             )
-            strict = current["lifecycle_state"] == "promoted"
-            report = self._replace_references(
-                con,
-                source_node_uuid=current["uuid"],
-                source_revision_uuid=rev,
-                description=new_description,
-                strict=strict,
-            )
-            con.execute(
-                "UPDATE node_identity SET current_revision_uuid=? WHERE uuid=?",
-                (rev, current["uuid"]),
-            )
-            if strict:
-                self._refresh_fts(con, current["uuid"])
-            else:
-                con.execute("DELETE FROM staging_issues WHERE node_uuid=?", (current["uuid"],))
-                status = "pending"
-                if report.errors:
-                    status = "blocked"
-                    namespace = self._namespace(con)
-                    for idx, issue in enumerate(report.errors):
-                        timestamp = unique_timestamp(con, "staging_issues")
-                        issue_uuid = derived_uuid(
-                            namespace,
-                            "staging-issue",
-                            f"{current['uuid']}|{rev}|{idx}|{timestamp}",
-                        )
-                        con.execute(
-                            "INSERT INTO staging_issues(issue_uuid,node_uuid,issue_code,details_json,created_at,resolved_at) VALUES (?,?,?,?,?,NULL)",
-                            (issue_uuid, current["uuid"], issue.get("code", "reference_error"), _canonical_json(issue), timestamp),
-                        )
-                con.execute("UPDATE staging_queue SET status=? WHERE node_uuid=?", (status, current["uuid"]))
-
-            self._audit(
-                con,
-                request_uuid=req,
-                operation_type="traversal.embed",
-                node_uuid_value=current["uuid"],
-                previous_revision_uuid=current["revision_uuid"],
-                new_revision_uuid=rev,
-                details={"notation": notation, "resolved_pointers": [item["pointer"] for item in resolved]},
-            )
-            return {
-                "node_pointer": node_pointer,
-                "uuid": current["uuid"],
-                "previous_revision_uuid": current["revision_uuid"],
-                "revision_uuid": rev,
-                "notation": notation,
-                "markdown": block,
-                "resolved_pointers": resolved,
-                "reference_count": len(report.occurrences),
-                "warnings": report.warnings,
-            }
 
         return self._mutate("pgx.traversal.embed", request_id, payload, action)
+
+    def _embed_traversal_in_transaction(
+        self,
+        con: sqlite3.Connection,
+        req: str,
+        *,
+        node_pointer: str,
+        expression: dict[str, Any],
+        read: str | None = None,
+        expected_revision_uuid: str | None = None,
+        reason: str = "embed lawful PGX traversal expression",
+    ) -> dict[str, Any]:
+        tree = tree_from_mapping(expression)
+        notation = serialize_expression(tree)
+        roles = pointer_roles(tree)
+        block = render_embedding(notation, read)
+        current = self._current(con, node_pointer)
+        if expected_revision_uuid and current["revision_uuid"] != expected_revision_uuid:
+            raise StaleWriteError(
+                "expected revision is not current",
+                {"expected": expected_revision_uuid, "current": current["revision_uuid"]},
+            )
+        pointer_pattern = self._pointer_pattern(con)
+        resolved = []
+        for pointer in sorted(roles):
+            validate_pointer(pointer, pointer_pattern)
+            row = self._current(con, pointer)
+            resolved.append({
+                "pointer": pointer,
+                "title": row["title"],
+                "roles": sorted(roles[pointer]),
+            })
+        separator = "" if not current["description"].strip() else "\n\n"
+        new_description = current["description"].rstrip() + separator + block
+        rev = self._new_revision(
+            con,
+            node_uuid_value=current["uuid"],
+            title=current["title"],
+            description=new_description,
+            previous_revision_uuid=current["revision_uuid"],
+            request_uuid=req,
+            reason=reason,
+        )
+        strict = current["lifecycle_state"] == "promoted"
+        report = self._replace_references(
+            con,
+            source_node_uuid=current["uuid"],
+            source_revision_uuid=rev,
+            description=new_description,
+            strict=strict,
+        )
+        con.execute(
+            "UPDATE node_identity SET current_revision_uuid=? WHERE uuid=?",
+            (rev, current["uuid"]),
+        )
+        if strict:
+            self._refresh_fts(con, current["uuid"])
+        else:
+            con.execute("DELETE FROM staging_issues WHERE node_uuid=?", (current["uuid"],))
+            status = "pending"
+            if report.errors:
+                status = "blocked"
+                namespace = self._namespace(con)
+                for idx, issue in enumerate(report.errors):
+                    timestamp = unique_timestamp(con, "staging_issues")
+                    issue_uuid = derived_uuid(
+                        namespace,
+                        "staging-issue",
+                        f"{current['uuid']}|{rev}|{idx}|{timestamp}",
+                    )
+                    con.execute(
+                        """INSERT INTO staging_issues
+                           (issue_uuid,node_uuid,issue_code,details_json,created_at,resolved_at)
+                           VALUES (?,?,?,?,?,NULL)""",
+                        (
+                            issue_uuid,
+                            current["uuid"],
+                            issue.get("code", "reference_error"),
+                            _canonical_json(issue),
+                            timestamp,
+                        ),
+                    )
+            con.execute("UPDATE staging_queue SET status=? WHERE node_uuid=?", (status, current["uuid"]))
+        self._audit(
+            con,
+            request_uuid=req,
+            operation_type="traversal.embed",
+            node_uuid_value=current["uuid"],
+            previous_revision_uuid=current["revision_uuid"],
+            new_revision_uuid=rev,
+            details={"notation": notation, "resolved_pointers": [item["pointer"] for item in resolved]},
+        )
+        return {
+            "node_pointer": node_pointer,
+            "uuid": current["uuid"],
+            "previous_revision_uuid": current["revision_uuid"],
+            "revision_uuid": rev,
+            "notation": notation,
+            "markdown": block,
+            "resolved_pointers": resolved,
+            "reference_count": len(report.occurrences),
+            "warnings": report.warnings,
+        }
 
     def revert_node(self, *, request_id: str | None, pointer: str, target_revision_uuid: str, expected_revision_uuid: str | None = None, reason: str = "revert") -> dict[str, Any]:
         with connect(self.path, readonly=True) as read:
@@ -1499,27 +1633,162 @@ class SQLitePGXStore:
     def add_triple(self, *, request_id: str | None, subject_pointer: str, predicate_pointer: str, object_pointer: str) -> dict[str, Any]:
         payload = {"subject_pointer": subject_pointer, "predicate_pointer": predicate_pointer, "object_pointer": object_pointer}
         def action(con: sqlite3.Connection, req: str) -> dict[str, Any]:
-            subject = self._current(con, subject_pointer)
-            predicate = self._current(con, predicate_pointer)
-            obj = self._current(con, object_pointer)
-            if not con.execute("SELECT 1 FROM predicate_registry WHERE predicate_uuid=?", (predicate["uuid"],)).fetchone():
-                raise ContractError("predicate pointer is not registered", {"pointer": predicate_pointer})
-            existing = con.execute(
-                "SELECT triple_uuid,created_at FROM triples WHERE subject_uuid=? AND predicate_uuid=? AND object_uuid=?",
-                (subject["uuid"], predicate["uuid"], obj["uuid"]),
-            ).fetchone()
-            if existing:
-                return {"triple_uuid": existing["triple_uuid"], "already_present": True}
-            namespace = self._namespace(con)
-            triple_uuid = derived_uuid(namespace, "triple", f"{subject['uuid']}|{predicate['uuid']}|{obj['uuid']}")
-            created = unique_timestamp(con, "triples")
-            con.execute(
-                "INSERT INTO triples(triple_uuid,subject_uuid,predicate_uuid,object_uuid,created_at,request_uuid) VALUES (?,?,?,?,?,?)",
-                (triple_uuid, subject["uuid"], predicate["uuid"], obj["uuid"], created, req),
+            return self._add_triple_in_transaction(
+                con,
+                req,
+                subject_pointer=subject_pointer,
+                predicate_pointer=predicate_pointer,
+                object_pointer=object_pointer,
             )
-            self._audit(con, request_uuid=req, operation_type="triple.add", details={"triple_uuid": triple_uuid, **payload})
-            return {"triple_uuid": triple_uuid, "already_present": False}
         return self._mutate("pgx.triple.add", request_id, payload, action)
+
+    def _add_triple_in_transaction(
+        self,
+        con: sqlite3.Connection,
+        req: str,
+        *,
+        subject_pointer: str,
+        predicate_pointer: str,
+        object_pointer: str,
+    ) -> dict[str, Any]:
+        payload = {
+            "subject_pointer": subject_pointer,
+            "predicate_pointer": predicate_pointer,
+            "object_pointer": object_pointer,
+        }
+        subject = self._current(con, subject_pointer)
+        predicate = self._current(con, predicate_pointer)
+        obj = self._current(con, object_pointer)
+        if not con.execute(
+            "SELECT 1 FROM predicate_registry WHERE predicate_uuid=?",
+            (predicate["uuid"],),
+        ).fetchone():
+            raise ContractError("predicate pointer is not registered", {"pointer": predicate_pointer})
+        existing = con.execute(
+            """SELECT triple_uuid,created_at FROM triples
+               WHERE subject_uuid=? AND predicate_uuid=? AND object_uuid=?""",
+            (subject["uuid"], predicate["uuid"], obj["uuid"]),
+        ).fetchone()
+        if existing:
+            return {"triple_uuid": existing["triple_uuid"], "already_present": True}
+        namespace = self._namespace(con)
+        triple_uuid = derived_uuid(
+            namespace,
+            "triple",
+            f"{subject['uuid']}|{predicate['uuid']}|{obj['uuid']}",
+        )
+        created = unique_timestamp(con, "triples")
+        con.execute(
+            """INSERT INTO triples
+               (triple_uuid,subject_uuid,predicate_uuid,object_uuid,created_at,request_uuid)
+               VALUES (?,?,?,?,?,?)""",
+            (triple_uuid, subject["uuid"], predicate["uuid"], obj["uuid"], created, req),
+        )
+        self._audit(
+            con,
+            request_uuid=req,
+            operation_type="triple.add",
+            details={"triple_uuid": triple_uuid, **payload},
+        )
+        return {"triple_uuid": triple_uuid, "already_present": False}
+
+    def _apply_batch_operations(
+        self,
+        connection: sqlite3.Connection,
+        request_uuid: str,
+        operations: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        results: list[dict[str, Any]] = []
+        for index, operation in enumerate(operations):
+            operation_name = operation["operation"]
+            arguments = operation["arguments"]
+            if operation_name == "node.create":
+                result = self._create_node_in_transaction(connection, request_uuid, **arguments)
+            elif operation_name == "node.update":
+                result = self._update_node_in_transaction(connection, request_uuid, **arguments)
+            elif operation_name == "traversal.embed":
+                result = self._embed_traversal_in_transaction(connection, request_uuid, **arguments)
+            elif operation_name == "triple.add":
+                result = self._add_triple_in_transaction(connection, request_uuid, **arguments)
+            else:
+                raise ContractError(
+                    "batch operation is not supported",
+                    {"index": index, "operation": operation_name},
+                )
+            results.append({"index": index, "operation": operation_name, "result": result})
+        return results
+
+    def batch_preflight(self, operations: list[dict[str, Any]]) -> dict[str, Any]:
+        if not 1 <= len(operations) <= 50:
+            raise ContractError("batch must contain between 1 and 50 operations")
+        connection = connect(self.path)
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            head = self._require_expected_head(connection)
+            extension_state = self._extension_state(connection)
+            if not extension_state["valid"]:
+                raise ContractError(
+                    "batch is blocked by extension registry state",
+                    {
+                        "unknown_tables": extension_state["unknown_tables"],
+                        "invalid_extensions": extension_state["invalid_extensions"],
+                    },
+                )
+            mode = self._mode_row(connection)
+            if mode is not None and mode["mode_key"] == "publish":
+                raise ConflictError("batch mutation is disabled while publish mode is active")
+            if self.change_set_id is not None:
+                change_set = connection.execute(
+                    "SELECT status FROM change_sets WHERE change_set_uuid=?",
+                    (self.change_set_id,),
+                ).fetchone()
+                if change_set is None:
+                    raise NotFoundError("change set does not exist", {"change_set_id": self.change_set_id})
+                if change_set["status"] != "open":
+                    raise ConflictError(
+                        "batch cannot attach to a resolved change set",
+                        {"change_set_id": self.change_set_id, "status": change_set["status"]},
+                    )
+            trial_request = str(uuid.uuid4())
+            self._apply_batch_operations(connection, trial_request, operations)
+            return {
+                "valid": True,
+                "operation_count": len(operations),
+                "operations": [
+                    {"index": index, "operation": operation["operation"]}
+                    for index, operation in enumerate(operations)
+                ],
+                "head": {
+                    "corpus_id": head["corpus_id"],
+                    "snapshot_uuid": head["snapshot_uuid"],
+                    "database_sequence": head["database_sequence"],
+                },
+                "would_advance_database_sequence_to": int(head["database_sequence"]) + 1,
+                "semantic_writes": 0,
+            }
+        finally:
+            connection.rollback()
+            connection.close()
+
+    def batch_apply(
+        self,
+        *,
+        request_id: str | None,
+        operations: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        if not 1 <= len(operations) <= 50:
+            raise ContractError("batch must contain between 1 and 50 operations")
+        payload = {"operations": operations}
+
+        def action(connection: sqlite3.Connection, req: str) -> dict[str, Any]:
+            results = self._apply_batch_operations(connection, req, operations)
+            return {
+                "operation_count": len(results),
+                "results": results,
+                "atomic": True,
+            }
+
+        return self._mutate("pgx.batch.apply", request_id, payload, action)
 
     def create_tag(self, *, request_id: str | None, pointer: str, title: str, description: str) -> dict[str, Any]:
         payload = {"pointer": pointer, "title": title, "description": description}

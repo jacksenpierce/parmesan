@@ -1,5 +1,1080 @@
 [
   {
+    "name": "pgx.batch.apply",
+    "profile": "core",
+    "status": "active",
+    "description": "Apply a preflighted bounded node/revision/traversal/relation plan atomically; any invalid member rolls back every member and a success advances one head.",
+    "database_required": true,
+    "mutates": true,
+    "idempotency": "request_id replay returns the previously committed result; reuse with different input is rejected",
+    "transaction_boundary": "single BEGIN IMMEDIATE transaction; all effects commit or all effects roll back",
+    "preconditions": [
+      "all semantic choices are already decided",
+      "at most 50 supported operations"
+    ],
+    "postconditions": [
+      "all members commit or none do",
+      "the authorized corpus head advances exactly once"
+    ],
+    "error_codes": [
+      "input_validation",
+      "contract_error",
+      "conflict",
+      "stale_write",
+      "validation_failure"
+    ],
+    "maximum_output": "at most 50 ordered compact operation results",
+    "input_schema": {
+      "$defs": {
+        "BatchNodeCreateOperation": {
+          "additionalProperties": false,
+          "properties": {
+            "operation": {
+              "const": "node.create",
+              "title": "Operation",
+              "type": "string"
+            },
+            "arguments": {
+              "$ref": "#/$defs/NodeCreateArgs"
+            }
+          },
+          "required": [
+            "operation",
+            "arguments"
+          ],
+          "title": "BatchNodeCreateOperation",
+          "type": "object"
+        },
+        "BatchNodeUpdateOperation": {
+          "additionalProperties": false,
+          "properties": {
+            "operation": {
+              "const": "node.update",
+              "title": "Operation",
+              "type": "string"
+            },
+            "arguments": {
+              "$ref": "#/$defs/NodeUpdateArgs"
+            }
+          },
+          "required": [
+            "operation",
+            "arguments"
+          ],
+          "title": "BatchNodeUpdateOperation",
+          "type": "object"
+        },
+        "BatchTraversalEmbedOperation": {
+          "additionalProperties": false,
+          "properties": {
+            "operation": {
+              "const": "traversal.embed",
+              "title": "Operation",
+              "type": "string"
+            },
+            "arguments": {
+              "$ref": "#/$defs/TraversalEmbedArgs"
+            }
+          },
+          "required": [
+            "operation",
+            "arguments"
+          ],
+          "title": "BatchTraversalEmbedOperation",
+          "type": "object"
+        },
+        "BatchTripleAddOperation": {
+          "additionalProperties": false,
+          "properties": {
+            "operation": {
+              "const": "triple.add",
+              "title": "Operation",
+              "type": "string"
+            },
+            "arguments": {
+              "$ref": "#/$defs/TripleAddArgs"
+            }
+          },
+          "required": [
+            "operation",
+            "arguments"
+          ],
+          "title": "BatchTripleAddOperation",
+          "type": "object"
+        },
+        "NodeCreateArgs": {
+          "additionalProperties": false,
+          "properties": {
+            "pointer": {
+              "title": "Pointer",
+              "type": "string"
+            },
+            "title": {
+              "title": "Title",
+              "type": "string"
+            },
+            "description": {
+              "title": "Description",
+              "type": "string"
+            },
+            "graph_key": {
+              "title": "Graph Key",
+              "type": "string"
+            }
+          },
+          "required": [
+            "pointer",
+            "title",
+            "description",
+            "graph_key"
+          ],
+          "title": "NodeCreateArgs",
+          "type": "object"
+        },
+        "NodeUpdateArgs": {
+          "additionalProperties": false,
+          "properties": {
+            "pointer": {
+              "title": "Pointer",
+              "type": "string"
+            },
+            "title": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Title"
+            },
+            "description": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Description"
+            },
+            "expected_revision_uuid": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Expected Revision Uuid"
+            },
+            "reason": {
+              "default": "",
+              "title": "Reason",
+              "type": "string"
+            }
+          },
+          "required": [
+            "pointer"
+          ],
+          "title": "NodeUpdateArgs",
+          "type": "object"
+        },
+        "TraversalEmbedArgs": {
+          "additionalProperties": false,
+          "properties": {
+            "node_pointer": {
+              "title": "Node Pointer",
+              "type": "string"
+            },
+            "expression": {
+              "$ref": "#/$defs/TraversalTreeArgs"
+            },
+            "read": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Read"
+            },
+            "expected_revision_uuid": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Expected Revision Uuid"
+            },
+            "reason": {
+              "default": "embed lawful PGX traversal expression",
+              "title": "Reason",
+              "type": "string"
+            }
+          },
+          "required": [
+            "node_pointer",
+            "expression"
+          ],
+          "title": "TraversalEmbedArgs",
+          "type": "object"
+        },
+        "TraversalPointerArgs": {
+          "additionalProperties": false,
+          "properties": {
+            "pointer": {
+              "title": "Pointer",
+              "type": "string"
+            }
+          },
+          "required": [
+            "pointer"
+          ],
+          "title": "TraversalPointerArgs",
+          "type": "object"
+        },
+        "TraversalTreeArgs": {
+          "additionalProperties": false,
+          "properties": {
+            "left": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/TraversalPointerArgs"
+                },
+                {
+                  "$ref": "#/$defs/TraversalTreeArgs"
+                }
+              ],
+              "title": "Left"
+            },
+            "operator": {
+              "title": "Operator",
+              "type": "string"
+            },
+            "right": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/TraversalPointerArgs"
+                },
+                {
+                  "$ref": "#/$defs/TraversalTreeArgs"
+                }
+              ],
+              "title": "Right"
+            }
+          },
+          "required": [
+            "left",
+            "operator",
+            "right"
+          ],
+          "title": "TraversalTreeArgs",
+          "type": "object"
+        },
+        "TripleAddArgs": {
+          "additionalProperties": false,
+          "properties": {
+            "subject_pointer": {
+              "title": "Subject Pointer",
+              "type": "string"
+            },
+            "predicate_pointer": {
+              "default": "PRN001",
+              "title": "Predicate Pointer",
+              "type": "string"
+            },
+            "object_pointer": {
+              "title": "Object Pointer",
+              "type": "string"
+            }
+          },
+          "required": [
+            "subject_pointer",
+            "object_pointer"
+          ],
+          "title": "TripleAddArgs",
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "operations": {
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/BatchNodeCreateOperation"
+              },
+              {
+                "$ref": "#/$defs/BatchNodeUpdateOperation"
+              },
+              {
+                "$ref": "#/$defs/BatchTraversalEmbedOperation"
+              },
+              {
+                "$ref": "#/$defs/BatchTripleAddOperation"
+              }
+            ]
+          },
+          "maxItems": 50,
+          "minItems": 1,
+          "title": "Operations",
+          "type": "array"
+        }
+      },
+      "required": [
+        "operations"
+      ],
+      "title": "BatchPlanArgs",
+      "type": "object"
+    },
+    "result_schema": {
+      "type": "object",
+      "required": [
+        "operation_count",
+        "results",
+        "atomic",
+        "request_id",
+        "database_sequence",
+        "idempotent_replay",
+        "head"
+      ],
+      "properties": {
+        "operation_count": {
+          "type": "integer"
+        },
+        "results": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "atomic": {
+          "const": true
+        },
+        "request_id": {
+          "type": "string",
+          "description": "Idempotency UUID supplied by the caller."
+        },
+        "database_sequence": {
+          "type": "integer"
+        },
+        "idempotent_replay": {
+          "type": "boolean"
+        },
+        "head": {
+          "type": "object",
+          "required": [
+            "corpus_id",
+            "snapshot_uuid",
+            "database_sequence"
+          ],
+          "properties": {
+            "corpus_id": {
+              "type": "string"
+            },
+            "snapshot_uuid": {
+              "type": "string"
+            },
+            "database_sequence": {
+              "type": "integer"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": true
+    },
+    "output_schema": {
+      "type": "object",
+      "required": [
+        "ok",
+        "tool",
+        "request_id",
+        "result",
+        "error",
+        "warnings",
+        "database_sequence",
+        "idempotent_replay"
+      ],
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "request_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "result": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "operation_count",
+                "results",
+                "atomic",
+                "request_id",
+                "database_sequence",
+                "idempotent_replay",
+                "head"
+              ],
+              "properties": {
+                "operation_count": {
+                  "type": "integer"
+                },
+                "results": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                },
+                "atomic": {
+                  "const": true
+                },
+                "request_id": {
+                  "type": "string",
+                  "description": "Idempotency UUID supplied by the caller."
+                },
+                "database_sequence": {
+                  "type": "integer"
+                },
+                "idempotent_replay": {
+                  "type": "boolean"
+                },
+                "head": {
+                  "type": "object",
+                  "required": [
+                    "corpus_id",
+                    "snapshot_uuid",
+                    "database_sequence"
+                  ],
+                  "properties": {
+                    "corpus_id": {
+                      "type": "string"
+                    },
+                    "snapshot_uuid": {
+                      "type": "string"
+                    },
+                    "database_sequence": {
+                      "type": "integer"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": true
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "database_sequence": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "idempotent_replay": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "contract_level": "guaranteed",
+    "success_example": {
+      "request": {
+        "tool": "pgx.batch.apply",
+        "arguments": {
+          "operations": [
+            {
+              "operation": "node.create",
+              "arguments": {
+                "pointer": "CB1",
+                "title": "Cell membrane",
+                "description": "A selectively permeable boundary.",
+                "graph_key": "cell-biology"
+              }
+            }
+          ]
+        },
+        "database": "knowledge.sqlite",
+        "request_id": "18181818-1818-4818-8818-181818181818",
+        "expected_head": {
+          "corpus_id": "<last-observed-corpus-uuid>",
+          "snapshot_uuid": "<last-observed-snapshot-uuid>",
+          "database_sequence": 7
+        }
+      },
+      "result_excerpt": {
+        "operation_count": 1,
+        "atomic": true,
+        "database_sequence": 8
+      }
+    },
+    "failure_example": {},
+    "likely_next_tools": [
+      "pgx.database.validate",
+      "pgx.change_set.show"
+    ]
+  },
+  {
+    "name": "pgx.batch.preflight",
+    "profile": "core",
+    "status": "active",
+    "description": "Validate a bounded, already-decided node/revision/traversal/relation plan inside a transaction that is always rolled back.",
+    "database_required": true,
+    "mutates": false,
+    "idempotency": "read-only",
+    "transaction_boundary": "none",
+    "preconditions": [],
+    "postconditions": [],
+    "error_codes": [],
+    "maximum_output": "at most 50 ordered operation acknowledgements; always zero semantic writes",
+    "input_schema": {
+      "$defs": {
+        "BatchNodeCreateOperation": {
+          "additionalProperties": false,
+          "properties": {
+            "operation": {
+              "const": "node.create",
+              "title": "Operation",
+              "type": "string"
+            },
+            "arguments": {
+              "$ref": "#/$defs/NodeCreateArgs"
+            }
+          },
+          "required": [
+            "operation",
+            "arguments"
+          ],
+          "title": "BatchNodeCreateOperation",
+          "type": "object"
+        },
+        "BatchNodeUpdateOperation": {
+          "additionalProperties": false,
+          "properties": {
+            "operation": {
+              "const": "node.update",
+              "title": "Operation",
+              "type": "string"
+            },
+            "arguments": {
+              "$ref": "#/$defs/NodeUpdateArgs"
+            }
+          },
+          "required": [
+            "operation",
+            "arguments"
+          ],
+          "title": "BatchNodeUpdateOperation",
+          "type": "object"
+        },
+        "BatchTraversalEmbedOperation": {
+          "additionalProperties": false,
+          "properties": {
+            "operation": {
+              "const": "traversal.embed",
+              "title": "Operation",
+              "type": "string"
+            },
+            "arguments": {
+              "$ref": "#/$defs/TraversalEmbedArgs"
+            }
+          },
+          "required": [
+            "operation",
+            "arguments"
+          ],
+          "title": "BatchTraversalEmbedOperation",
+          "type": "object"
+        },
+        "BatchTripleAddOperation": {
+          "additionalProperties": false,
+          "properties": {
+            "operation": {
+              "const": "triple.add",
+              "title": "Operation",
+              "type": "string"
+            },
+            "arguments": {
+              "$ref": "#/$defs/TripleAddArgs"
+            }
+          },
+          "required": [
+            "operation",
+            "arguments"
+          ],
+          "title": "BatchTripleAddOperation",
+          "type": "object"
+        },
+        "NodeCreateArgs": {
+          "additionalProperties": false,
+          "properties": {
+            "pointer": {
+              "title": "Pointer",
+              "type": "string"
+            },
+            "title": {
+              "title": "Title",
+              "type": "string"
+            },
+            "description": {
+              "title": "Description",
+              "type": "string"
+            },
+            "graph_key": {
+              "title": "Graph Key",
+              "type": "string"
+            }
+          },
+          "required": [
+            "pointer",
+            "title",
+            "description",
+            "graph_key"
+          ],
+          "title": "NodeCreateArgs",
+          "type": "object"
+        },
+        "NodeUpdateArgs": {
+          "additionalProperties": false,
+          "properties": {
+            "pointer": {
+              "title": "Pointer",
+              "type": "string"
+            },
+            "title": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Title"
+            },
+            "description": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Description"
+            },
+            "expected_revision_uuid": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Expected Revision Uuid"
+            },
+            "reason": {
+              "default": "",
+              "title": "Reason",
+              "type": "string"
+            }
+          },
+          "required": [
+            "pointer"
+          ],
+          "title": "NodeUpdateArgs",
+          "type": "object"
+        },
+        "TraversalEmbedArgs": {
+          "additionalProperties": false,
+          "properties": {
+            "node_pointer": {
+              "title": "Node Pointer",
+              "type": "string"
+            },
+            "expression": {
+              "$ref": "#/$defs/TraversalTreeArgs"
+            },
+            "read": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Read"
+            },
+            "expected_revision_uuid": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Expected Revision Uuid"
+            },
+            "reason": {
+              "default": "embed lawful PGX traversal expression",
+              "title": "Reason",
+              "type": "string"
+            }
+          },
+          "required": [
+            "node_pointer",
+            "expression"
+          ],
+          "title": "TraversalEmbedArgs",
+          "type": "object"
+        },
+        "TraversalPointerArgs": {
+          "additionalProperties": false,
+          "properties": {
+            "pointer": {
+              "title": "Pointer",
+              "type": "string"
+            }
+          },
+          "required": [
+            "pointer"
+          ],
+          "title": "TraversalPointerArgs",
+          "type": "object"
+        },
+        "TraversalTreeArgs": {
+          "additionalProperties": false,
+          "properties": {
+            "left": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/TraversalPointerArgs"
+                },
+                {
+                  "$ref": "#/$defs/TraversalTreeArgs"
+                }
+              ],
+              "title": "Left"
+            },
+            "operator": {
+              "title": "Operator",
+              "type": "string"
+            },
+            "right": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/TraversalPointerArgs"
+                },
+                {
+                  "$ref": "#/$defs/TraversalTreeArgs"
+                }
+              ],
+              "title": "Right"
+            }
+          },
+          "required": [
+            "left",
+            "operator",
+            "right"
+          ],
+          "title": "TraversalTreeArgs",
+          "type": "object"
+        },
+        "TripleAddArgs": {
+          "additionalProperties": false,
+          "properties": {
+            "subject_pointer": {
+              "title": "Subject Pointer",
+              "type": "string"
+            },
+            "predicate_pointer": {
+              "default": "PRN001",
+              "title": "Predicate Pointer",
+              "type": "string"
+            },
+            "object_pointer": {
+              "title": "Object Pointer",
+              "type": "string"
+            }
+          },
+          "required": [
+            "subject_pointer",
+            "object_pointer"
+          ],
+          "title": "TripleAddArgs",
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "operations": {
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/BatchNodeCreateOperation"
+              },
+              {
+                "$ref": "#/$defs/BatchNodeUpdateOperation"
+              },
+              {
+                "$ref": "#/$defs/BatchTraversalEmbedOperation"
+              },
+              {
+                "$ref": "#/$defs/BatchTripleAddOperation"
+              }
+            ]
+          },
+          "maxItems": 50,
+          "minItems": 1,
+          "title": "Operations",
+          "type": "array"
+        }
+      },
+      "required": [
+        "operations"
+      ],
+      "title": "BatchPlanArgs",
+      "type": "object"
+    },
+    "result_schema": {
+      "type": "object",
+      "required": [
+        "valid",
+        "operation_count",
+        "operations",
+        "head",
+        "would_advance_database_sequence_to",
+        "semantic_writes"
+      ],
+      "properties": {
+        "valid": {
+          "const": true
+        },
+        "operation_count": {
+          "type": "integer"
+        },
+        "operations": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "head": {
+          "type": "object",
+          "required": [
+            "corpus_id",
+            "snapshot_uuid",
+            "database_sequence"
+          ],
+          "properties": {
+            "corpus_id": {
+              "type": "string"
+            },
+            "snapshot_uuid": {
+              "type": "string"
+            },
+            "database_sequence": {
+              "type": "integer"
+            }
+          },
+          "additionalProperties": false
+        },
+        "would_advance_database_sequence_to": {
+          "type": "integer"
+        },
+        "semantic_writes": {
+          "const": 0
+        }
+      },
+      "additionalProperties": true
+    },
+    "output_schema": {
+      "type": "object",
+      "required": [
+        "ok",
+        "tool",
+        "request_id",
+        "result",
+        "error",
+        "warnings",
+        "database_sequence",
+        "idempotent_replay"
+      ],
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "request_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "result": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "valid",
+                "operation_count",
+                "operations",
+                "head",
+                "would_advance_database_sequence_to",
+                "semantic_writes"
+              ],
+              "properties": {
+                "valid": {
+                  "const": true
+                },
+                "operation_count": {
+                  "type": "integer"
+                },
+                "operations": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                },
+                "head": {
+                  "type": "object",
+                  "required": [
+                    "corpus_id",
+                    "snapshot_uuid",
+                    "database_sequence"
+                  ],
+                  "properties": {
+                    "corpus_id": {
+                      "type": "string"
+                    },
+                    "snapshot_uuid": {
+                      "type": "string"
+                    },
+                    "database_sequence": {
+                      "type": "integer"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "would_advance_database_sequence_to": {
+                  "type": "integer"
+                },
+                "semantic_writes": {
+                  "const": 0
+                }
+              },
+              "additionalProperties": true
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "database_sequence": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "idempotent_replay": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "contract_level": "guaranteed",
+    "success_example": {
+      "request": {
+        "tool": "pgx.batch.preflight",
+        "arguments": {
+          "operations": [
+            {
+              "operation": "node.create",
+              "arguments": {
+                "pointer": "CB1",
+                "title": "Cell membrane",
+                "description": "A selectively permeable boundary.",
+                "graph_key": "cell-biology"
+              }
+            }
+          ]
+        },
+        "database": "knowledge.sqlite",
+        "expected_head": {
+          "corpus_id": "<last-observed-corpus-uuid>",
+          "snapshot_uuid": "<last-observed-snapshot-uuid>",
+          "database_sequence": 7
+        }
+      },
+      "result_excerpt": {
+        "valid": true,
+        "operation_count": 1,
+        "semantic_writes": 0
+      }
+    },
+    "failure_example": {},
+    "likely_next_tools": [
+      "pgx.batch.apply",
+      "pgx.change_set.show"
+    ]
+  },
+  {
     "name": "pgx.change_set.list",
     "profile": "core",
     "status": "active",

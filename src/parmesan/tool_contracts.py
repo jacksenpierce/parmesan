@@ -386,6 +386,26 @@ RESULT_SCHEMAS: dict[str, dict[str, Any]] = {
             **MUTATION_FIELDS,
         },
     ),
+    "pgx.batch.preflight": _object(
+        ["valid", "operation_count", "operations", "head", "would_advance_database_sequence_to", "semantic_writes"],
+        {
+            "valid": {"const": True},
+            "operation_count": {"type": "integer"},
+            "operations": {"type": "array", "items": {"type": "object"}},
+            "head": HEAD_SCHEMA,
+            "would_advance_database_sequence_to": {"type": "integer"},
+            "semantic_writes": {"const": 0},
+        },
+    ),
+    "pgx.batch.apply": _object(
+        ["operation_count", "results", "atomic", *MUTATION_FIELDS],
+        {
+            "operation_count": {"type": "integer"},
+            "results": {"type": "array", "items": {"type": "object"}},
+            "atomic": {"const": True},
+            **MUTATION_FIELDS,
+        },
+    ),
     "pgx.manifest.build": _object(
         ["product", "version", "generated_at", "database", "database_sha256", "metadata", "counts", "graphs", "validation"],
         {
@@ -403,18 +423,25 @@ RESULT_SCHEMAS: dict[str, dict[str, Any]] = {
 }
 
 
-def _request(tool: str, arguments: dict[str, Any], *, database: str | None = None, request_id: str | None = None) -> dict[str, Any]:
+def _request(
+    tool: str,
+    arguments: dict[str, Any],
+    *,
+    database: str | None = None,
+    request_id: str | None = None,
+    expected_head: bool = False,
+) -> dict[str, Any]:
     payload: dict[str, Any] = {"tool": tool, "arguments": arguments}
     if database:
         payload["database"] = database
     if request_id:
         payload["request_id"] = request_id
-        if database:
-            payload["expected_head"] = {
-                "corpus_id": "<last-observed-corpus-uuid>",
-                "snapshot_uuid": "<last-observed-snapshot-uuid>",
-                "database_sequence": 7,
-            }
+    if database and (request_id or expected_head):
+        payload["expected_head"] = {
+            "corpus_id": "<last-observed-corpus-uuid>",
+            "snapshot_uuid": "<last-observed-snapshot-uuid>",
+            "database_sequence": 7,
+        }
     return payload
 
 
@@ -531,6 +558,48 @@ SUCCESS_EXAMPLES: dict[str, dict[str, Any]] = {
             request_id="16161616-1616-4616-8616-161616161616",
         ),
         "result_excerpt": {"status": "completed", "operation_count": 3},
+    },
+    "pgx.batch.preflight": {
+        "request": _request(
+            "pgx.batch.preflight",
+            {
+                "operations": [
+                    {
+                        "operation": "node.create",
+                        "arguments": {
+                            "pointer": "CB1",
+                            "title": "Cell membrane",
+                            "description": "A selectively permeable boundary.",
+                            "graph_key": "cell-biology",
+                        },
+                    }
+                ]
+            },
+            database="knowledge.sqlite",
+            expected_head=True,
+        ),
+        "result_excerpt": {"valid": True, "operation_count": 1, "semantic_writes": 0},
+    },
+    "pgx.batch.apply": {
+        "request": _request(
+            "pgx.batch.apply",
+            {
+                "operations": [
+                    {
+                        "operation": "node.create",
+                        "arguments": {
+                            "pointer": "CB1",
+                            "title": "Cell membrane",
+                            "description": "A selectively permeable boundary.",
+                            "graph_key": "cell-biology",
+                        },
+                    }
+                ]
+            },
+            database="knowledge.sqlite",
+            request_id="18181818-1818-4818-8818-181818181818",
+        ),
+        "result_excerpt": {"operation_count": 1, "atomic": True, "database_sequence": 8},
     },
     "pgx.graph.create": {
         "request": _request("pgx.graph.create", {"graph_key": "cell-biology", "pointer_prefix": "CB", "declaration_pointer": "CB0", "title": "Cell biology", "description": "Domain graph for cell biology."}, database="knowledge.sqlite", request_id="22222222-2222-4222-8222-222222222222"),
@@ -659,6 +728,8 @@ NEXT_TOOLS: dict[str, list[str]] = {
     "pgx.change_set.list": ["pgx.change_set.show", "pgx.change_set.open"],
     "pgx.change_set.show": ["pgx.node.create", "pgx.change_set.resolve"],
     "pgx.change_set.resolve": ["pgx.mode.set", "pgx.handoff.publish"],
+    "pgx.batch.preflight": ["pgx.batch.apply", "pgx.change_set.show"],
+    "pgx.batch.apply": ["pgx.database.validate", "pgx.change_set.show"],
     "pgx.graph.create": ["pgx.node.create"],
     "pgx.node.create": ["pgx.node.create", "pgx.traversal.embed", "pgx.reference.validate", "pgx.database.validate"],
     "pgx.node.get": ["pgx.node.update", "pgx.traversal.embed", "pgx.context.build", "pgx.reference.list"],
