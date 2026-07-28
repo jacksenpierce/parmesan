@@ -37,6 +37,7 @@ class SQLitePGXStore:
         *,
         workstream_id: str | None = None,
         expected_head: CorpusHead | dict[str, Any] | None = None,
+        change_set_id: str | None = None,
     ):
         self.path = Path(path)
         if not self.path.exists():
@@ -49,6 +50,10 @@ class SQLitePGXStore:
             if expected_head is not None
             else None
         )
+        try:
+            self.change_set_id = str(uuid.UUID(change_set_id)) if change_set_id else None
+        except ValueError as exc:
+            raise ContractError("change_set_id must be a UUID", {"change_set_id": change_set_id}) from exc
 
     @classmethod
     def initialize(
@@ -192,7 +197,7 @@ class SQLitePGXStore:
         ledger_columns = {
             row["name"] for row in connection.execute("PRAGMA table_info(operation_ledger)")
         }
-        for name in ("input_snapshot_uuid", "output_snapshot_uuid", "transition_digest"):
+        for name in ("input_snapshot_uuid", "output_snapshot_uuid", "transition_digest", "change_set_uuid"):
             if name not in ledger_columns:
                 connection.execute(f"ALTER TABLE operation_ledger ADD COLUMN {name} TEXT")
 
@@ -325,6 +330,16 @@ class SQLitePGXStore:
             self._ensure_operating_mode_schema(connection)
             current = self._mode_row(connection)
             assert current is not None
+            if mode == "publish":
+                open_sets = self._open_change_set_count(connection)
+                if open_sets:
+                    raise ConflictError(
+                        "publication is blocked while a change set is open",
+                        {
+                            "open_change_sets": open_sets,
+                            "next_action": "Complete, abandon, or supersede every open change set before publishing.",
+                        },
+                    )
             if current["mode_key"] == mode:
                 return {
                     "mode": mode,
@@ -362,6 +377,189 @@ class SQLitePGXStore:
             }
 
         return self._mutate("pgx.mode.set", request_id, payload, action)
+
+    def _change_set_schema_present(self, connection: sqlite3.Connection) -> bool:
+        return connection.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='change_sets'"
+        ).fetchone() is not None
+
+    def _open_change_set_count(self, connection: sqlite3.Connection) -> int:
+        if not self._change_set_schema_present(connection):
+            return 0
+        return int(connection.execute(
+            "SELECT COUNT(*) FROM change_sets WHERE status='open'"
+        ).fetchone()[0])
+
+    def change_set_open(self, *, request_id: str | None, title: str, intent: str) -> dict[str, Any]:
+        payload = {"title": title, "intent": intent}
+
+        def action(connection: sqlite3.Connection, req: str) -> dict[str, Any]:
+            if not self._change_set_schema_present(connection):
+                raise ContractError(
+                    "change-set migration is required before opening durable work",
+                    {"inspection_allowed": True},
+                )
+            head = self._head_row(connection)
+            assert head is not None
+            change_set_uuid = str(uuid.uuid5(uuid.UUID(req), "parmesan-change-set"))
+            created_at = now_rfc3339_ns()
+            connection.execute(
+                """INSERT INTO change_sets
+                   (change_set_uuid,title,intent,status,base_snapshot_uuid,created_at,resolved_at,resolution)
+                   VALUES (?,?,?,'open',?,?,NULL,'')""",
+                (change_set_uuid, title, intent, head["snapshot_uuid"], created_at),
+            )
+            self._audit(
+                connection,
+                request_uuid=req,
+                operation_type="change_set.open",
+                details={"change_set_id": change_set_uuid, "title": title},
+            )
+            return {
+                "change_set_id": change_set_uuid,
+                "title": title,
+                "intent": intent,
+                "status": "open",
+                "base_snapshot_uuid": head["snapshot_uuid"],
+                "operation_count": 0,
+            }
+
+        return self._mutate("pgx.change_set.open", request_id, payload, action)
+
+    def change_set_list(self, *, status: str | None = None, limit: int = 50) -> dict[str, Any]:
+        connection = connect(self.path, readonly=True)
+        try:
+            if not self._change_set_schema_present(connection):
+                return {"migration_required": True, "change_sets": [], "total": 0}
+            parameters: list[Any] = []
+            where = ""
+            if status is not None:
+                where = "WHERE cs.status=?"
+                parameters.append(status)
+            total = int(connection.execute(
+                f"SELECT COUNT(*) FROM change_sets cs {where}", parameters
+            ).fetchone()[0])
+            parameters.append(limit)
+            rows = connection.execute(
+                f"""SELECT cs.change_set_uuid AS change_set_id,cs.title,cs.intent,cs.status,
+                           cs.base_snapshot_uuid,cs.created_at,cs.resolved_at,cs.resolution,
+                           COUNT(csr.request_uuid) AS operation_count
+                    FROM change_sets cs
+                    LEFT JOIN change_set_receipts csr ON csr.change_set_uuid=cs.change_set_uuid
+                    {where}
+                    GROUP BY cs.change_set_uuid
+                    ORDER BY cs.created_at DESC
+                    LIMIT ?""",
+                parameters,
+            ).fetchall()
+            return {
+                "migration_required": False,
+                "total": total,
+                "change_sets": [dict(row) for row in rows],
+            }
+        finally:
+            connection.close()
+
+    def change_set_show(self, change_set_id: str, *, receipt_limit: int = 100) -> dict[str, Any]:
+        try:
+            change_set_uuid = str(uuid.UUID(change_set_id))
+        except ValueError as exc:
+            raise ContractError("change_set_id must be a UUID", {"change_set_id": change_set_id}) from exc
+        connection = connect(self.path, readonly=True)
+        try:
+            if not self._change_set_schema_present(connection):
+                raise ContractError("change-set migration is required", {"inspection_allowed": True})
+            row = connection.execute(
+                """SELECT change_set_uuid AS change_set_id,title,intent,status,base_snapshot_uuid,
+                          created_at,resolved_at,resolution
+                   FROM change_sets WHERE change_set_uuid=?""",
+                (change_set_uuid,),
+            ).fetchone()
+            if row is None:
+                raise NotFoundError("change set does not exist", {"change_set_id": change_set_uuid})
+            receipts = [
+                dict(item)
+                for item in connection.execute(
+                    """SELECT ordinal,request_uuid AS request_id,tool_name,database_sequence,output_snapshot_uuid
+                       FROM change_set_receipts WHERE change_set_uuid=?
+                       ORDER BY ordinal LIMIT ?""",
+                    (change_set_uuid, receipt_limit),
+                )
+            ]
+            total = int(connection.execute(
+                "SELECT COUNT(*) FROM change_set_receipts WHERE change_set_uuid=?",
+                (change_set_uuid,),
+            ).fetchone()[0])
+            return {**dict(row), "operation_count": total, "receipts": receipts}
+        finally:
+            connection.close()
+
+    def change_set_resolve(
+        self,
+        *,
+        request_id: str | None,
+        change_set_id: str,
+        status: str,
+        resolution: str,
+    ) -> dict[str, Any]:
+        if status not in {"completed", "abandoned", "superseded"}:
+            raise ContractError(
+                "change set resolution status is invalid",
+                {"status": status, "allowed": ["completed", "abandoned", "superseded"]},
+            )
+        try:
+            change_set_uuid = str(uuid.UUID(change_set_id))
+        except ValueError as exc:
+            raise ContractError("change_set_id must be a UUID", {"change_set_id": change_set_id}) from exc
+        self.change_set_id = change_set_uuid
+        payload = {
+            "change_set_id": change_set_uuid,
+            "status": status,
+            "resolution": resolution,
+        }
+
+        def action(connection: sqlite3.Connection, req: str) -> dict[str, Any]:
+            row = connection.execute(
+                "SELECT status,title,intent,base_snapshot_uuid FROM change_sets WHERE change_set_uuid=?",
+                (change_set_uuid,),
+            ).fetchone()
+            if row is None:
+                raise NotFoundError("change set does not exist", {"change_set_id": change_set_uuid})
+            if row["status"] != "open":
+                raise ConflictError(
+                    "only an open change set can be resolved",
+                    {"change_set_id": change_set_uuid, "status": row["status"]},
+                )
+            resolved_at = now_rfc3339_ns()
+            connection.execute(
+                """UPDATE change_sets SET status=?,resolved_at=?,resolution=?
+                   WHERE change_set_uuid=?""",
+                (status, resolved_at, resolution, change_set_uuid),
+            )
+            self._audit(
+                connection,
+                request_uuid=req,
+                operation_type="change_set.resolve",
+                details={"change_set_id": change_set_uuid, "status": status, "resolution": resolution},
+            )
+            operation_count = int(connection.execute(
+                "SELECT COUNT(*) FROM change_set_receipts WHERE change_set_uuid=?",
+                (change_set_uuid,),
+            ).fetchone()[0]) + 1
+            return {
+                "change_set_id": change_set_uuid,
+                "title": row["title"],
+                "intent": row["intent"],
+                "status": status,
+                "base_snapshot_uuid": row["base_snapshot_uuid"],
+                "resolved_at": resolved_at,
+                "resolution": resolution,
+                "operation_count": operation_count,
+            }
+
+        result = self._mutate("pgx.change_set.resolve", request_id, payload, action)
+        self.change_set_id = None
+        return result
 
     def require_publish_mode(self, operation: str) -> None:
         state = self.mode_show()
@@ -601,7 +799,11 @@ class SQLitePGXStore:
         fn: Callable[[sqlite3.Connection, str], dict[str, Any]],
     ) -> dict[str, Any]:
         request_uuid = self._validate_request_uuid(request_id)
-        input_hash = sha256_text(_canonical_json({"tool": tool_name, "arguments": payload}))
+        input_hash = sha256_text(_canonical_json({
+            "tool": tool_name,
+            "arguments": payload,
+            "change_set_id": self.change_set_id,
+        }))
         connection = connect(self.path)
         try:
             connection.execute("BEGIN IMMEDIATE")
@@ -623,6 +825,27 @@ class SQLitePGXStore:
                     return result
                 raise ConflictError("request is already in progress", {"request_id": request_uuid})
             input_head = self._require_expected_head(connection)
+            active_change_set = None
+            if self.change_set_id is not None:
+                if not self._change_set_schema_present(connection):
+                    raise ContractError(
+                        "change-set migration is required before attaching durable work",
+                        {"change_set_id": self.change_set_id},
+                    )
+                active_change_set = connection.execute(
+                    "SELECT change_set_uuid,status FROM change_sets WHERE change_set_uuid=?",
+                    (self.change_set_id,),
+                ).fetchone()
+                if active_change_set is None:
+                    raise NotFoundError(
+                        "change set does not exist",
+                        {"change_set_id": self.change_set_id},
+                    )
+                if active_change_set["status"] != "open":
+                    raise ConflictError(
+                        "mutation cannot attach to a resolved change set",
+                        {"change_set_id": self.change_set_id, "status": active_change_set["status"]},
+                    )
             self._ensure_operating_mode_schema(connection)
             mode = self._mode_row(connection)
             if tool_name != "pgx.mode.set" and mode is not None and mode["mode_key"] == "publish":
@@ -634,9 +857,9 @@ class SQLitePGXStore:
             started = unique_timestamp(connection, "operation_ledger", "started_at")
             connection.execute(
                 """INSERT INTO operation_ledger
-                (request_uuid,tool_name,input_hash,status,result_json,started_at,committed_at,database_sequence)
-                VALUES (?,?,?,'started',NULL,?,NULL,NULL)""",
-                (request_uuid, tool_name, input_hash, started),
+                (request_uuid,tool_name,input_hash,status,result_json,started_at,committed_at,database_sequence,change_set_uuid)
+                VALUES (?,?,?,'started',NULL,?,NULL,NULL,?)""",
+                (request_uuid, tool_name, input_hash, started, self.change_set_id),
             )
             result = fn(connection, request_uuid)
             sequence = self._increment_sequence(connection)
@@ -697,6 +920,25 @@ class SQLitePGXStore:
                 "workstream_id": self.workstream_id,
                 "head": output_head.model_dump(),
             })
+            if self.change_set_id is not None:
+                result["change_set_id"] = self.change_set_id
+                ordinal = int(connection.execute(
+                    "SELECT COUNT(*) FROM change_set_receipts WHERE change_set_uuid=?",
+                    (self.change_set_id,),
+                ).fetchone()[0]) + 1
+                connection.execute(
+                    """INSERT INTO change_set_receipts
+                       (change_set_uuid,ordinal,request_uuid,tool_name,database_sequence,output_snapshot_uuid)
+                       VALUES (?,?,?,?,?,?)""",
+                    (
+                        self.change_set_id,
+                        ordinal,
+                        request_uuid,
+                        tool_name,
+                        sequence,
+                        output_snapshot_uuid,
+                    ),
+                )
             committed = now_rfc3339_ns()
             connection.execute(
                 """UPDATE operation_ledger
@@ -1941,6 +2183,20 @@ class SQLitePGXStore:
             checks["triples"]=connection.execute("SELECT COUNT(*) FROM triples").fetchone()[0]
             checks["tags"]=connection.execute("SELECT COUNT(*) FROM tag_registry").fetchone()[0]
             checks["database_sequence"]=int(meta.get("database_sequence","-1"))
+            if self._change_set_schema_present(connection):
+                checks["open_change_sets"] = self._open_change_set_count(connection)
+                orphan_receipts = int(connection.execute(
+                    """SELECT COUNT(*) FROM change_set_receipts csr
+                       LEFT JOIN operation_ledger ol ON ol.request_uuid=csr.request_uuid
+                       WHERE ol.request_uuid IS NULL
+                          OR ol.change_set_uuid IS NOT csr.change_set_uuid
+                          OR ol.database_sequence IS NOT csr.database_sequence"""
+                ).fetchone()[0])
+                checks["change_set_receipt_errors"] = orphan_receipts
+                if orphan_receipts:
+                    errors.append({"code": "change_set_receipts", "count": orphan_receipts})
+            else:
+                checks["open_change_sets"] = 0
             head = self._head_row(connection)
             if head is None:
                 checks["authority_head"] = "migration_required"

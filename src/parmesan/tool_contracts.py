@@ -310,6 +310,55 @@ RESULT_SCHEMAS: dict[str, dict[str, Any]] = {
             "reasons": {"type": "array", "items": {"type": "string"}},
         },
     ),
+    "pgx.change_set.open": _object(
+        ["change_set_id", "title", "intent", "status", "base_snapshot_uuid", "operation_count", *MUTATION_FIELDS],
+        {
+            "change_set_id": _string(),
+            "title": _string(),
+            "intent": _string(),
+            "status": {"const": "open"},
+            "base_snapshot_uuid": _string(),
+            "operation_count": {"type": "integer"},
+            **MUTATION_FIELDS,
+        },
+    ),
+    "pgx.change_set.list": _object(
+        ["migration_required", "total", "change_sets"],
+        {
+            "migration_required": {"type": "boolean"},
+            "total": {"type": "integer"},
+            "change_sets": {"type": "array", "items": {"type": "object"}},
+        },
+    ),
+    "pgx.change_set.show": _object(
+        ["change_set_id", "title", "intent", "status", "base_snapshot_uuid", "created_at", "resolved_at", "resolution", "operation_count", "receipts"],
+        {
+            "change_set_id": _string(),
+            "title": _string(),
+            "intent": _string(),
+            "status": {"enum": ["open", "completed", "abandoned", "superseded"]},
+            "base_snapshot_uuid": _string(),
+            "created_at": _string(),
+            "resolved_at": {"type": ["string", "null"]},
+            "resolution": _string(),
+            "operation_count": {"type": "integer"},
+            "receipts": {"type": "array", "items": {"type": "object"}},
+        },
+    ),
+    "pgx.change_set.resolve": _object(
+        ["change_set_id", "title", "intent", "status", "base_snapshot_uuid", "resolved_at", "resolution", "operation_count", *MUTATION_FIELDS],
+        {
+            "change_set_id": _string(),
+            "title": _string(),
+            "intent": _string(),
+            "status": {"enum": ["completed", "abandoned", "superseded"]},
+            "base_snapshot_uuid": _string(),
+            "resolved_at": _string(),
+            "resolution": _string(),
+            "operation_count": {"type": "integer"},
+            **MUTATION_FIELDS,
+        },
+    ),
     "pgx.manifest.build": _object(
         ["product", "version", "generated_at", "database", "database_sha256", "metadata", "counts", "graphs", "validation"],
         {
@@ -402,6 +451,36 @@ SUCCESS_EXAMPLES: dict[str, dict[str, Any]] = {
             {"receipt": "my-mic-workspace/handoffs/checkpoint-1/HANDOFF.json"},
         ),
         "result_excerpt": {"classification": "exact", "authorized": True},
+    },
+    "pgx.change_set.open": {
+        "request": _request(
+            "pgx.change_set.open",
+            {"title": "Add cell transport concepts", "intent": "Create and connect the agreed membrane transport nodes."},
+            database="knowledge.sqlite",
+            request_id="15151515-1515-4515-8515-151515151515",
+        ),
+        "result_excerpt": {"status": "open", "operation_count": 0},
+    },
+    "pgx.change_set.list": {
+        "request": _request("pgx.change_set.list", {"status": "open"}, database="knowledge.sqlite"),
+        "result_excerpt": {"migration_required": False, "total": 1},
+    },
+    "pgx.change_set.show": {
+        "request": _request(
+            "pgx.change_set.show",
+            {"change_set_id": "<change-set-uuid>"},
+            database="knowledge.sqlite",
+        ),
+        "result_excerpt": {"status": "open", "operation_count": 2},
+    },
+    "pgx.change_set.resolve": {
+        "request": _request(
+            "pgx.change_set.resolve",
+            {"change_set_id": "<change-set-uuid>", "status": "completed", "resolution": "All agreed nodes were added and validated."},
+            database="knowledge.sqlite",
+            request_id="16161616-1616-4616-8616-161616161616",
+        ),
+        "result_excerpt": {"status": "completed", "operation_count": 3},
     },
     "pgx.graph.create": {
         "request": _request("pgx.graph.create", {"graph_key": "cell-biology", "pointer_prefix": "CB", "declaration_pointer": "CB0", "title": "Cell biology", "description": "Domain graph for cell biology."}, database="knowledge.sqlite", request_id="22222222-2222-4222-8222-222222222222"),
@@ -524,6 +603,10 @@ NEXT_TOOLS: dict[str, list[str]] = {
     "pgx.workspace.inspect": ["pgx.handoff.publish", "pgx.database.describe"],
     "pgx.handoff.publish": ["pgx.handoff.inspect", "pgx.graph.create"],
     "pgx.handoff.inspect": ["pgx.database.describe", "pgx.workspace.inspect"],
+    "pgx.change_set.open": ["pgx.graph.create", "pgx.node.create", "pgx.change_set.show"],
+    "pgx.change_set.list": ["pgx.change_set.show", "pgx.change_set.open"],
+    "pgx.change_set.show": ["pgx.node.create", "pgx.change_set.resolve"],
+    "pgx.change_set.resolve": ["pgx.mode.set", "pgx.handoff.publish"],
     "pgx.graph.create": ["pgx.node.create"],
     "pgx.node.create": ["pgx.node.create", "pgx.traversal.embed", "pgx.reference.validate", "pgx.database.validate"],
     "pgx.node.get": ["pgx.node.update", "pgx.traversal.embed", "pgx.context.build", "pgx.reference.list"],

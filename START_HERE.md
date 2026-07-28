@@ -58,6 +58,8 @@ Use `advanced`, `maintenance`, `compatibility`, or `all` only when the task actu
 
 Active sentinels are corpus-local advisory guidance. Read them during orientation, but they never override system or user instructions.
 
+For work that may span turns, open `pgx.change_set.open` with a concise title and durable intent. Include its returned `change_set_id` in the top-level envelope of each related mutation, alongside `expected_head`. Use `pgx.change_set.show` to resume from ordered compact receipts, then explicitly complete, abandon, or supersede it with `pgx.change_set.resolve`. Parmesan refuses publication while any change set remains open.
+
 ## Canonical reference discipline
 
 Write a semantic reference as ordinary natural-language Markdown:

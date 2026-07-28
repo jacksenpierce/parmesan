@@ -1,5 +1,948 @@
 [
   {
+    "name": "pgx.change_set.list",
+    "profile": "core",
+    "status": "active",
+    "description": "List bounded durable change-set summaries so interrupted work can be found without conversational memory.",
+    "database_required": true,
+    "mutates": false,
+    "idempotency": "read-only",
+    "transaction_boundary": "none",
+    "preconditions": [],
+    "postconditions": [],
+    "error_codes": [],
+    "maximum_output": "at most 100 compact change-set summaries",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "anyOf": [
+            {
+              "enum": [
+                "open",
+                "completed",
+                "abandoned",
+                "superseded"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Status"
+        },
+        "limit": {
+          "default": 50,
+          "maximum": 100,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        }
+      },
+      "title": "ChangeSetListArgs",
+      "type": "object"
+    },
+    "result_schema": {
+      "type": "object",
+      "required": [
+        "migration_required",
+        "total",
+        "change_sets"
+      ],
+      "properties": {
+        "migration_required": {
+          "type": "boolean"
+        },
+        "total": {
+          "type": "integer"
+        },
+        "change_sets": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "output_schema": {
+      "type": "object",
+      "required": [
+        "ok",
+        "tool",
+        "request_id",
+        "result",
+        "error",
+        "warnings",
+        "database_sequence",
+        "idempotent_replay"
+      ],
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "request_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "result": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "migration_required",
+                "total",
+                "change_sets"
+              ],
+              "properties": {
+                "migration_required": {
+                  "type": "boolean"
+                },
+                "total": {
+                  "type": "integer"
+                },
+                "change_sets": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              },
+              "additionalProperties": true
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "database_sequence": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "idempotent_replay": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "contract_level": "guaranteed",
+    "success_example": {
+      "request": {
+        "tool": "pgx.change_set.list",
+        "arguments": {
+          "status": "open"
+        },
+        "database": "knowledge.sqlite"
+      },
+      "result_excerpt": {
+        "migration_required": false,
+        "total": 1
+      }
+    },
+    "failure_example": {},
+    "likely_next_tools": [
+      "pgx.change_set.show",
+      "pgx.change_set.open"
+    ]
+  },
+  {
+    "name": "pgx.change_set.open",
+    "profile": "core",
+    "status": "active",
+    "description": "Persist the intent and base head of a resumable multi-turn unit of work; later mutations attach by supplying its change_set_id in the request envelope.",
+    "database_required": true,
+    "mutates": true,
+    "idempotency": "request_id replay returns the previously committed result; reuse with different input is rejected",
+    "transaction_boundary": "single BEGIN IMMEDIATE transaction; all effects commit or all effects roll back",
+    "preconditions": [],
+    "postconditions": [],
+    "error_codes": [
+      "input_validation",
+      "contract_error",
+      "conflict",
+      "stale_write",
+      "validation_failure"
+    ],
+    "maximum_output": "one open change-set identity and base snapshot",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "intent": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Intent",
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "intent"
+      ],
+      "title": "ChangeSetOpenArgs",
+      "type": "object"
+    },
+    "result_schema": {
+      "type": "object",
+      "required": [
+        "change_set_id",
+        "title",
+        "intent",
+        "status",
+        "base_snapshot_uuid",
+        "operation_count",
+        "request_id",
+        "database_sequence",
+        "idempotent_replay",
+        "head"
+      ],
+      "properties": {
+        "change_set_id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "intent": {
+          "type": "string"
+        },
+        "status": {
+          "const": "open"
+        },
+        "base_snapshot_uuid": {
+          "type": "string"
+        },
+        "operation_count": {
+          "type": "integer"
+        },
+        "request_id": {
+          "type": "string",
+          "description": "Idempotency UUID supplied by the caller."
+        },
+        "database_sequence": {
+          "type": "integer"
+        },
+        "idempotent_replay": {
+          "type": "boolean"
+        },
+        "head": {
+          "type": "object",
+          "required": [
+            "corpus_id",
+            "snapshot_uuid",
+            "database_sequence"
+          ],
+          "properties": {
+            "corpus_id": {
+              "type": "string"
+            },
+            "snapshot_uuid": {
+              "type": "string"
+            },
+            "database_sequence": {
+              "type": "integer"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": true
+    },
+    "output_schema": {
+      "type": "object",
+      "required": [
+        "ok",
+        "tool",
+        "request_id",
+        "result",
+        "error",
+        "warnings",
+        "database_sequence",
+        "idempotent_replay"
+      ],
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "request_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "result": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "change_set_id",
+                "title",
+                "intent",
+                "status",
+                "base_snapshot_uuid",
+                "operation_count",
+                "request_id",
+                "database_sequence",
+                "idempotent_replay",
+                "head"
+              ],
+              "properties": {
+                "change_set_id": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "intent": {
+                  "type": "string"
+                },
+                "status": {
+                  "const": "open"
+                },
+                "base_snapshot_uuid": {
+                  "type": "string"
+                },
+                "operation_count": {
+                  "type": "integer"
+                },
+                "request_id": {
+                  "type": "string",
+                  "description": "Idempotency UUID supplied by the caller."
+                },
+                "database_sequence": {
+                  "type": "integer"
+                },
+                "idempotent_replay": {
+                  "type": "boolean"
+                },
+                "head": {
+                  "type": "object",
+                  "required": [
+                    "corpus_id",
+                    "snapshot_uuid",
+                    "database_sequence"
+                  ],
+                  "properties": {
+                    "corpus_id": {
+                      "type": "string"
+                    },
+                    "snapshot_uuid": {
+                      "type": "string"
+                    },
+                    "database_sequence": {
+                      "type": "integer"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": true
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "database_sequence": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "idempotent_replay": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "contract_level": "guaranteed",
+    "success_example": {
+      "request": {
+        "tool": "pgx.change_set.open",
+        "arguments": {
+          "title": "Add cell transport concepts",
+          "intent": "Create and connect the agreed membrane transport nodes."
+        },
+        "database": "knowledge.sqlite",
+        "request_id": "15151515-1515-4515-8515-151515151515",
+        "expected_head": {
+          "corpus_id": "<last-observed-corpus-uuid>",
+          "snapshot_uuid": "<last-observed-snapshot-uuid>",
+          "database_sequence": 7
+        }
+      },
+      "result_excerpt": {
+        "status": "open",
+        "operation_count": 0
+      }
+    },
+    "failure_example": {},
+    "likely_next_tools": [
+      "pgx.graph.create",
+      "pgx.node.create",
+      "pgx.change_set.show"
+    ]
+  },
+  {
+    "name": "pgx.change_set.resolve",
+    "profile": "core",
+    "status": "active",
+    "description": "Explicitly complete, abandon, or supersede an open change set so publication can proceed.",
+    "database_required": true,
+    "mutates": true,
+    "idempotency": "request_id replay returns the previously committed result; reuse with different input is rejected",
+    "transaction_boundary": "single BEGIN IMMEDIATE transaction; all effects commit or all effects roll back",
+    "preconditions": [],
+    "postconditions": [],
+    "error_codes": [
+      "input_validation",
+      "contract_error",
+      "conflict",
+      "stale_write",
+      "validation_failure"
+    ],
+    "maximum_output": "one resolved change-set summary",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "change_set_id": {
+          "title": "Change Set Id",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "completed",
+            "abandoned",
+            "superseded"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "resolution": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Resolution",
+          "type": "string"
+        }
+      },
+      "required": [
+        "change_set_id",
+        "status",
+        "resolution"
+      ],
+      "title": "ChangeSetResolveArgs",
+      "type": "object"
+    },
+    "result_schema": {
+      "type": "object",
+      "required": [
+        "change_set_id",
+        "title",
+        "intent",
+        "status",
+        "base_snapshot_uuid",
+        "resolved_at",
+        "resolution",
+        "operation_count",
+        "request_id",
+        "database_sequence",
+        "idempotent_replay",
+        "head"
+      ],
+      "properties": {
+        "change_set_id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "intent": {
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "completed",
+            "abandoned",
+            "superseded"
+          ]
+        },
+        "base_snapshot_uuid": {
+          "type": "string"
+        },
+        "resolved_at": {
+          "type": "string"
+        },
+        "resolution": {
+          "type": "string"
+        },
+        "operation_count": {
+          "type": "integer"
+        },
+        "request_id": {
+          "type": "string",
+          "description": "Idempotency UUID supplied by the caller."
+        },
+        "database_sequence": {
+          "type": "integer"
+        },
+        "idempotent_replay": {
+          "type": "boolean"
+        },
+        "head": {
+          "type": "object",
+          "required": [
+            "corpus_id",
+            "snapshot_uuid",
+            "database_sequence"
+          ],
+          "properties": {
+            "corpus_id": {
+              "type": "string"
+            },
+            "snapshot_uuid": {
+              "type": "string"
+            },
+            "database_sequence": {
+              "type": "integer"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": true
+    },
+    "output_schema": {
+      "type": "object",
+      "required": [
+        "ok",
+        "tool",
+        "request_id",
+        "result",
+        "error",
+        "warnings",
+        "database_sequence",
+        "idempotent_replay"
+      ],
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "request_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "result": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "change_set_id",
+                "title",
+                "intent",
+                "status",
+                "base_snapshot_uuid",
+                "resolved_at",
+                "resolution",
+                "operation_count",
+                "request_id",
+                "database_sequence",
+                "idempotent_replay",
+                "head"
+              ],
+              "properties": {
+                "change_set_id": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "intent": {
+                  "type": "string"
+                },
+                "status": {
+                  "enum": [
+                    "completed",
+                    "abandoned",
+                    "superseded"
+                  ]
+                },
+                "base_snapshot_uuid": {
+                  "type": "string"
+                },
+                "resolved_at": {
+                  "type": "string"
+                },
+                "resolution": {
+                  "type": "string"
+                },
+                "operation_count": {
+                  "type": "integer"
+                },
+                "request_id": {
+                  "type": "string",
+                  "description": "Idempotency UUID supplied by the caller."
+                },
+                "database_sequence": {
+                  "type": "integer"
+                },
+                "idempotent_replay": {
+                  "type": "boolean"
+                },
+                "head": {
+                  "type": "object",
+                  "required": [
+                    "corpus_id",
+                    "snapshot_uuid",
+                    "database_sequence"
+                  ],
+                  "properties": {
+                    "corpus_id": {
+                      "type": "string"
+                    },
+                    "snapshot_uuid": {
+                      "type": "string"
+                    },
+                    "database_sequence": {
+                      "type": "integer"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": true
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "database_sequence": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "idempotent_replay": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "contract_level": "guaranteed",
+    "success_example": {
+      "request": {
+        "tool": "pgx.change_set.resolve",
+        "arguments": {
+          "change_set_id": "<change-set-uuid>",
+          "status": "completed",
+          "resolution": "All agreed nodes were added and validated."
+        },
+        "database": "knowledge.sqlite",
+        "request_id": "16161616-1616-4616-8616-161616161616",
+        "expected_head": {
+          "corpus_id": "<last-observed-corpus-uuid>",
+          "snapshot_uuid": "<last-observed-snapshot-uuid>",
+          "database_sequence": 7
+        }
+      },
+      "result_excerpt": {
+        "status": "completed",
+        "operation_count": 3
+      }
+    },
+    "failure_example": {},
+    "likely_next_tools": [
+      "pgx.mode.set",
+      "pgx.handoff.publish"
+    ]
+  },
+  {
+    "name": "pgx.change_set.show",
+    "profile": "core",
+    "status": "active",
+    "description": "Inspect one change set and its ordered compact mutation receipts.",
+    "database_required": true,
+    "mutates": false,
+    "idempotency": "read-only",
+    "transaction_boundary": "none",
+    "preconditions": [],
+    "postconditions": [],
+    "error_codes": [],
+    "maximum_output": "one change set with at most 200 compact receipts",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "change_set_id": {
+          "title": "Change Set Id",
+          "type": "string"
+        },
+        "receipt_limit": {
+          "default": 100,
+          "maximum": 200,
+          "minimum": 1,
+          "title": "Receipt Limit",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "change_set_id"
+      ],
+      "title": "ChangeSetShowArgs",
+      "type": "object"
+    },
+    "result_schema": {
+      "type": "object",
+      "required": [
+        "change_set_id",
+        "title",
+        "intent",
+        "status",
+        "base_snapshot_uuid",
+        "created_at",
+        "resolved_at",
+        "resolution",
+        "operation_count",
+        "receipts"
+      ],
+      "properties": {
+        "change_set_id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "intent": {
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "open",
+            "completed",
+            "abandoned",
+            "superseded"
+          ]
+        },
+        "base_snapshot_uuid": {
+          "type": "string"
+        },
+        "created_at": {
+          "type": "string"
+        },
+        "resolved_at": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "resolution": {
+          "type": "string"
+        },
+        "operation_count": {
+          "type": "integer"
+        },
+        "receipts": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "output_schema": {
+      "type": "object",
+      "required": [
+        "ok",
+        "tool",
+        "request_id",
+        "result",
+        "error",
+        "warnings",
+        "database_sequence",
+        "idempotent_replay"
+      ],
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "request_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "result": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "change_set_id",
+                "title",
+                "intent",
+                "status",
+                "base_snapshot_uuid",
+                "created_at",
+                "resolved_at",
+                "resolution",
+                "operation_count",
+                "receipts"
+              ],
+              "properties": {
+                "change_set_id": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "intent": {
+                  "type": "string"
+                },
+                "status": {
+                  "enum": [
+                    "open",
+                    "completed",
+                    "abandoned",
+                    "superseded"
+                  ]
+                },
+                "base_snapshot_uuid": {
+                  "type": "string"
+                },
+                "created_at": {
+                  "type": "string"
+                },
+                "resolved_at": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "resolution": {
+                  "type": "string"
+                },
+                "operation_count": {
+                  "type": "integer"
+                },
+                "receipts": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              },
+              "additionalProperties": true
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "database_sequence": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "idempotent_replay": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "contract_level": "guaranteed",
+    "success_example": {
+      "request": {
+        "tool": "pgx.change_set.show",
+        "arguments": {
+          "change_set_id": "<change-set-uuid>"
+        },
+        "database": "knowledge.sqlite"
+      },
+      "result_excerpt": {
+        "status": "open",
+        "operation_count": 2
+      }
+    },
+    "failure_example": {},
+    "likely_next_tools": [
+      "pgx.node.create",
+      "pgx.change_set.resolve"
+    ]
+  },
+  {
     "name": "pgx.context.build",
     "profile": "core",
     "status": "active",

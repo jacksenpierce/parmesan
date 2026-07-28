@@ -85,6 +85,17 @@ def describe_corpus(database: str | Path) -> dict[str, Any]:
             head_row = connection.execute(
                 "SELECT corpus_id,snapshot_uuid,database_sequence FROM corpus_head WHERE singleton_id=1"
             ).fetchone()
+        open_change_sets = []
+        if connection.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='change_sets'"
+        ).fetchone() is not None:
+            open_change_sets = [
+                dict(row)
+                for row in connection.execute(
+                    """SELECT change_set_uuid AS change_set_id,title,intent,created_at
+                       FROM change_sets WHERE status='open' ORDER BY created_at LIMIT 20"""
+                )
+            ]
     finally:
         connection.close()
 
@@ -119,9 +130,11 @@ def describe_corpus(database: str | Path) -> dict[str, Any]:
             if head_row
             else "Inspection only until the explicit authority migration is applied."
         ),
+        "open_change_sets": open_change_sets,
         "next_actions": [
             "Remain in working mode for ordinary semantic work; external publication is disabled by default.",
             "For mutation, supply the displayed head as expected_head and carry each returned head forward.",
+            "Resume or explicitly resolve any open change set before publication.",
             "Use pgx.graph.create before adding notes to a new subject graph.",
             "Create referenced target nodes before notes that link to them.",
             "Use pgx.database.validate after a mutation sequence.",

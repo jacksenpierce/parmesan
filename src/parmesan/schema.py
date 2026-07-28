@@ -149,7 +149,8 @@ CREATE TABLE operation_ledger (
   database_sequence INTEGER,
   input_snapshot_uuid TEXT,
   output_snapshot_uuid TEXT,
-  transition_digest TEXT
+  transition_digest TEXT,
+  change_set_uuid TEXT REFERENCES change_sets(change_set_uuid) ON UPDATE RESTRICT ON DELETE RESTRICT
 ) STRICT, WITHOUT ROWID;
 
 CREATE TABLE audit_event (
@@ -235,6 +236,34 @@ CREATE TABLE corpus_head (
   last_request_uuid TEXT,
   updated_at TEXT NOT NULL
 ) STRICT, WITHOUT ROWID;
+
+CREATE TABLE change_sets (
+  change_set_uuid TEXT NOT NULL PRIMARY KEY,
+  title TEXT NOT NULL,
+  intent TEXT NOT NULL,
+  status TEXT NOT NULL CHECK(status IN ('open','completed','abandoned','superseded')),
+  base_snapshot_uuid TEXT NOT NULL REFERENCES semantic_snapshots(snapshot_uuid) ON UPDATE RESTRICT ON DELETE RESTRICT,
+  created_at TEXT NOT NULL UNIQUE,
+  resolved_at TEXT,
+  resolution TEXT NOT NULL DEFAULT ''
+) STRICT, WITHOUT ROWID;
+
+CREATE TABLE change_set_receipts (
+  change_set_uuid TEXT NOT NULL REFERENCES change_sets(change_set_uuid) ON UPDATE RESTRICT ON DELETE RESTRICT,
+  ordinal INTEGER NOT NULL CHECK(ordinal>=1),
+  request_uuid TEXT NOT NULL UNIQUE REFERENCES operation_ledger(request_uuid) ON UPDATE RESTRICT ON DELETE RESTRICT,
+  tool_name TEXT NOT NULL,
+  database_sequence INTEGER NOT NULL CHECK(database_sequence>=1),
+  output_snapshot_uuid TEXT NOT NULL REFERENCES semantic_snapshots(snapshot_uuid) ON UPDATE RESTRICT ON DELETE RESTRICT,
+  PRIMARY KEY(change_set_uuid,ordinal)
+) STRICT, WITHOUT ROWID;
+
+CREATE TRIGGER change_sets_no_delete
+BEFORE DELETE ON change_sets BEGIN SELECT RAISE(ABORT,'change sets cannot be deleted'); END;
+CREATE TRIGGER change_set_receipts_append_only_update
+BEFORE UPDATE ON change_set_receipts BEGIN SELECT RAISE(ABORT,'change set receipts are append-only'); END;
+CREATE TRIGGER change_set_receipts_append_only_delete
+BEFORE DELETE ON change_set_receipts BEGIN SELECT RAISE(ABORT,'change set receipts are append-only'); END;
 
 CREATE TRIGGER semantic_snapshots_append_only_update
 BEFORE UPDATE ON semantic_snapshots BEGIN SELECT RAISE(ABORT,'semantic snapshots are append-only'); END;

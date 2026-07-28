@@ -105,6 +105,7 @@ def dispatch_request(payload: dict[str, Any]) -> dict[str, Any]:
                 request.database,
                 workstream_id=RUNTIME_WORKSTREAM_ID,
                 expected_head=request.expected_head,
+                change_set_id=request.change_set_id,
             )
             if request.database
             else None
@@ -117,6 +118,7 @@ def dispatch_request(payload: dict[str, Any]) -> dict[str, Any]:
                 "database": request.database,
                 "workstream_id": RUNTIME_WORKSTREAM_ID,
                 "expected_head": request.expected_head.model_dump() if request.expected_head else None,
+                "change_set_id": request.change_set_id,
             },
         )
         warnings = result.get("warnings", []) if isinstance(result, dict) else []

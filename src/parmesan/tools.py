@@ -239,6 +239,27 @@ class HandoffInspectArgs(ToolArgs):
     candidate_database: str | None = None
 
 
+class ChangeSetOpenArgs(ToolArgs):
+    title: str = Field(min_length=1, max_length=200)
+    intent: str = Field(min_length=1, max_length=4000)
+
+
+class ChangeSetListArgs(ToolArgs):
+    status: Literal["open", "completed", "abandoned", "superseded"] | None = None
+    limit: int = Field(default=50, ge=1, le=100)
+
+
+class ChangeSetShowArgs(ToolArgs):
+    change_set_id: str
+    receipt_limit: int = Field(default=100, ge=1, le=200)
+
+
+class ChangeSetResolveArgs(ToolArgs):
+    change_set_id: str
+    status: Literal["completed", "abandoned", "superseded"]
+    resolution: str = Field(min_length=1, max_length=4000)
+
+
 class LineageCompareArgs(ToolArgs):
     other_database: str
 
@@ -374,6 +395,48 @@ def _handoff_publish(store, args: HandoffPublishArgs, ctx):
 )
 def _handoff_inspect(store, args: HandoffInspectArgs, ctx):
     return inspect_handoff(args.receipt, args.candidate_database)
+
+
+@register(
+    "pgx.change_set.open",
+    "Persist the intent and base head of a resumable multi-turn unit of work; later mutations attach by supplying its change_set_id in the request envelope.",
+    ChangeSetOpenArgs,
+    **MUTATION_META,
+    max_output="one open change-set identity and base snapshot",
+)
+def _change_set_open(store, args: ChangeSetOpenArgs, ctx):
+    return store.change_set_open(request_id=ctx["request_id"], **args.model_dump())
+
+
+@register(
+    "pgx.change_set.list",
+    "List bounded durable change-set summaries so interrupted work can be found without conversational memory.",
+    ChangeSetListArgs,
+    max_output="at most 100 compact change-set summaries",
+)
+def _change_set_list(store, args: ChangeSetListArgs, ctx):
+    return store.change_set_list(**args.model_dump())
+
+
+@register(
+    "pgx.change_set.show",
+    "Inspect one change set and its ordered compact mutation receipts.",
+    ChangeSetShowArgs,
+    max_output="one change set with at most 200 compact receipts",
+)
+def _change_set_show(store, args: ChangeSetShowArgs, ctx):
+    return store.change_set_show(**args.model_dump())
+
+
+@register(
+    "pgx.change_set.resolve",
+    "Explicitly complete, abandon, or supersede an open change set so publication can proceed.",
+    ChangeSetResolveArgs,
+    **MUTATION_META,
+    max_output="one resolved change-set summary",
+)
+def _change_set_resolve(store, args: ChangeSetResolveArgs, ctx):
+    return store.change_set_resolve(request_id=ctx["request_id"], **args.model_dump())
 
 
 @register("pgx.lineage.describe", "Describe the authoritative corpus identity, deterministic semantic snapshot, automatic workstreams, and prior materializations.", EmptyArgs, max_output="one bounded lineage report", profile="advanced")

@@ -62,6 +62,8 @@ Initialization returns an embedded corpus `head`. Every later mutation must expl
 
 For MIC work, `pgx.workspace.initialize` is the preferred starting point. It declares exactly one authoritative database and separates resources, machinery, projections, scratch work, and handoffs. `pgx.workspace.inspect` rejects unregistered SQLite candidates rather than guessing which same-named file is current.
 
+When a coherent pass may outlive one chat turn, `pgx.change_set.open` persists its intent and base head. Related mutation requests carry the change-set ID and receive ordered compact receipts. The work can be rediscovered with `pgx.change_set.list` and resumed with `pgx.change_set.show`; publication remains blocked until every open change set is explicitly resolved.
+
 ### Materialize a handoff or compare parallel work
 
 Ordinary work remains in the default `working` mode and never automatically rebuilds or serializes an external knowledge base. When a clean database copy or another publication surface is explicitly needed, use `pgx.mode.set` to enter `publish` mode before invoking the advanced materialization tools. Publish mode freezes semantic mutation so each output comes from one fixed database state. Return to `working` mode afterward.

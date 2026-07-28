@@ -16,6 +16,7 @@ class ToolRequest(StrictModel):
     database: str | None = None
     request_id: str | None = None
     expected_head: CorpusHead | None = None
+    change_set_id: str | None = None
 
 
 class ToolResponse(StrictModel):

@@ -24,6 +24,8 @@ Every dispatched request contains a tool name, arguments, a database path when r
 
 The request UUID is the idempotency key. Replaying the same UUID and input returns the earlier committed result; reuse with different input is rejected.
 
+For multi-turn work, `pgx.change_set.open` stores durable intent and a base snapshot. Put its `change_set_id` in the top-level request envelope of each related mutation. Parmesan appends ordered compact receipts without holding a long-lived SQLite transaction. `pgx.change_set.show` is the restart surface; publication is blocked until open work is completed, abandoned, or superseded.
+
 Errors are structured and may include `retryable`, `suggested_tool`, and `suggested_action` fields. Follow those hints before improvising.
 
 ## Reference behavior
