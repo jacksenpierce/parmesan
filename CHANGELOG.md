@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Resolved overlapping graph namespaces by assigning pointers to the uniquely longest registered prefix and validating memberships against that canonical resolution.
 - Documented the small-branch, pull-request, and periodic-release workflow for maintainers.
 - Added the complete agent-facing “Construal Engineering with Parmesan” guide verbatim to the required operating context.
 - Added an annotated corpus-artifact intake area and preserved the quarantined Lexicon Lab as a focused Construal Engineering experiment lobe.

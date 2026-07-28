@@ -449,11 +449,33 @@ class SQLitePGXStore:
             raise NotFoundError("graph namespace not found", {"pointer_prefix": pointer_prefix})
         return row
 
-    def _check_graph_pointer(self, graph: sqlite3.Row, pointer: str) -> None:
-        if not pointer.startswith(graph["pointer_prefix"]):
+    def _resolve_graph_namespace(self, connection: sqlite3.Connection, pointer: str) -> sqlite3.Row | None:
+        """Resolve a pointer to the uniquely longest registered graph prefix."""
+        return connection.execute(
+            """SELECT * FROM graphs
+               WHERE ? LIKE pointer_prefix || '%'
+               ORDER BY length(pointer_prefix) DESC, pointer_prefix
+               LIMIT 1""",
+            (pointer,),
+        ).fetchone()
+
+    def _check_graph_pointer(self, connection: sqlite3.Connection, graph: sqlite3.Row, pointer: str) -> None:
+        resolved = self._resolve_graph_namespace(connection, pointer)
+        if resolved is None:
             raise ContractError(
                 "pointer does not belong to graph namespace",
                 {"pointer": pointer, "graph_key": graph["graph_key"], "required_prefix": graph["pointer_prefix"]},
+            )
+        if resolved["graph_uuid"] != graph["graph_uuid"]:
+            raise ContractError(
+                "pointer resolves to a more specific graph namespace",
+                {
+                    "pointer": pointer,
+                    "requested_graph_key": graph["graph_key"],
+                    "requested_prefix": graph["pointer_prefix"],
+                    "resolved_graph_key": resolved["graph_key"],
+                    "resolved_prefix": resolved["pointer_prefix"],
+                },
             )
 
     def _next_ordinal(self, connection: sqlite3.Connection, graph_uuid: str) -> int:
@@ -548,6 +570,8 @@ class SQLitePGXStore:
                 "INSERT INTO graphs(graph_uuid,graph_key,pointer_prefix,description) VALUES (?,?,?,?)",
                 (node, graph_key, pointer_prefix, description),
             )
+            graph = self._graph(con, graph_key)
+            self._check_graph_pointer(con, graph, declaration_pointer)
             con.execute("INSERT INTO graph_membership(graph_uuid,node_uuid,ordinal) VALUES (?,?,0)", (node, node))
             self._replace_references(con, source_node_uuid=node, source_revision_uuid=rev, description=description, strict=True)
             self._refresh_fts(con, node)
@@ -559,7 +583,7 @@ class SQLitePGXStore:
         payload = {"pointer": pointer, "title": title, "description": description, "graph_key": graph_key}
         def action(con: sqlite3.Connection, req: str) -> dict[str, Any]:
             graph = self._graph(con, graph_key)
-            self._check_graph_pointer(graph, pointer)
+            self._check_graph_pointer(con, graph, pointer)
             node, rev = self._insert_identity(
                 con, pointer=pointer, title=title, description=description,
                 lifecycle_state="promoted", request_uuid=req, reason="node creation",
@@ -578,7 +602,8 @@ class SQLitePGXStore:
         payload = {"pointer": pointer, "title": title, "description": description, "intended_graph_key": intended_graph_key, "tracking_note": tracking_note}
         def action(con: sqlite3.Connection, req: str) -> dict[str, Any]:
             if intended_graph_key is not None:
-                self._graph(con, intended_graph_key)
+                intended_graph = self._graph(con, intended_graph_key)
+                self._check_graph_pointer(con, intended_graph, pointer)
             node, rev = self._insert_identity(
                 con, pointer=pointer, title=title, description=description,
                 lifecycle_state="staged", request_uuid=req, reason="staged node creation",
@@ -613,7 +638,7 @@ class SQLitePGXStore:
             if not target_graph:
                 raise ContractError("promotion requires a graph_key")
             graph = self._graph(con, target_graph)
-            self._check_graph_pointer(graph, pointer)
+            self._check_graph_pointer(con, graph, pointer)
             report = self._replace_references(
                 con, source_node_uuid=current["uuid"], source_revision_uuid=current["revision_uuid"],
                 description=current["description"], strict=True,
@@ -821,7 +846,7 @@ class SQLitePGXStore:
         payload = {"pointer": pointer, "title": title, "description": description}
         def action(con: sqlite3.Connection, req: str) -> dict[str, Any]:
             graph = self._graph_by_prefix(con, "TGN")
-            self._check_graph_pointer(graph, pointer)
+            self._check_graph_pointer(con, graph, pointer)
             node, rev = self._insert_identity(con, pointer=pointer, title=title, description=description, lifecycle_state="promoted", request_uuid=req, reason="tag creation")
             self._replace_references(con, source_node_uuid=node, source_revision_uuid=rev, description=description, strict=True)
             con.execute("INSERT INTO graph_membership(graph_uuid,node_uuid,ordinal) VALUES (?,?,?)", (graph["graph_uuid"], node, self._next_ordinal(con, graph["graph_uuid"])))
@@ -1521,10 +1546,24 @@ class SQLitePGXStore:
             if missing_members: errors.append({"code":"promoted_without_graph","pointers":missing_members[:50],"count":len(missing_members)})
             staged_members=[r[0] for r in connection.execute("SELECT pointer FROM node_identity i WHERE lifecycle_state='staged' AND EXISTS(SELECT 1 FROM graph_membership gm WHERE gm.node_uuid=i.uuid)")]
             if staged_members: errors.append({"code":"staged_in_graph","pointers":staged_members})
-            prefix_bad=[]
-            for r in connection.execute("""SELECT i.pointer,g.pointer_prefix,g.graph_key FROM graph_membership gm JOIN node_identity i ON i.uuid=gm.node_uuid JOIN graphs g ON g.graph_uuid=gm.graph_uuid"""):
-                if not r["pointer"].startswith(r["pointer_prefix"]): prefix_bad.append(dict(r))
-            if prefix_bad: errors.append({"code":"graph_prefix","rows":prefix_bad[:50],"count":len(prefix_bad)})
+            namespace_bad=[]
+            for r in connection.execute(
+                """SELECT i.pointer,g.graph_uuid,g.pointer_prefix,g.graph_key
+                   FROM graph_membership gm
+                   JOIN node_identity i ON i.uuid=gm.node_uuid
+                   JOIN graphs g ON g.graph_uuid=gm.graph_uuid"""
+            ):
+                resolved = self._resolve_graph_namespace(connection, r["pointer"])
+                if resolved is None or resolved["graph_uuid"] != r["graph_uuid"]:
+                    namespace_bad.append({
+                        "pointer": r["pointer"],
+                        "assigned_graph_key": r["graph_key"],
+                        "assigned_prefix": r["pointer_prefix"],
+                        "resolved_graph_key": resolved["graph_key"] if resolved else None,
+                        "resolved_prefix": resolved["pointer_prefix"] if resolved else None,
+                    })
+            if namespace_bad:
+                errors.append({"code":"graph_namespace","rows":namespace_bad[:50],"count":len(namespace_bad)})
             if full:
                 ref_mismatches=[]; ref_errors=[]; roundtrip=[]
                 profile=self._profile(connection)
@@ -1573,7 +1612,7 @@ class SQLitePGXStore:
         def action(connection: sqlite3.Connection, req: str) -> dict[str, Any]:
             self._ensure_lineage_schema(connection)
             graph = self._ensure_sentinel_graph(connection, req)
-            self._check_graph_pointer(graph, pointer)
+            self._check_graph_pointer(connection, graph, pointer)
             node, revision = self._insert_identity(connection, pointer=pointer, title=title, description=guidance, lifecycle_state="promoted", request_uuid=req, reason="create advisory sentinel")
             connection.execute("INSERT INTO graph_membership(graph_uuid,node_uuid,ordinal) VALUES (?,?,?)", (graph["graph_uuid"], node, self._next_ordinal(connection, graph["graph_uuid"])))
             connection.execute("INSERT INTO sentinel_guidance(node_uuid,scope,active,created_at) VALUES (?,?,1,?)", (node, scope, unique_timestamp(connection, "sentinel_guidance", "created_at")))
