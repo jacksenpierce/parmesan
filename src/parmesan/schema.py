@@ -6,10 +6,46 @@ from pathlib import Path
 
 from .timeutil import now_rfc3339_ns
 
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 6
 PRODUCT = "Parmesan"
 DEFAULT_POINTER_PATTERN = r"[A-Za-z][A-Za-z0-9._-]*"
 DEFAULT_URI_TEMPLATE = "{pointer}"
+
+CORE_TABLE_NAMES = frozenset({
+    "audit_event",
+    "change_set_receipts",
+    "change_sets",
+    "corpus_head",
+    "corpus_workstreams",
+    "extension_registry",
+    "extension_tables",
+    "graph_membership",
+    "graphs",
+    "materializations",
+    "metadata",
+    "node_fts",
+    "node_fts_config",
+    "node_fts_content",
+    "node_fts_data",
+    "node_fts_docsize",
+    "node_fts_idx",
+    "node_identity",
+    "node_revision",
+    "node_tags",
+    "operating_mode_history",
+    "operating_mode_state",
+    "operation_ledger",
+    "predicate_registry",
+    "reference_occurrences",
+    "reference_profiles",
+    "schema_migrations",
+    "semantic_snapshots",
+    "sentinel_guidance",
+    "staging_issues",
+    "staging_queue",
+    "tag_registry",
+    "triples",
+})
 
 DDL = r"""
 PRAGMA foreign_keys=ON;
@@ -258,6 +294,20 @@ CREATE TABLE change_set_receipts (
   PRIMARY KEY(change_set_uuid,ordinal)
 ) STRICT, WITHOUT ROWID;
 
+CREATE TABLE extension_registry (
+  extension_key TEXT NOT NULL PRIMARY KEY,
+  extension_version TEXT NOT NULL,
+  schema_fingerprint TEXT NOT NULL,
+  required_machinery TEXT NOT NULL,
+  registered_at TEXT NOT NULL UNIQUE
+) STRICT, WITHOUT ROWID;
+
+CREATE TABLE extension_tables (
+  table_name TEXT NOT NULL PRIMARY KEY,
+  extension_key TEXT NOT NULL REFERENCES extension_registry(extension_key) ON UPDATE RESTRICT ON DELETE RESTRICT,
+  classification TEXT NOT NULL CHECK(classification IN ('semantic','operational','derived','excluded'))
+) STRICT, WITHOUT ROWID;
+
 CREATE TRIGGER change_sets_no_delete
 BEFORE DELETE ON change_sets BEGIN SELECT RAISE(ABORT,'change sets cannot be deleted'); END;
 CREATE TRIGGER change_set_receipts_append_only_update
@@ -439,7 +489,7 @@ def create_empty_database(
     connection.executemany("INSERT INTO metadata(key,value) VALUES (?,?)", metadata.items())
     connection.execute(
         "INSERT INTO schema_migrations(version,applied_at,description) VALUES (?,?,?)",
-        (SCHEMA_VERSION, now_rfc3339_ns(), "Parmesan 2.7 lineage, materialization, and advisory sentinel metadata"),
+        (SCHEMA_VERSION, now_rfc3339_ns(), "Parmesan 3.0 authority, modes, workspaces, change sets, and extensions"),
     )
     initial_mode_at = now_rfc3339_ns()
     initial_transition_uuid = str(uuid.uuid4())

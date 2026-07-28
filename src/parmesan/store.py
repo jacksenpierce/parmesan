@@ -16,7 +16,7 @@ from .models import ReferenceValidationModel
 from .pgx import parse_node, roundtrip_equal, serialize_node
 from .reference import BARE_POINTER_TEMPLATE, ReferenceEngine, ReferenceProfile
 from .reference_discipline import bare_pointer_profile, rewrite_to_bare_pointer_links
-from .schema import DEFAULT_POINTER_PATTERN, DEFAULT_URI_TEMPLATE, SCHEMA_VERSION, create_empty_database, connect
+from .schema import CORE_TABLE_NAMES, DEFAULT_POINTER_PATTERN, DEFAULT_URI_TEMPLATE, SCHEMA_VERSION, create_empty_database, connect
 from .timeutil import is_rfc3339_ns, now_rfc3339_ns, unique_timestamp
 from .traversal import pointer_roles, render_embedding, serialize_expression, tree_from_mapping
 from .version import __release_id__
@@ -118,12 +118,11 @@ class SQLitePGXStore:
             (corpus_id,),
         )
         connection.execute(
-            "INSERT INTO metadata(key,value) VALUES ('parmesan_schema_version',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
-            (str(SCHEMA_VERSION),),
+            "INSERT INTO metadata(key,value) VALUES ('parmesan_schema_version','5') ON CONFLICT(key) DO NOTHING",
         )
         connection.execute(
             "INSERT OR IGNORE INTO schema_migrations(version,applied_at,description) VALUES (?,?,?)",
-            (SCHEMA_VERSION, unique_timestamp(connection, "schema_migrations", "applied_at"), "Parmesan 2.7 lineage and materialization metadata"),
+            (5, unique_timestamp(connection, "schema_migrations", "applied_at"), "Parmesan 2.7 lineage and materialization metadata"),
         )
         self._ensure_operating_mode_schema(connection)
 
@@ -382,6 +381,67 @@ class SQLitePGXStore:
         return connection.execute(
             "SELECT 1 FROM sqlite_master WHERE type='table' AND name='change_sets'"
         ).fetchone() is not None
+
+    def extension_inspect(self) -> dict[str, Any]:
+        connection = connect(self.path, readonly=True)
+        try:
+            return self._extension_state(connection)
+        finally:
+            connection.close()
+
+    def _extension_state(self, connection: sqlite3.Connection) -> dict[str, Any]:
+        tables = {
+            row["name"]
+            for row in connection.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+            )
+        }
+        registry_present = {"extension_registry", "extension_tables"}.issubset(tables)
+        registered_tables: set[str] = set()
+        extensions: list[dict[str, Any]] = []
+        invalid_extensions: list[str] = []
+        if registry_present:
+            for extension in connection.execute(
+                """SELECT extension_key,extension_version,schema_fingerprint,
+                          required_machinery,registered_at
+                   FROM extension_registry ORDER BY extension_key"""
+            ):
+                item = dict(extension)
+                item["tables"] = [
+                    dict(row)
+                    for row in connection.execute(
+                        """SELECT table_name,classification FROM extension_tables
+                           WHERE extension_key=? ORDER BY table_name""",
+                        (extension["extension_key"],),
+                    )
+                ]
+                schema_rows = (
+                    [
+                        dict(row)
+                        for row in connection.execute(
+                            f"""SELECT name,sql FROM sqlite_master
+                                WHERE type='table' AND name IN ({','.join('?' for _ in item['tables'])})
+                                ORDER BY name""",
+                            [table["table_name"] for table in item["tables"]],
+                        )
+                    ]
+                    if item["tables"]
+                    else []
+                )
+                item["actual_schema_fingerprint"] = sha256_text(_canonical_json(schema_rows))
+                item["schema_matches"] = item["actual_schema_fingerprint"] == item["schema_fingerprint"]
+                if not item["schema_matches"]:
+                    invalid_extensions.append(item["extension_key"])
+                registered_tables.update(table["table_name"] for table in item["tables"])
+                extensions.append(item)
+        unknown = sorted(tables - CORE_TABLE_NAMES - registered_tables)
+        return {
+            "migration_required": not registry_present,
+            "valid": registry_present and not unknown and not invalid_extensions,
+            "extensions": extensions,
+            "unknown_tables": unknown,
+            "invalid_extensions": invalid_extensions,
+        }
 
     def _open_change_set_count(self, connection: sqlite3.Connection) -> int:
         if not self._change_set_schema_present(connection):
@@ -825,6 +885,28 @@ class SQLitePGXStore:
                     return result
                 raise ConflictError("request is already in progress", {"request_id": request_uuid})
             input_head = self._require_expected_head(connection)
+            extension_state = self._extension_state(connection)
+            if extension_state["migration_required"]:
+                raise ContractError(
+                    "extension registry migration is required before mutation",
+                    {"inspection_allowed": True},
+                )
+            if extension_state["unknown_tables"]:
+                raise ContractError(
+                    "mutation is blocked by unclassified extension tables",
+                    {
+                        "unknown_tables": extension_state["unknown_tables"],
+                        "next_action": "Adopt the corpus into a new workspace with explicit extension classifications.",
+                    },
+                )
+            if extension_state["invalid_extensions"]:
+                raise ContractError(
+                    "mutation is blocked by extension schema drift",
+                    {
+                        "invalid_extensions": extension_state["invalid_extensions"],
+                        "next_action": "Restore the registered extension schema or perform a new explicit adoption.",
+                    },
+                )
             active_change_set = None
             if self.change_set_id is not None:
                 if not self._change_set_schema_present(connection):
@@ -2197,6 +2279,28 @@ class SQLitePGXStore:
                     errors.append({"code": "change_set_receipts", "count": orphan_receipts})
             else:
                 checks["open_change_sets"] = 0
+            extension_state = self._extension_state(connection)
+            checks["extension_registry"] = {
+                "migration_required": extension_state["migration_required"],
+                "extension_count": len(extension_state["extensions"]),
+                "unknown_tables": extension_state["unknown_tables"],
+                "invalid_extensions": extension_state["invalid_extensions"],
+            }
+            if extension_state["unknown_tables"]:
+                errors.append({
+                    "code": "unclassified_extension_tables",
+                    "tables": extension_state["unknown_tables"],
+                })
+            elif extension_state["migration_required"]:
+                warnings.append({
+                    "code": "extension_registry_migration_required",
+                    "message": "Inspection is allowed, but mutation requires safe workspace adoption.",
+                })
+            if extension_state["invalid_extensions"]:
+                errors.append({
+                    "code": "extension_schema_drift",
+                    "extensions": extension_state["invalid_extensions"],
+                })
             head = self._head_row(connection)
             if head is None:
                 checks["authority_head"] = "migration_required"

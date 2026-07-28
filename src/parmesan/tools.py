@@ -9,7 +9,7 @@ from .manifest import build_manifest
 from .runtime import describe_corpus, doctor
 from .store import SQLitePGXStore
 from .tool_contracts import FAILURE_EXAMPLES, NEXT_TOOLS, RESULT_SCHEMAS, SUCCESS_EXAMPLES, response_schema
-from .workspace import initialize_workspace, inspect_handoff, inspect_workspace, publish_handoff
+from .workspace import adopt_workspace, initialize_workspace, inspect_handoff, inspect_workspace, publish_handoff
 
 
 class ToolArgs(BaseModel):
@@ -229,6 +229,24 @@ class WorkspaceInspectArgs(ToolArgs):
     root: str
 
 
+class ExtensionTableArgs(ToolArgs):
+    table_name: str
+    classification: Literal["semantic", "operational", "derived", "excluded"]
+
+
+class ExtensionRegistrationArgs(ToolArgs):
+    extension_key: str
+    extension_version: str
+    required_machinery: str = ""
+    tables: list[ExtensionTableArgs] = Field(min_length=1)
+
+
+class WorkspaceAdoptArgs(ToolArgs):
+    source_database: str
+    root: str
+    extensions: list[ExtensionRegistrationArgs] = Field(default_factory=list)
+
+
 class HandoffPublishArgs(ToolArgs):
     workspace_root: str
     name: str
@@ -367,6 +385,30 @@ def _workspace_initialize(store, args: WorkspaceInitializeArgs, ctx):
 )
 def _workspace_inspect(store, args: WorkspaceInspectArgs, ctx):
     return inspect_workspace(args.root)
+
+
+@register(
+    "pgx.workspace.adopt",
+    "Adopt a legacy corpus into a new managed workspace without modifying the supplied source; every private table must be explicitly classified as an extension.",
+    WorkspaceAdoptArgs,
+    database_required=False,
+    mutates=True,
+    idempotency="filesystem create; adoption always requires a new destination",
+    transaction="SQLite backup into a new workspace followed by copy-local migration and atomic attestations; failures remove the new workspace",
+    max_output="one adopted workspace, source attestation, head, and preserved semantic counts",
+)
+def _workspace_adopt(store, args: WorkspaceAdoptArgs, ctx):
+    return adopt_workspace(**args.model_dump())
+
+
+@register(
+    "pgx.extension.inspect",
+    "Inspect registered extension versions, required machinery, table classifications, and any unknown tables that block mutation.",
+    EmptyArgs,
+    max_output="one bounded extension registry report",
+)
+def _extension_inspect(store, args, ctx):
+    return store.extension_inspect()
 
 
 @register(

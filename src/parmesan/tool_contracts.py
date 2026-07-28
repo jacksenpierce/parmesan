@@ -271,6 +271,33 @@ RESULT_SCHEMAS: dict[str, dict[str, Any]] = {
             "warnings": {"type": "array", "items": {"type": "object"}},
         },
     ),
+    "pgx.workspace.adopt": _object(
+        ["workspace", "manifest", "attestation", "database", "workspace_id", "head", "source_sha256", "source_unchanged", "semantic_counts", "extensions", "adopted_sentinels", "mode"],
+        {
+            "workspace": _string(),
+            "manifest": _string(),
+            "attestation": _string(),
+            "database": _string(),
+            "workspace_id": _string(),
+            "head": HEAD_SCHEMA,
+            "source_sha256": _string(),
+            "source_unchanged": {"const": True},
+            "semantic_counts": {"type": "object"},
+            "extensions": {"type": "integer"},
+            "adopted_sentinels": {"type": "integer"},
+            "mode": {"const": "working"},
+        },
+    ),
+    "pgx.extension.inspect": _object(
+        ["migration_required", "valid", "extensions", "unknown_tables", "invalid_extensions"],
+        {
+            "migration_required": {"type": "boolean"},
+            "valid": {"type": "boolean"},
+            "extensions": {"type": "array", "items": {"type": "object"}},
+            "unknown_tables": {"type": "array", "items": {"type": "string"}},
+            "invalid_extensions": {"type": "array", "items": {"type": "string"}},
+        },
+    ),
     "pgx.handoff.publish": _object(
         ["publication", "database", "receipt", "classification", "artifact_head", "head", "database_sequence", "request_id", "idempotent_replay", "mode"],
         {
@@ -431,6 +458,29 @@ SUCCESS_EXAMPLES: dict[str, dict[str, Any]] = {
     "pgx.workspace.inspect": {
         "request": _request("pgx.workspace.inspect", {"root": "my-mic-workspace"}),
         "result_excerpt": {"valid": True, "errors": []},
+    },
+    "pgx.workspace.adopt": {
+        "request": _request(
+            "pgx.workspace.adopt",
+            {
+                "source_database": "legacy.sqlite",
+                "root": "adopted-workspace",
+                "extensions": [
+                    {
+                        "extension_key": "documents",
+                        "extension_version": "1",
+                        "required_machinery": "project document importer",
+                        "tables": [{"table_name": "project_documents", "classification": "semantic"}],
+                    }
+                ],
+            },
+            request_id="17171717-1717-4717-8717-171717171717",
+        ),
+        "result_excerpt": {"source_unchanged": True, "mode": "working", "extensions": 1},
+    },
+    "pgx.extension.inspect": {
+        "request": _request("pgx.extension.inspect", {}, database="knowledge.sqlite"),
+        "result_excerpt": {"migration_required": False, "valid": True, "unknown_tables": []},
     },
     "pgx.handoff.publish": {
         "request": _request(
@@ -601,6 +651,8 @@ NEXT_TOOLS: dict[str, list[str]] = {
     "pgx.mode.set": ["pgx.mode.show", "pgx.manifest.build", "pgx.materialize.database"],
     "pgx.workspace.initialize": ["pgx.workspace.inspect", "pgx.graph.create"],
     "pgx.workspace.inspect": ["pgx.handoff.publish", "pgx.database.describe"],
+    "pgx.workspace.adopt": ["pgx.workspace.inspect", "pgx.extension.inspect", "pgx.database.describe"],
+    "pgx.extension.inspect": ["pgx.workspace.adopt", "pgx.database.validate"],
     "pgx.handoff.publish": ["pgx.handoff.inspect", "pgx.graph.create"],
     "pgx.handoff.inspect": ["pgx.database.describe", "pgx.workspace.inspect"],
     "pgx.change_set.open": ["pgx.graph.create", "pgx.node.create", "pgx.change_set.show"],

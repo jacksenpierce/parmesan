@@ -100,6 +100,7 @@ def describe_corpus(database: str | Path) -> dict[str, Any]:
         connection.close()
 
     metadata = manifest["metadata"]
+    extension_state = SQLitePGXStore(path).extension_inspect()
     return {
         "database": str(path),
         "product": manifest["product"],
@@ -131,6 +132,7 @@ def describe_corpus(database: str | Path) -> dict[str, Any]:
             else "Inspection only until the explicit authority migration is applied."
         ),
         "open_change_sets": open_change_sets,
+        "extension_registry": extension_state,
         "next_actions": [
             "Remain in working mode for ordinary semantic work; external publication is disabled by default.",
             "For mutation, supply the displayed head as expected_head and carry each returned head forward.",

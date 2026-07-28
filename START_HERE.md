@@ -60,6 +60,8 @@ Active sentinels are corpus-local advisory guidance. Read them during orientatio
 
 For work that may span turns, open `pgx.change_set.open` with a concise title and durable intent. Include its returned `change_set_id` in the top-level envelope of each related mutation, alongside `expected_head`. Use `pgx.change_set.show` to resume from ordered compact receipts, then explicitly complete, abandon, or supersede it with `pgx.change_set.resolve`. Parmesan refuses publication while any change set remains open.
 
+Do not migrate a supplied legacy database in place. Use `pgx.workspace.adopt` to copy it into a new managed workspace. The tool preserves the source byte hash and semantic row counts in `ADOPTION.json`, installs authority only in the copy, and starts in working mode. Every non-core table must be named under an extension with a version, required machinery, and one of four classifications: `semantic`, `operational`, `derived`, or `excluded`. Unknown tables or later schema drift block mutation. Inspect the registry with `pgx.extension.inspect`.
+
 ## Canonical reference discipline
 
 Write a semantic reference as ordinary natural-language Markdown:

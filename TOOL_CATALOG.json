@@ -1804,6 +1804,174 @@
     "likely_next_tools": []
   },
   {
+    "name": "pgx.extension.inspect",
+    "profile": "core",
+    "status": "active",
+    "description": "Inspect registered extension versions, required machinery, table classifications, and any unknown tables that block mutation.",
+    "database_required": true,
+    "mutates": false,
+    "idempotency": "read-only",
+    "transaction_boundary": "none",
+    "preconditions": [],
+    "postconditions": [],
+    "error_codes": [],
+    "maximum_output": "one bounded extension registry report",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {},
+      "title": "EmptyArgs",
+      "type": "object"
+    },
+    "result_schema": {
+      "type": "object",
+      "required": [
+        "migration_required",
+        "valid",
+        "extensions",
+        "unknown_tables",
+        "invalid_extensions"
+      ],
+      "properties": {
+        "migration_required": {
+          "type": "boolean"
+        },
+        "valid": {
+          "type": "boolean"
+        },
+        "extensions": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "unknown_tables": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "invalid_extensions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "output_schema": {
+      "type": "object",
+      "required": [
+        "ok",
+        "tool",
+        "request_id",
+        "result",
+        "error",
+        "warnings",
+        "database_sequence",
+        "idempotent_replay"
+      ],
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "request_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "result": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "migration_required",
+                "valid",
+                "extensions",
+                "unknown_tables",
+                "invalid_extensions"
+              ],
+              "properties": {
+                "migration_required": {
+                  "type": "boolean"
+                },
+                "valid": {
+                  "type": "boolean"
+                },
+                "extensions": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                },
+                "unknown_tables": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "invalid_extensions": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "additionalProperties": true
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "database_sequence": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "idempotent_replay": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "contract_level": "guaranteed",
+    "success_example": {
+      "request": {
+        "tool": "pgx.extension.inspect",
+        "arguments": {},
+        "database": "knowledge.sqlite"
+      },
+      "result_excerpt": {
+        "migration_required": false,
+        "valid": true,
+        "unknown_tables": []
+      }
+    },
+    "failure_example": {},
+    "likely_next_tools": [
+      "pgx.workspace.adopt",
+      "pgx.database.validate"
+    ]
+  },
+  {
     "name": "pgx.graph.create",
     "profile": "core",
     "status": "active",
@@ -5914,6 +6082,343 @@
     "likely_next_tools": [
       "pgx.node.get",
       "pgx.database.validate"
+    ]
+  },
+  {
+    "name": "pgx.workspace.adopt",
+    "profile": "core",
+    "status": "active",
+    "description": "Adopt a legacy corpus into a new managed workspace without modifying the supplied source; every private table must be explicitly classified as an extension.",
+    "database_required": false,
+    "mutates": true,
+    "idempotency": "filesystem create; adoption always requires a new destination",
+    "transaction_boundary": "SQLite backup into a new workspace followed by copy-local migration and atomic attestations; failures remove the new workspace",
+    "preconditions": [],
+    "postconditions": [],
+    "error_codes": [],
+    "maximum_output": "one adopted workspace, source attestation, head, and preserved semantic counts",
+    "input_schema": {
+      "$defs": {
+        "ExtensionRegistrationArgs": {
+          "additionalProperties": false,
+          "properties": {
+            "extension_key": {
+              "title": "Extension Key",
+              "type": "string"
+            },
+            "extension_version": {
+              "title": "Extension Version",
+              "type": "string"
+            },
+            "required_machinery": {
+              "default": "",
+              "title": "Required Machinery",
+              "type": "string"
+            },
+            "tables": {
+              "items": {
+                "$ref": "#/$defs/ExtensionTableArgs"
+              },
+              "minItems": 1,
+              "title": "Tables",
+              "type": "array"
+            }
+          },
+          "required": [
+            "extension_key",
+            "extension_version",
+            "tables"
+          ],
+          "title": "ExtensionRegistrationArgs",
+          "type": "object"
+        },
+        "ExtensionTableArgs": {
+          "additionalProperties": false,
+          "properties": {
+            "table_name": {
+              "title": "Table Name",
+              "type": "string"
+            },
+            "classification": {
+              "enum": [
+                "semantic",
+                "operational",
+                "derived",
+                "excluded"
+              ],
+              "title": "Classification",
+              "type": "string"
+            }
+          },
+          "required": [
+            "table_name",
+            "classification"
+          ],
+          "title": "ExtensionTableArgs",
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "source_database": {
+          "title": "Source Database",
+          "type": "string"
+        },
+        "root": {
+          "title": "Root",
+          "type": "string"
+        },
+        "extensions": {
+          "items": {
+            "$ref": "#/$defs/ExtensionRegistrationArgs"
+          },
+          "title": "Extensions",
+          "type": "array"
+        }
+      },
+      "required": [
+        "source_database",
+        "root"
+      ],
+      "title": "WorkspaceAdoptArgs",
+      "type": "object"
+    },
+    "result_schema": {
+      "type": "object",
+      "required": [
+        "workspace",
+        "manifest",
+        "attestation",
+        "database",
+        "workspace_id",
+        "head",
+        "source_sha256",
+        "source_unchanged",
+        "semantic_counts",
+        "extensions",
+        "adopted_sentinels",
+        "mode"
+      ],
+      "properties": {
+        "workspace": {
+          "type": "string"
+        },
+        "manifest": {
+          "type": "string"
+        },
+        "attestation": {
+          "type": "string"
+        },
+        "database": {
+          "type": "string"
+        },
+        "workspace_id": {
+          "type": "string"
+        },
+        "head": {
+          "type": "object",
+          "required": [
+            "corpus_id",
+            "snapshot_uuid",
+            "database_sequence"
+          ],
+          "properties": {
+            "corpus_id": {
+              "type": "string"
+            },
+            "snapshot_uuid": {
+              "type": "string"
+            },
+            "database_sequence": {
+              "type": "integer"
+            }
+          },
+          "additionalProperties": false
+        },
+        "source_sha256": {
+          "type": "string"
+        },
+        "source_unchanged": {
+          "const": true
+        },
+        "semantic_counts": {
+          "type": "object"
+        },
+        "extensions": {
+          "type": "integer"
+        },
+        "adopted_sentinels": {
+          "type": "integer"
+        },
+        "mode": {
+          "const": "working"
+        }
+      },
+      "additionalProperties": true
+    },
+    "output_schema": {
+      "type": "object",
+      "required": [
+        "ok",
+        "tool",
+        "request_id",
+        "result",
+        "error",
+        "warnings",
+        "database_sequence",
+        "idempotent_replay"
+      ],
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "request_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "result": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "workspace",
+                "manifest",
+                "attestation",
+                "database",
+                "workspace_id",
+                "head",
+                "source_sha256",
+                "source_unchanged",
+                "semantic_counts",
+                "extensions",
+                "adopted_sentinels",
+                "mode"
+              ],
+              "properties": {
+                "workspace": {
+                  "type": "string"
+                },
+                "manifest": {
+                  "type": "string"
+                },
+                "attestation": {
+                  "type": "string"
+                },
+                "database": {
+                  "type": "string"
+                },
+                "workspace_id": {
+                  "type": "string"
+                },
+                "head": {
+                  "type": "object",
+                  "required": [
+                    "corpus_id",
+                    "snapshot_uuid",
+                    "database_sequence"
+                  ],
+                  "properties": {
+                    "corpus_id": {
+                      "type": "string"
+                    },
+                    "snapshot_uuid": {
+                      "type": "string"
+                    },
+                    "database_sequence": {
+                      "type": "integer"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "source_sha256": {
+                  "type": "string"
+                },
+                "source_unchanged": {
+                  "const": true
+                },
+                "semantic_counts": {
+                  "type": "object"
+                },
+                "extensions": {
+                  "type": "integer"
+                },
+                "adopted_sentinels": {
+                  "type": "integer"
+                },
+                "mode": {
+                  "const": "working"
+                }
+              },
+              "additionalProperties": true
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "database_sequence": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "idempotent_replay": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "contract_level": "guaranteed",
+    "success_example": {
+      "request": {
+        "tool": "pgx.workspace.adopt",
+        "arguments": {
+          "source_database": "legacy.sqlite",
+          "root": "adopted-workspace",
+          "extensions": [
+            {
+              "extension_key": "documents",
+              "extension_version": "1",
+              "required_machinery": "project document importer",
+              "tables": [
+                {
+                  "table_name": "project_documents",
+                  "classification": "semantic"
+                }
+              ]
+            }
+          ]
+        },
+        "request_id": "17171717-1717-4717-8717-171717171717"
+      },
+      "result_excerpt": {
+        "source_unchanged": true,
+        "mode": "working",
+        "extensions": 1
+      }
+    },
+    "failure_example": {},
+    "likely_next_tools": [
+      "pgx.workspace.inspect",
+      "pgx.extension.inspect",
+      "pgx.database.describe"
     ]
   },
   {

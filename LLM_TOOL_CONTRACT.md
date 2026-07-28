@@ -26,6 +26,8 @@ The request UUID is the idempotency key. Replaying the same UUID and input retur
 
 For multi-turn work, `pgx.change_set.open` stores durable intent and a base snapshot. Put its `change_set_id` in the top-level request envelope of each related mutation. Parmesan appends ordered compact receipts without holding a long-lived SQLite transaction. `pgx.change_set.show` is the restart surface; publication is blocked until open work is completed, abandoned, or superseded.
 
+Legacy adoption is copy-only. `pgx.workspace.adopt` backs the supplied database into a new workspace, records source identity and preserved counts, and installs current authority structures only in the copy. Every non-core table must be registered with an extension version, required machinery, and semantic/operational/derived/excluded classification. Unknown tables and extension schema drift fail closed.
+
 Errors are structured and may include `retryable`, `suggested_tool`, and `suggested_action` fields. Follow those hints before improvising.
 
 ## Reference behavior

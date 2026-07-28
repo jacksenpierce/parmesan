@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added copy-only legacy workspace adoption with source-hash and count attestations, explicit extension table classification, schema fingerprints, machinery declarations, and fail-closed unknown-table/schema-drift checks. Existing sentinel graph members are adopted regardless of historical pointer-prefix convention.
 - Added durable resumable change sets with persisted intent, base snapshot, ordered mutation receipts, explicit resolution states, and a publication interlock for unfinished work.
 - Added managed MIC workspaces and bounded handoff publication. Workspaces declare one authoritative corpus and reject unregistered SQLite candidates; each atomic handoff carries a receipt with corpus, head, byte hash, and machinery identity, while publication automatically returns the source to working mode.
 - Added an embedded, append-only corpus-head chain and required callers to supply the last observed head for every mutation. Missing and stale heads now fail closed, while each normal write advances authority using an O(delta) transition digest instead of rescanning or serializing the knowledge base.
