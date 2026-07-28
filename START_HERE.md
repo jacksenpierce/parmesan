@@ -74,7 +74,7 @@ Create the target node before creating a note that links to it. Parmesan validat
 Use this sequence:
 
 1. Run `pgx.database.initialize` with a new SQLite path and a UUID request ID.
-2. Read the returned corpus description. Fresh corpora contain reserved system pointers; do not reuse them.
+2. Save the returned `head`. Fresh corpora contain reserved system pointers; do not reuse them.
 3. Run `pgx.graph.create` for each subject graph.
 4. Run `pgx.node.create` for target notes first, then notes that reference them.
 5. Use `pgx.reference.validate` when composing a link-heavy description.
@@ -83,7 +83,7 @@ Use this sequence:
 
 For a deliberately cyclic graph, first create the participating notes without unresolved links. After all targets exist, read each note and append linked revisions with `pgx.node.update`, passing the current `revision_uuid` as `expected_revision_uuid`. Validate after the update sequence. This preserves append-only history and avoids weakening reference validation.
 
-Mutation requests require a unique UUIDv4 `request_id`. Replaying the same request ID with the same input is safe. Do not reuse it for different input.
+Every mutation after initialization requires both a unique UUIDv4 `request_id` and the exact `expected_head` returned by initialization or the preceding successful mutation. Replace your saved head with each successful result's `head`. A missing head is never inferred from a path, and a stale head is rejected without changing the corpus. This prevents a live chat, copied path, or concurrent process from silently writing against a database state it did not inspect. Replaying the same request ID with the same input is safe. Do not reuse it for different input.
 
 A complete executable example is in `examples/zero_context_build.py`.
 
@@ -125,8 +125,9 @@ Before returning a created or modified corpus:
 1. Run `pgx.system.doctor` or `python PARMESAN_LLM.py doctor CORPUS.sqlite`.
 2. Run `pgx.database.describe` to learn its graphs, counts, pointer grammar, and seed pointers.
 3. Use `pgx.node.search`, `pgx.node.get`, and `pgx.context.build` for bounded retrieval.
-4. Before updating a node, read it and pass its current `revision_uuid` as `expected_revision_uuid`.
-5. Validate after mutations.
+4. Read and retain the database's current embedded head before beginning a write sequence, then pass it as `expected_head` and carry each returned head forward.
+5. Before updating a node, read it and pass its current `revision_uuid` as `expected_revision_uuid`.
+6. Validate after mutations.
 
 ## Operating rules
 

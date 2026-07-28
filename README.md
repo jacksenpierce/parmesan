@@ -58,6 +58,8 @@ Use the core tools to initialize a database, create graphs and nodes, retrieve b
 from parmesan import catalog, dispatch, doctor, initialize_corpus, open_corpus
 ```
 
+Initialization returns an embedded corpus `head`. Every later mutation must explicitly supply that value as `expected_head`, then carry the successful response's new `head` into the next request. Parmesan does not infer write authority from a filesystem path. Missing or stale heads fail without mutation, preventing stale live-chat context or a copied path from silently targeting the wrong database state.
+
 ### Materialize a handoff or compare parallel work
 
 Ordinary work remains in the default `working` mode and never automatically rebuilds or serializes an external knowledge base. When a clean database copy or another publication surface is explicitly needed, use `pgx.mode.set` to enter `publish` mode before invoking the advanced materialization tools. Publish mode freezes semantic mutation so each output comes from one fixed database state. Return to `working` mode afterward.

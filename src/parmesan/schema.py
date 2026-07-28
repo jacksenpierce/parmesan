@@ -146,7 +146,10 @@ CREATE TABLE operation_ledger (
   result_json TEXT,
   started_at TEXT NOT NULL UNIQUE,
   committed_at TEXT,
-  database_sequence INTEGER
+  database_sequence INTEGER,
+  input_snapshot_uuid TEXT,
+  output_snapshot_uuid TEXT,
+  transition_digest TEXT
 ) STRICT, WITHOUT ROWID;
 
 CREATE TABLE audit_event (
@@ -211,6 +214,34 @@ CREATE TABLE operating_mode_history (
   reason TEXT NOT NULL,
   request_uuid TEXT
 ) STRICT, WITHOUT ROWID;
+
+CREATE TABLE semantic_snapshots (
+  snapshot_uuid TEXT NOT NULL PRIMARY KEY,
+  parent_snapshot_uuid TEXT REFERENCES semantic_snapshots(snapshot_uuid) ON UPDATE RESTRICT ON DELETE RESTRICT,
+  corpus_id TEXT NOT NULL,
+  database_sequence INTEGER NOT NULL CHECK(database_sequence>=0),
+  transition_digest TEXT NOT NULL,
+  request_uuid TEXT,
+  tool_name TEXT NOT NULL,
+  created_at TEXT NOT NULL UNIQUE,
+  UNIQUE(corpus_id,database_sequence)
+) STRICT, WITHOUT ROWID;
+
+CREATE TABLE corpus_head (
+  singleton_id INTEGER NOT NULL PRIMARY KEY CHECK(singleton_id=1),
+  corpus_id TEXT NOT NULL,
+  snapshot_uuid TEXT NOT NULL REFERENCES semantic_snapshots(snapshot_uuid) ON UPDATE RESTRICT ON DELETE RESTRICT,
+  database_sequence INTEGER NOT NULL CHECK(database_sequence>=0),
+  last_request_uuid TEXT,
+  updated_at TEXT NOT NULL
+) STRICT, WITHOUT ROWID;
+
+CREATE TRIGGER semantic_snapshots_append_only_update
+BEFORE UPDATE ON semantic_snapshots BEGIN SELECT RAISE(ABORT,'semantic snapshots are append-only'); END;
+CREATE TRIGGER semantic_snapshots_append_only_delete
+BEFORE DELETE ON semantic_snapshots BEGIN SELECT RAISE(ABORT,'semantic snapshots are append-only'); END;
+CREATE TRIGGER corpus_head_no_delete
+BEFORE DELETE ON corpus_head BEGIN SELECT RAISE(ABORT,'corpus head cannot be deleted'); END;
 
 CREATE VIRTUAL TABLE node_fts USING fts5(
   pointer,

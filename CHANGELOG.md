@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added an embedded, append-only corpus-head chain and required callers to supply the last observed head for every mutation. Missing and stale heads now fail closed, while each normal write advances authority using an O(delta) transition digest instead of rescanning or serializing the knowledge base.
 - Added persistent working and publish modes. Fresh and legacy corpora default safely to working mode; external manifests and database materializations require an explicit publish-mode transition, while publish mode freezes semantic mutation.
 - Resolved overlapping graph namespaces by assigning pointers to the uniquely longest registered prefix and validating memberships against that canonical resolution.
 - Documented the small-branch, pull-request, and periodic-release workflow for maintainers.

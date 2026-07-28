@@ -282,6 +282,7 @@ def _init(_, args: InitArgs, ctx):
     store = SQLitePGXStore.initialize(args.path, overwrite=args.overwrite, uri_template=args.uri_template, resolver_status=args.resolver_status)
     return {
         "database": str(store.path),
+        "head": store.current_head(),
         "validation": store.validate_database(full=True),
         "description": describe_corpus(store.path),
     }

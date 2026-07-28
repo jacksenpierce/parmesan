@@ -8,6 +8,7 @@ from collections import deque
 from pathlib import Path
 from typing import Any, Callable
 
+from .authority import CorpusHead
 from .errors import ConflictError, ContractError, NotFoundError, StaleWriteError, ValidationFailure
 from .identity import derived_uuid, node_uuid, sha256_text, validate_pointer
 from .legacy_reference import rewrite_legacy_references
@@ -30,11 +31,24 @@ def _row(row: sqlite3.Row | None) -> dict[str, Any] | None:
 
 
 class SQLitePGXStore:
-    def __init__(self, path: str | Path, *, workstream_id: str | None = None):
+    def __init__(
+        self,
+        path: str | Path,
+        *,
+        workstream_id: str | None = None,
+        expected_head: CorpusHead | dict[str, Any] | None = None,
+    ):
         self.path = Path(path)
         if not self.path.exists():
             raise FileNotFoundError(self.path)
         self.workstream_id = str(uuid.UUID(workstream_id)) if workstream_id else str(uuid.uuid4())
+        self.expected_head = (
+            expected_head
+            if isinstance(expected_head, CorpusHead)
+            else CorpusHead.model_validate(expected_head)
+            if expected_head is not None
+            else None
+        )
 
     @classmethod
     def initialize(
@@ -54,10 +68,11 @@ class SQLitePGXStore:
         try:
             store = cls(path)
             store._seed_fresh(connection)
+            head = store._initialize_authority_head(connection)
             connection.commit()
         finally:
             connection.close()
-        return cls(path)
+        return cls(path, expected_head=head)
 
     def _metadata(self, connection: sqlite3.Connection) -> dict[str, str]:
         return {r["key"]: r["value"] for r in connection.execute("SELECT key,value FROM metadata")}
@@ -143,6 +158,131 @@ class SQLitePGXStore:
                    VALUES (?,NULL,'working',1,?,'default safe working mode',NULL)""",
                 (transition_uuid, changed_at),
             )
+
+    def _ensure_authority_schema(self, connection: sqlite3.Connection) -> None:
+        connection.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS semantic_snapshots (
+              snapshot_uuid TEXT NOT NULL PRIMARY KEY,
+              parent_snapshot_uuid TEXT REFERENCES semantic_snapshots(snapshot_uuid) ON UPDATE RESTRICT ON DELETE RESTRICT,
+              corpus_id TEXT NOT NULL,
+              database_sequence INTEGER NOT NULL CHECK(database_sequence>=0),
+              transition_digest TEXT NOT NULL,
+              request_uuid TEXT,
+              tool_name TEXT NOT NULL,
+              created_at TEXT NOT NULL UNIQUE,
+              UNIQUE(corpus_id,database_sequence)
+            ) STRICT, WITHOUT ROWID;
+            CREATE TABLE IF NOT EXISTS corpus_head (
+              singleton_id INTEGER NOT NULL PRIMARY KEY CHECK(singleton_id=1),
+              corpus_id TEXT NOT NULL,
+              snapshot_uuid TEXT NOT NULL REFERENCES semantic_snapshots(snapshot_uuid) ON UPDATE RESTRICT ON DELETE RESTRICT,
+              database_sequence INTEGER NOT NULL CHECK(database_sequence>=0),
+              last_request_uuid TEXT,
+              updated_at TEXT NOT NULL
+            ) STRICT, WITHOUT ROWID;
+            CREATE TRIGGER IF NOT EXISTS semantic_snapshots_append_only_update
+            BEFORE UPDATE ON semantic_snapshots BEGIN SELECT RAISE(ABORT,'semantic snapshots are append-only'); END;
+            CREATE TRIGGER IF NOT EXISTS semantic_snapshots_append_only_delete
+            BEFORE DELETE ON semantic_snapshots BEGIN SELECT RAISE(ABORT,'semantic snapshots are append-only'); END;
+            CREATE TRIGGER IF NOT EXISTS corpus_head_no_delete
+            BEFORE DELETE ON corpus_head BEGIN SELECT RAISE(ABORT,'corpus head cannot be deleted'); END;
+            """
+        )
+        ledger_columns = {
+            row["name"] for row in connection.execute("PRAGMA table_info(operation_ledger)")
+        }
+        for name in ("input_snapshot_uuid", "output_snapshot_uuid", "transition_digest"):
+            if name not in ledger_columns:
+                connection.execute(f"ALTER TABLE operation_ledger ADD COLUMN {name} TEXT")
+
+    def _head_row(self, connection: sqlite3.Connection) -> sqlite3.Row | None:
+        if connection.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='corpus_head'"
+        ).fetchone() is None:
+            return None
+        return connection.execute(
+            "SELECT corpus_id,snapshot_uuid,database_sequence,last_request_uuid,updated_at "
+            "FROM corpus_head WHERE singleton_id=1"
+        ).fetchone()
+
+    def _initialize_authority_head(self, connection: sqlite3.Connection) -> CorpusHead:
+        self._ensure_authority_schema(connection)
+        existing = self._head_row(connection)
+        if existing is not None:
+            return CorpusHead(
+                corpus_id=existing["corpus_id"],
+                snapshot_uuid=existing["snapshot_uuid"],
+                database_sequence=existing["database_sequence"],
+            )
+        metadata = self._metadata(connection)
+        corpus_id = metadata.get("corpus_id") or metadata.get("database_uuid")
+        if not corpus_id:
+            raise ValidationFailure("database is missing corpus identity")
+        sequence = int(metadata.get("database_sequence", "0"))
+        transition_digest = sha256_text(
+            _canonical_json({"kind": "genesis", "corpus_id": corpus_id, "database_sequence": sequence})
+        )
+        snapshot_uuid = str(uuid.uuid5(uuid.UUID(corpus_id), f"snapshot:{sequence}:{transition_digest}"))
+        created_at = now_rfc3339_ns()
+        connection.execute(
+            """INSERT INTO semantic_snapshots
+               (snapshot_uuid,parent_snapshot_uuid,corpus_id,database_sequence,transition_digest,request_uuid,tool_name,created_at)
+               VALUES (?,NULL,?,?,?,NULL,'parmesan.authority.genesis',?)""",
+            (snapshot_uuid, corpus_id, sequence, transition_digest, created_at),
+        )
+        connection.execute(
+            """INSERT INTO corpus_head
+               (singleton_id,corpus_id,snapshot_uuid,database_sequence,last_request_uuid,updated_at)
+               VALUES (1,?,?,?,NULL,?)""",
+            (corpus_id, snapshot_uuid, sequence, created_at),
+        )
+        return CorpusHead(corpus_id=corpus_id, snapshot_uuid=snapshot_uuid, database_sequence=sequence)
+
+    def current_head(self) -> dict[str, Any] | None:
+        connection = connect(self.path, readonly=True)
+        try:
+            row = self._head_row(connection)
+            if row is None:
+                return None
+            return CorpusHead(
+                corpus_id=row["corpus_id"],
+                snapshot_uuid=row["snapshot_uuid"],
+                database_sequence=row["database_sequence"],
+            ).model_dump()
+        finally:
+            connection.close()
+
+    def _require_expected_head(self, connection: sqlite3.Connection) -> sqlite3.Row:
+        current = self._head_row(connection)
+        if current is None:
+            raise ContractError(
+                "corpus authority migration is required before mutation",
+                {"database": str(self.path), "inspection_allowed": True},
+            )
+        if self.expected_head is None:
+            raise ContractError(
+                "mutation requires an externally supplied expected head",
+                {"current_head": dict(current), "inspection_allowed": True},
+            )
+        candidate = (
+            current["corpus_id"],
+            current["snapshot_uuid"],
+            int(current["database_sequence"]),
+        )
+        if candidate != self.expected_head.semantic_key():
+            raise ConflictError(
+                "expected head does not match the current corpus head",
+                {
+                    "expected_head": self.expected_head.model_dump(),
+                    "current_head": {
+                        "corpus_id": current["corpus_id"],
+                        "snapshot_uuid": current["snapshot_uuid"],
+                        "database_sequence": current["database_sequence"],
+                    },
+                },
+            )
+        return current
 
     def _mode_row(self, connection: sqlite3.Connection) -> sqlite3.Row | None:
         if connection.execute(
@@ -256,7 +396,26 @@ class SQLitePGXStore:
 
     def _ensure_workstream(self, connection: sqlite3.Connection) -> dict[str, str]:
         self._ensure_lineage_schema(connection)
-        snapshot = self._semantic_snapshot(connection)
+        existing = connection.execute(
+            "SELECT corpus_id,base_snapshot_id FROM corpus_workstreams WHERE workstream_id=?",
+            (self.workstream_id,),
+        ).fetchone()
+        if existing is not None:
+            return {
+                "corpus_id": existing["corpus_id"],
+                "snapshot_id": existing["base_snapshot_id"],
+                "snapshot_fingerprint": "",
+            }
+        head = self._head_row(connection)
+        snapshot = (
+            {
+                "corpus_id": head["corpus_id"],
+                "snapshot_id": head["snapshot_uuid"],
+                "snapshot_fingerprint": "",
+            }
+            if head is not None
+            else self._semantic_snapshot(connection)
+        )
         connection.execute(
             """INSERT INTO corpus_workstreams(workstream_id,corpus_id,base_snapshot_id,created_at,package_release_id)
                VALUES (?,?,?,?,?) ON CONFLICT(workstream_id) DO NOTHING""",
@@ -459,8 +618,11 @@ class SQLitePGXStore:
                     result = json.loads(existing["result_json"])
                     connection.rollback()
                     result["idempotent_replay"] = True
+                    if result.get("head"):
+                        self.expected_head = CorpusHead.model_validate(result["head"])
                     return result
                 raise ConflictError("request is already in progress", {"request_id": request_uuid})
+            input_head = self._require_expected_head(connection)
             self._ensure_operating_mode_schema(connection)
             mode = self._mode_row(connection)
             if tool_name != "pgx.mode.set" and mode is not None and mode["mode_key"] == "publish":
@@ -483,19 +645,76 @@ class SQLitePGXStore:
                 (self.workstream_id,),
             )
             result = dict(result)
+            transition_digest = sha256_text(
+                _canonical_json(
+                    {
+                        "parent_snapshot_uuid": input_head["snapshot_uuid"],
+                        "request_uuid": request_uuid,
+                        "tool_name": tool_name,
+                        "input_hash": input_hash,
+                        "database_sequence": sequence,
+                        "result": result,
+                    }
+                )
+            )
+            output_snapshot_uuid = str(
+                uuid.uuid5(
+                    uuid.UUID(input_head["corpus_id"]),
+                    f"snapshot:{input_head['snapshot_uuid']}:{sequence}:{transition_digest}:{request_uuid}",
+                )
+            )
+            head_created_at = now_rfc3339_ns()
+            connection.execute(
+                """INSERT INTO semantic_snapshots
+                   (snapshot_uuid,parent_snapshot_uuid,corpus_id,database_sequence,transition_digest,request_uuid,tool_name,created_at)
+                   VALUES (?,?,?,?,?,?,?,?)""",
+                (
+                    output_snapshot_uuid,
+                    input_head["snapshot_uuid"],
+                    input_head["corpus_id"],
+                    sequence,
+                    transition_digest,
+                    request_uuid,
+                    tool_name,
+                    head_created_at,
+                ),
+            )
+            connection.execute(
+                """UPDATE corpus_head
+                   SET snapshot_uuid=?,database_sequence=?,last_request_uuid=?,updated_at=?
+                   WHERE singleton_id=1""",
+                (output_snapshot_uuid, sequence, request_uuid, head_created_at),
+            )
+            output_head = CorpusHead(
+                corpus_id=input_head["corpus_id"],
+                snapshot_uuid=output_snapshot_uuid,
+                database_sequence=sequence,
+            )
             result.update({
                 "request_id": request_uuid,
                 "database_sequence": sequence,
                 "idempotent_replay": False,
                 "workstream_id": self.workstream_id,
+                "head": output_head.model_dump(),
             })
             committed = now_rfc3339_ns()
             connection.execute(
-                """UPDATE operation_ledger SET status='committed',result_json=?,committed_at=?,database_sequence=?
+                """UPDATE operation_ledger
+                   SET status='committed',result_json=?,committed_at=?,database_sequence=?,
+                       input_snapshot_uuid=?,output_snapshot_uuid=?,transition_digest=?
                 WHERE request_uuid=?""",
-                (_canonical_json(result), committed, sequence, request_uuid),
+                (
+                    _canonical_json(result),
+                    committed,
+                    sequence,
+                    input_head["snapshot_uuid"],
+                    output_snapshot_uuid,
+                    transition_digest,
+                    request_uuid,
+                ),
             )
             connection.commit()
+            self.expected_head = output_head
             return result
         except Exception:
             connection.rollback()
@@ -1722,6 +1941,42 @@ class SQLitePGXStore:
             checks["triples"]=connection.execute("SELECT COUNT(*) FROM triples").fetchone()[0]
             checks["tags"]=connection.execute("SELECT COUNT(*) FROM tag_registry").fetchone()[0]
             checks["database_sequence"]=int(meta.get("database_sequence","-1"))
+            head = self._head_row(connection)
+            if head is None:
+                checks["authority_head"] = "migration_required"
+                warnings.append({
+                    "code": "authority_migration_required",
+                    "message": "Inspection is allowed, but mutation requires an explicit authority migration.",
+                })
+            else:
+                checks["authority_head"] = {
+                    "corpus_id": head["corpus_id"],
+                    "snapshot_uuid": head["snapshot_uuid"],
+                    "database_sequence": head["database_sequence"],
+                }
+                snapshot = connection.execute(
+                    """SELECT corpus_id,database_sequence FROM semantic_snapshots
+                       WHERE snapshot_uuid=?""",
+                    (head["snapshot_uuid"],),
+                ).fetchone()
+                authority_mismatches = []
+                expected_corpus = meta.get("corpus_id") or meta.get("database_uuid")
+                if head["corpus_id"] != expected_corpus:
+                    authority_mismatches.append("corpus_id")
+                if int(head["database_sequence"]) != checks["database_sequence"]:
+                    authority_mismatches.append("database_sequence")
+                if snapshot is None:
+                    authority_mismatches.append("snapshot_uuid")
+                elif (
+                    snapshot["corpus_id"] != head["corpus_id"]
+                    or int(snapshot["database_sequence"]) != int(head["database_sequence"])
+                ):
+                    authority_mismatches.append("snapshot_metadata")
+                if authority_mismatches:
+                    errors.append({
+                        "code": "authority_head_mismatch",
+                        "fields": authority_mismatches,
+                    })
             return {"valid":not errors,"checks":checks,"errors":errors,"warnings":warnings}
         finally:
             connection.close()

@@ -3,6 +3,8 @@ from __future__ import annotations
 from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
+from .authority import CorpusHead
+
 
 class StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
@@ -13,6 +15,7 @@ class ToolRequest(StrictModel):
     arguments: dict[str, Any] = Field(default_factory=dict)
     database: str | None = None
     request_id: str | None = None
+    expected_head: CorpusHead | None = None
 
 
 class ToolResponse(StrictModel):

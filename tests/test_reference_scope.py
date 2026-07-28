@@ -11,6 +11,7 @@ def call(db, tool, arguments, mutate=False):
     payload = {"tool": tool, "database": str(db), "arguments": arguments}
     if mutate:
         payload["request_id"] = str(uuid.uuid4())
+        payload["expected_head"] = SQLitePGXStore(db).current_head()
     response = dispatch_request(payload)
     assert response["ok"], response
     return response["result"]

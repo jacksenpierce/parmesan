@@ -34,8 +34,10 @@ def test_independent_workstreams_compare_as_reconciliation_candidates(tmp_path: 
     right_path = tmp_path / "right.sqlite"
     store.materialize_database(left_path)
     shutil.copy2(left_path, right_path)
-    left = SQLitePGXStore(left_path)
-    right = SQLitePGXStore(right_path)
+    left_inspector = SQLitePGXStore(left_path)
+    right_inspector = SQLitePGXStore(right_path)
+    left = SQLitePGXStore(left_path, expected_head=left_inspector.current_head())
+    right = SQLitePGXStore(right_path, expected_head=right_inspector.current_head())
     left.mode_set(request_id=str(uuid.uuid4()), mode="working", reason="continue left branch")
     right.mode_set(request_id=str(uuid.uuid4()), mode="working", reason="continue right branch")
     left.create_node(request_id=str(uuid.uuid4()), pointer="K1", title="Left", description="Left branch evidence.", graph_key="knowledge")

@@ -29,10 +29,21 @@ VALIDATION_RESULT = _object(
     },
 )
 
+HEAD_SCHEMA = _object(
+    ["corpus_id", "snapshot_uuid", "database_sequence"],
+    {
+        "corpus_id": _string(),
+        "snapshot_uuid": _string(),
+        "database_sequence": {"type": "integer"},
+    },
+    additional=False,
+)
+
 MUTATION_FIELDS = {
     "request_id": _string("Idempotency UUID supplied by the caller."),
     "database_sequence": {"type": "integer"},
     "idempotent_replay": {"type": "boolean"},
+    "head": HEAD_SCHEMA,
 }
 
 RESULT_SCHEMAS: dict[str, dict[str, Any]] = {
@@ -53,9 +64,10 @@ RESULT_SCHEMAS: dict[str, dict[str, Any]] = {
         },
     ),
     "pgx.database.initialize": _object(
-        ["database", "validation", "description"],
+        ["database", "head", "validation", "description"],
         {
             "database": _string(),
+            "head": HEAD_SCHEMA,
             "validation": VALIDATION_RESULT,
             "description": {"type": "object"},
         },

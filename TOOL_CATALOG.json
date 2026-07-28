@@ -485,12 +485,33 @@
       "type": "object",
       "required": [
         "database",
+        "head",
         "validation",
         "description"
       ],
       "properties": {
         "database": {
           "type": "string"
+        },
+        "head": {
+          "type": "object",
+          "required": [
+            "corpus_id",
+            "snapshot_uuid",
+            "database_sequence"
+          ],
+          "properties": {
+            "corpus_id": {
+              "type": "string"
+            },
+            "snapshot_uuid": {
+              "type": "string"
+            },
+            "database_sequence": {
+              "type": "integer"
+            }
+          },
+          "additionalProperties": false
         },
         "validation": {
           "type": "object",
@@ -560,12 +581,33 @@
               "type": "object",
               "required": [
                 "database",
+                "head",
                 "validation",
                 "description"
               ],
               "properties": {
                 "database": {
                   "type": "string"
+                },
+                "head": {
+                  "type": "object",
+                  "required": [
+                    "corpus_id",
+                    "snapshot_uuid",
+                    "database_sequence"
+                  ],
+                  "properties": {
+                    "corpus_id": {
+                      "type": "string"
+                    },
+                    "snapshot_uuid": {
+                      "type": "string"
+                    },
+                    "database_sequence": {
+                      "type": "integer"
+                    }
+                  },
+                  "additionalProperties": false
                 },
                 "validation": {
                   "type": "object",
@@ -884,7 +926,8 @@
         "revision_uuid",
         "request_id",
         "database_sequence",
-        "idempotent_replay"
+        "idempotent_replay",
+        "head"
       ],
       "properties": {
         "graph_key": {
@@ -908,6 +951,26 @@
         },
         "idempotent_replay": {
           "type": "boolean"
+        },
+        "head": {
+          "type": "object",
+          "required": [
+            "corpus_id",
+            "snapshot_uuid",
+            "database_sequence"
+          ],
+          "properties": {
+            "corpus_id": {
+              "type": "string"
+            },
+            "snapshot_uuid": {
+              "type": "string"
+            },
+            "database_sequence": {
+              "type": "integer"
+            }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": true
@@ -948,7 +1011,8 @@
                 "revision_uuid",
                 "request_id",
                 "database_sequence",
-                "idempotent_replay"
+                "idempotent_replay",
+                "head"
               ],
               "properties": {
                 "graph_key": {
@@ -972,6 +1036,26 @@
                 },
                 "idempotent_replay": {
                   "type": "boolean"
+                },
+                "head": {
+                  "type": "object",
+                  "required": [
+                    "corpus_id",
+                    "snapshot_uuid",
+                    "database_sequence"
+                  ],
+                  "properties": {
+                    "corpus_id": {
+                      "type": "string"
+                    },
+                    "snapshot_uuid": {
+                      "type": "string"
+                    },
+                    "database_sequence": {
+                      "type": "integer"
+                    }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": true
@@ -1362,7 +1446,8 @@
         "publication_enabled",
         "request_id",
         "database_sequence",
-        "idempotent_replay"
+        "idempotent_replay",
+        "head"
       ],
       "properties": {
         "mode": {
@@ -1392,6 +1477,26 @@
         },
         "idempotent_replay": {
           "type": "boolean"
+        },
+        "head": {
+          "type": "object",
+          "required": [
+            "corpus_id",
+            "snapshot_uuid",
+            "database_sequence"
+          ],
+          "properties": {
+            "corpus_id": {
+              "type": "string"
+            },
+            "snapshot_uuid": {
+              "type": "string"
+            },
+            "database_sequence": {
+              "type": "integer"
+            }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": true
@@ -1432,7 +1537,8 @@
                 "publication_enabled",
                 "request_id",
                 "database_sequence",
-                "idempotent_replay"
+                "idempotent_replay",
+                "head"
               ],
               "properties": {
                 "mode": {
@@ -1462,6 +1568,26 @@
                 },
                 "idempotent_replay": {
                   "type": "boolean"
+                },
+                "head": {
+                  "type": "object",
+                  "required": [
+                    "corpus_id",
+                    "snapshot_uuid",
+                    "database_sequence"
+                  ],
+                  "properties": {
+                    "corpus_id": {
+                      "type": "string"
+                    },
+                    "snapshot_uuid": {
+                      "type": "string"
+                    },
+                    "database_sequence": {
+                      "type": "integer"
+                    }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": true
@@ -1744,7 +1870,8 @@
         "reference_count",
         "request_id",
         "database_sequence",
-        "idempotent_replay"
+        "idempotent_replay",
+        "head"
       ],
       "properties": {
         "pointer": {
@@ -1771,6 +1898,26 @@
         },
         "idempotent_replay": {
           "type": "boolean"
+        },
+        "head": {
+          "type": "object",
+          "required": [
+            "corpus_id",
+            "snapshot_uuid",
+            "database_sequence"
+          ],
+          "properties": {
+            "corpus_id": {
+              "type": "string"
+            },
+            "snapshot_uuid": {
+              "type": "string"
+            },
+            "database_sequence": {
+              "type": "integer"
+            }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": true
@@ -1812,7 +1959,8 @@
                 "reference_count",
                 "request_id",
                 "database_sequence",
-                "idempotent_replay"
+                "idempotent_replay",
+                "head"
               ],
               "properties": {
                 "pointer": {
@@ -1839,6 +1987,26 @@
                 },
                 "idempotent_replay": {
                   "type": "boolean"
+                },
+                "head": {
+                  "type": "object",
+                  "required": [
+                    "corpus_id",
+                    "snapshot_uuid",
+                    "database_sequence"
+                  ],
+                  "properties": {
+                    "corpus_id": {
+                      "type": "string"
+                    },
+                    "snapshot_uuid": {
+                      "type": "string"
+                    },
+                    "database_sequence": {
+                      "type": "integer"
+                    }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": true
@@ -2611,7 +2779,8 @@
         "warnings",
         "request_id",
         "database_sequence",
-        "idempotent_replay"
+        "idempotent_replay",
+        "head"
       ],
       "properties": {
         "pointer": {
@@ -2641,6 +2810,26 @@
         },
         "idempotent_replay": {
           "type": "boolean"
+        },
+        "head": {
+          "type": "object",
+          "required": [
+            "corpus_id",
+            "snapshot_uuid",
+            "database_sequence"
+          ],
+          "properties": {
+            "corpus_id": {
+              "type": "string"
+            },
+            "snapshot_uuid": {
+              "type": "string"
+            },
+            "database_sequence": {
+              "type": "integer"
+            }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": true
@@ -2683,7 +2872,8 @@
                 "warnings",
                 "request_id",
                 "database_sequence",
-                "idempotent_replay"
+                "idempotent_replay",
+                "head"
               ],
               "properties": {
                 "pointer": {
@@ -2713,6 +2903,26 @@
                 },
                 "idempotent_replay": {
                   "type": "boolean"
+                },
+                "head": {
+                  "type": "object",
+                  "required": [
+                    "corpus_id",
+                    "snapshot_uuid",
+                    "database_sequence"
+                  ],
+                  "properties": {
+                    "corpus_id": {
+                      "type": "string"
+                    },
+                    "snapshot_uuid": {
+                      "type": "string"
+                    },
+                    "database_sequence": {
+                      "type": "integer"
+                    }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": true
@@ -3865,7 +4075,8 @@
         "warnings",
         "request_id",
         "database_sequence",
-        "idempotent_replay"
+        "idempotent_replay",
+        "head"
       ],
       "properties": {
         "node_pointer": {
@@ -3909,6 +4120,26 @@
         },
         "idempotent_replay": {
           "type": "boolean"
+        },
+        "head": {
+          "type": "object",
+          "required": [
+            "corpus_id",
+            "snapshot_uuid",
+            "database_sequence"
+          ],
+          "properties": {
+            "corpus_id": {
+              "type": "string"
+            },
+            "snapshot_uuid": {
+              "type": "string"
+            },
+            "database_sequence": {
+              "type": "integer"
+            }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": true
@@ -3954,7 +4185,8 @@
                 "warnings",
                 "request_id",
                 "database_sequence",
-                "idempotent_replay"
+                "idempotent_replay",
+                "head"
               ],
               "properties": {
                 "node_pointer": {
@@ -3998,6 +4230,26 @@
                 },
                 "idempotent_replay": {
                   "type": "boolean"
+                },
+                "head": {
+                  "type": "object",
+                  "required": [
+                    "corpus_id",
+                    "snapshot_uuid",
+                    "database_sequence"
+                  ],
+                  "properties": {
+                    "corpus_id": {
+                      "type": "string"
+                    },
+                    "snapshot_uuid": {
+                      "type": "string"
+                    },
+                    "database_sequence": {
+                      "type": "integer"
+                    }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": true
