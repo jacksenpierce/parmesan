@@ -1,0 +1,30 @@
+name: Bug report
+description: Report reproducible behavior that differs from Parmesan's documented contract.
+title: "bug: "
+body:
+  - type: markdown
+    attributes:
+      value: "Please do not include credentials, private corpora, or other sensitive material."
+  - type: input
+    id: version
+    attributes:
+      label: Parmesan version
+      description: Include the output of `parmesan doctor` when possible.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: Include the smallest command, request, or code sample that demonstrates the problem.
+      placeholder: |
+        python PARMESAN_LLM.py doctor
+        # Expected:
+        # Actual:
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Include OS, Python version, traceback, and relevant non-sensitive configuration.

@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/jacksenpierce/parmesan/security/advisories/new
+    about: Please use GitHub's private vulnerability-reporting flow when it is enabled for this repository.
