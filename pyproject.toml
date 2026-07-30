@@ -8,11 +8,31 @@ version = "3.0.0"
 description = "Local SQLite-first PGX knowledge tools for conversational LLMs"
 readme = "README.md"
 requires-python = ">=3.11"
+license = {text = "Apache-2.0"}
+keywords = ["knowledge-graph", "llm", "pgx", "sqlite"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Database",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+]
 dependencies = [
   "pydantic>=2.10,<3",
   "markdown-it-py>=4,<5",
   "typer>=0.12,<1",
 ]
+
+[project.urls]
+Homepage = "https://github.com/jacksenpierce/parmesan"
+Repository = "https://github.com/jacksenpierce/parmesan"
+Issues = "https://github.com/jacksenpierce/parmesan/issues"
+Changelog = "https://github.com/jacksenpierce/parmesan/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 dev = ["pytest>=8,<10"]
