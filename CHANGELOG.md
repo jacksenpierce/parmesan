@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Added source-available licensing under PolyForm Noncommercial License 1.0.0,
+  including a limited consulting-use exception and a documented path for
+  commercial-license inquiries.
+- Added distribution metadata for both licensing documents and clarified that
+  external code contributions require prior written contributor terms.
+
 ## 3.0.0
 
 MIC-ready authority and workflow release.

@@ -7,6 +7,7 @@ name = "parmesan"
 version = "3.0.0"
 description = "Local SQLite-first PGX knowledge tools for conversational LLMs"
 readme = "README.md"
+license = { file = "LICENSE" }
 requires-python = ">=3.11"
 dependencies = [
   "pydantic>=2.10,<3",
@@ -23,6 +24,7 @@ pgx-pasta = "parmesan.cli:legacy_app"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
+license-files = ["LICENSE", "COMMERCIAL-USE-EXCEPTION.md"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
