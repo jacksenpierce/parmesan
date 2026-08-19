@@ -55,4 +55,13 @@ Never alter a published tag or its attached artifact. If a shipped artifact need
 - Do not commit credentials, local environment files, caches, build directories, SQLite `-wal`/`-shm`/journal files, or arbitrary local tooling.
 - Keep the SQLite corpus authoritative; projections and exports are derived artifacts.
 - Use Parmesan operations for corpus mutation rather than direct SQLite table writes.
-- Do not add a license, automation, hosted service, or package-publishing integration without an explicit decision.
+- Do not add an automation, hosted service, or package-publishing integration without an explicit decision.
+
+## Contributions and licensing
+
+Parmesan is source-available under the PolyForm Noncommercial License 1.0.0
+with a limited consulting-use exception. External code contributions are not
+accepted unless the repository owner first agrees in writing to contributor
+terms that preserve the ability to offer separate commercial licenses. Open an
+issue before preparing a code contribution. Bug reports, ideas, and
+documentation feedback remain welcome.

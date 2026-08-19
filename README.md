@@ -107,6 +107,22 @@ Small changes use short-lived, purpose-named branches such as `docs/...`, `fix/.
 
 Ordinary merged changes accumulate as unreleased work. GitHub Releases and version tags are periodic, immutable release cuts—not a required consequence of every documentation or source change. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full workflow.
 
+## License and commercial use
+
+Parmesan is **source-available**, not open source. It is licensed under the
+[PolyForm Noncommercial License 1.0.0](LICENSE). That license permits
+noncommercial use, modification, and sharing, including personal study and
+qualifying educational, nonprofit, public-research, public-safety,
+environmental, and government uses.
+
+Paid consultants have a limited additional permission to use Parmesan while
+providing professional services, subject to the conditions in the
+[limited consulting-use exception](COMMERCIAL-USE-EXCEPTION.md). Commercial
+distribution, paid products, hosted or managed services, and other commercial
+uses outside that exception require a separate written agreement. To inquire,
+open a GitHub Issue titled `Commercial licensing inquiry` and do not post
+confidential information there.
+
 ## Releases and delivery
 
 The canonical downloadable artifacts are published in [GitHub Releases](https://github.com/jacksenpierce/parmesan/releases). A normal release is one ZIP named `PARMESAN_vMAJOR_MINOR_PATCH.zip`; its immutable release UUID and final SHA-256 identify the exact delivered artifact.
