@@ -31,7 +31,6 @@ def main() -> None:
     required = [
         ROOT / "START_HERE.md",
         ROOT / "LICENSE",
-        ROOT / "COMMERCIAL-USE-EXCEPTION.md",
         ROOT / "RELEASE.json",
         ROOT / "RELEASE.md",
         ROOT / "PARMESAN_LLM.py",
@@ -137,12 +136,10 @@ def main() -> None:
         ),
     }
     license_text = (ROOT / "LICENSE").read_text(encoding="utf-8")
-    consulting_exception = (ROOT / "COMMERCIAL-USE-EXCEPTION.md").read_text(encoding="utf-8")
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     checks["licensing"] = {
         "polyform_noncommercial_terms": "PolyForm Noncommercial License 1.0.0" in license_text,
         "required_notice": "Required Notice: Copyright 2026 Jacksen Pierce" in license_text,
-        "consulting_exception": "Consulting Use" in consulting_exception,
         "source_available_readme": "source-available" in readme and "not open source" in readme,
     }
 

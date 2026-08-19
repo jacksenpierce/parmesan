@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.0.2
+
+- Removed the bespoke consulting-use exception. Parmesan is now distributed
+  solely under the standard PolyForm Noncommercial License 1.0.0; commercial
+  use requires a separate written agreement.
+
 ## 3.0.1
 
 - Added source-available licensing under PolyForm Noncommercial License 1.0.0,

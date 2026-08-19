@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "parmesan"
-version = "3.0.1"
+version = "3.0.2"
 description = "Local SQLite-first PGX knowledge tools for conversational LLMs"
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -24,7 +24,7 @@ pgx-pasta = "parmesan.cli:legacy_app"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
-license-files = ["LICENSE", "COMMERCIAL-USE-EXCEPTION.md"]
+license-files = ["LICENSE"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

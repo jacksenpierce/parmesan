@@ -115,12 +115,8 @@ noncommercial use, modification, and sharing, including personal study and
 qualifying educational, nonprofit, public-research, public-safety,
 environmental, and government uses.
 
-Paid consultants have a limited additional permission to use Parmesan while
-providing professional services, subject to the conditions in the
-[limited consulting-use exception](COMMERCIAL-USE-EXCEPTION.md). Commercial
-distribution, paid products, hosted or managed services, and other commercial
-uses outside that exception require a separate written agreement. To inquire,
-open a GitHub Issue titled `Commercial licensing inquiry` and do not post
+Commercial use requires a separate written agreement. To inquire, open a
+GitHub Issue titled `Commercial licensing inquiry` and do not post
 confidential information there.
 
 ## Releases and delivery
