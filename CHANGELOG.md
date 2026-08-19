@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 3.0.1
 
 - Added source-available licensing under PolyForm Noncommercial License 1.0.0,
   including a limited consulting-use exception and a documented path for

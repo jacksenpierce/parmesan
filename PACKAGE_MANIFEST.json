@@ -1,40 +1,45 @@
 {
   "product": "Parmesan",
-  "version": "3.0.0",
-  "release_id": "e670026f-0159-44d7-af31-d1b98346a77f",
-  "artifact_filename": "PARMESAN_v3_0_0.zip",
-  "root_directory": "PARMESAN_v3_0_0",
-  "built_at_utc": "2026-07-28T22:05:04Z",
+  "version": "3.0.1",
+  "release_id": "11f65d8e-f4e5-4c46-ba6d-59c3423f048a",
+  "artifact_filename": "PARMESAN_v3_0_1.zip",
+  "root_directory": "PARMESAN_v3_0_1",
+  "built_at_utc": "2026-08-19T19:34:26Z",
   "operator": "conversational_llm",
   "amazon_corpus_bundled": false,
   "core_tools": 31,
   "all_tools": 54,
-  "wheel": "dist/parmesan-3.0.0-py3-none-any.whl",
+  "wheel": "dist/parmesan-3.0.1-py3-none-any.whl",
   "files": [
     {
       "path": ".github/workflows/tests.yml",
-      "bytes": 311,
-      "sha256": "364ba0eefdc4832c11de1e67579da5c31d8504f75d91cedbd31692050d65377f"
+      "bytes": 295,
+      "sha256": "ce1266baa3d50d8ded5360d8a5bb5fc1789f1373866dc0915c6cc9e020ec3612"
     },
     {
       "path": ".gitignore",
-      "bytes": 832,
-      "sha256": "dd965dfd9985020bc3e830d4aba75ab77aafc193397c70c6a20e347b003a2aa5"
+      "bytes": 839,
+      "sha256": "817114ed6634dd594dc04225b0c70856918e7957c9bc41a0620e2ac39b12b50f"
     },
     {
       "path": "ARCHITECTURE.md",
-      "bytes": 4552,
-      "sha256": "6add290bafe99ce7ce5ba7293da4bf9cd830c8b379e03d1354331f0de22a1841"
+      "bytes": 4494,
+      "sha256": "26616021df3bfdca86b3ff66b6dab3c5c9591bcdaa149e289bfc74f42882f02c"
     },
     {
       "path": "CHANGELOG.md",
-      "bytes": 8704,
-      "sha256": "f7f62ab8cb711356b2b865ebfd427b4efab823cb2f215973d8735b1aaff15774"
+      "bytes": 9051,
+      "sha256": "401964943005433ca13b57ae3ba3f3dc1786818a2d9c4764d199e339c72e1754"
+    },
+    {
+      "path": "COMMERCIAL-USE-EXCEPTION.md",
+      "bytes": 2328,
+      "sha256": "4a94f8c7589956989f3354e83246c6b8d82232080876a07682e766b14bfced62"
     },
     {
       "path": "CONTRIBUTING.md",
-      "bytes": 3272,
-      "sha256": "3fa9ac669c6bbd9ad5f5fead46eb141783c95af3d0af583aaf59c7af0ef8bfdd"
+      "bytes": 3721,
+      "sha256": "385915e20989b52f5104a1b79cb6b0d292fdb4b962524bee76705fd5537a4e47"
     },
     {
       "path": "corpus-artifacts/construal-engineering-lab-v0.0.12/ANNOTATION.md",
@@ -57,9 +62,9 @@
       "sha256": "2a3fae65e669e58f9377f705cb9248a7508b72eb49f9b60bfb02857773db0c5e"
     },
     {
-      "path": "dist/parmesan-3.0.0-py3-none-any.whl",
-      "bytes": 90499,
-      "sha256": "a6053e351af38258af886178f21c51de6e083cfc88ec7b2af0ae500424891d12"
+      "path": "dist/parmesan-3.0.1-py3-none-any.whl",
+      "bytes": 95221,
+      "sha256": "3c3a9ab81456a4b93b7a03ec718ca1c5226dff6d15c3ca0b115433309e4768c3"
     },
     {
       "path": "docs/CONSTRUAL_ENGINEERING.md",
@@ -73,23 +78,23 @@
     },
     {
       "path": "docs/CORPUS_OPERATIONS.md",
-      "bytes": 3286,
-      "sha256": "2b0196ca1f0446ae0db17a6b4373d369f380b88e373c5b8c79183b90f73c138f"
+      "bytes": 3167,
+      "sha256": "d9990fb26f2335f24caa5cbc50d2fc29aa709ad325596d0fabf379219c493f2e"
     },
     {
       "path": "docs/OPERATIONAL_PHILOSOPHY.md",
-      "bytes": 7794,
-      "sha256": "0a10ee7ce7a270cdfc72e0091605cde5c71b2f86e894c0dc6888afbad1b87495"
+      "bytes": 7703,
+      "sha256": "40cffadd1c7c0840b057aef1d89a10e4b59a552b85a66fe186c5ce0c491fdb6e"
     },
     {
       "path": "docs/PGX_Traversal_4C_Guide/4C_MODEL_CONTEXT.md",
-      "bytes": 9214,
-      "sha256": "9c1e63a4ee115905e53f8a5d4ebbfeac6c2bcd56e909ac2d8497109504781bcd"
+      "bytes": 8999,
+      "sha256": "be950503973777c3cde374b7ba4d496968933910b523e044fe1710ea1069b9c3"
     },
     {
       "path": "docs/PGX_Traversal_4C_Guide/USING_PGX_TRAVERSAL_NOTATION_AND_EXPRESSIONS.md",
-      "bytes": 17419,
-      "sha256": "ff2ebcb1b8d8ec672d2dea25533be2540766b0bfd1836b3dca78536c3cc9b98b"
+      "bytes": 16890,
+      "sha256": "08dfc944923b0141672971776b999c2a9578b8a36fea36f44fe1f338297cebe7"
     },
     {
       "path": "docs/README.md",
@@ -103,13 +108,13 @@
     },
     {
       "path": "examples/CORPUS.toml",
-      "bytes": 668,
-      "sha256": "ca1012403ca60acf882f92620556152f2c5eb8c66143380c2dac3ea4694200a0"
+      "bytes": 634,
+      "sha256": "021a8cbcc4985739fabed8e268db06144765105ff39ac7a251bd6c0636323e6a"
     },
     {
       "path": "examples/DIG_BARE_POINTER.pgx.txt",
-      "bytes": 7433,
-      "sha256": "78f0ed7e72b5c01d2be67bcfeca4db1a35a4ec0d5407bf6365a21f37f8580b9b"
+      "bytes": 7399,
+      "sha256": "c7942bde5f1a7fc889ba30b49c647ac0c7d83a73ce82343db66cdff4725a1816"
     },
     {
       "path": "examples/DIG_BARE_POINTER.sqlite",
@@ -123,38 +128,43 @@
     },
     {
       "path": "examples/sample_graph.md",
-      "bytes": 468,
-      "sha256": "7a26315dcb864f192433b6c7607cb3022463d30334edfc2af4b9eba00601e80a"
+      "bytes": 461,
+      "sha256": "0916dae952c8de013d4f345c581d5d20801f43e4eb3e133c775895334b52ff7b"
     },
     {
       "path": "examples/sample_requests.jsonl",
-      "bytes": 437,
-      "sha256": "0df5103cc9f129d48b6eda97a40a591dd130657fbab1b7ed420a3471227272dc"
+      "bytes": 434,
+      "sha256": "eb157e22d8eefeacdc798958cec8497f76bb4a403412654e5536caf5c43898c2"
     },
     {
       "path": "examples/zero_context_build.py",
-      "bytes": 3074,
-      "sha256": "3b9832206a2f47ea9cd1e5eaf63449b24dc442a4e3f6823ca65978d7ad2b2448"
+      "bytes": 3122,
+      "sha256": "384d470f2b4286eb3b2e0c3ac11892894ebeeae12daba8e72e209e343e861c59"
+    },
+    {
+      "path": "LICENSE",
+      "bytes": 4744,
+      "sha256": "7a178f8705037ea217982469e47e394f7d2c6f0ca2a72261c3b2a71204ca1d55"
     },
     {
       "path": "LLM_TOOL_CONTRACT.md",
-      "bytes": 8114,
-      "sha256": "52c9d46f33b55b4abc9c576cd6105539f55cc52036ea482823c91830e611d44e"
+      "bytes": 8129,
+      "sha256": "c6680213f06cff850c657da3078d1f096e04ea78d097e0c68f892757a8443f5e"
     },
     {
       "path": "maintenance/decisions/PGX_BARE_POINTER_MARKDOWN_LINKS.md",
-      "bytes": 6822,
-      "sha256": "004343dd19b310e28c1278422c4d7c35e3ac37616cd5240004a7debe8a9d8afa"
+      "bytes": 6638,
+      "sha256": "2c99f78a18c3f50370acd9168e495780f38873da881d20b3daa12785780e01a8"
     },
     {
       "path": "maintenance/quarantine/README.md",
-      "bytes": 78,
-      "sha256": "7c5217d80dc862d799bbb102b0bfa7374474639c746bbc5f67d58c361f9ec071"
+      "bytes": 75,
+      "sha256": "36a594578c26288f508fc76239eb155272d523951493e8879b9a6d8ed01fb2b8"
     },
     {
       "path": "maintenance/README.md",
-      "bytes": 566,
-      "sha256": "0221a97ee533f20796db51432863fb5465682580fa0f0cea9e57a0fa75cc2d5b"
+      "bytes": 556,
+      "sha256": "268f78032497b46a18a8cf9cc682e05b5b6247567c46b4e6991bdc9f06e87f5b"
     },
     {
       "path": "maintenance/TOOL_CATALOG.json",
@@ -163,333 +173,338 @@
     },
     {
       "path": "PARMESAN_LLM.py",
-      "bytes": 2427,
-      "sha256": "9663bd46eb126660a36c039bd85a27f3e9714c6a9edd404e1661df2458718aa8"
+      "bytes": 2359,
+      "sha256": "f155ddaeb55b44bbd52df96ef87e45aaf223b76b1e445d67be0e4facb5cc9a5d"
     },
     {
       "path": "pyproject.toml",
-      "bytes": 713,
-      "sha256": "b8f29e02c65dac454c3df612977e00462214026a24f8d125508bbad22b0b33e1"
+      "bytes": 805,
+      "sha256": "bddc42261edfc58ae99d6e229df4c9bcef39fcf9d4a04992ccb72d8e82fc972c"
     },
     {
       "path": "README.md",
-      "bytes": 8963,
-      "sha256": "379156af9286a15144a0bf0f32ab921af10b188c837edbd085f96b84f882d65e"
+      "bytes": 9838,
+      "sha256": "dc67e579c38cd33c6dc925164610348a101beff3d339fc6818b33c3c6591c2b8"
     },
     {
       "path": "RELEASE.json",
       "bytes": 1072,
-      "sha256": "f30def09204e0e47b6c7d985fead5541e1651ddf0ad9cfa86e520adde7a94748"
+      "sha256": "226d34147ca17457cceb9fac6336c32a41a0fa4894c698bc6e537bb03c0f2173"
     },
     {
       "path": "RELEASE.md",
       "bytes": 2246,
-      "sha256": "d08d3e384c707b40f98e31d89a0296d5529cf7dbc2c642f790a726066b8de00e"
+      "sha256": "f1fd0866029bb8134cb987c153d041be3e9c657d47b52f3b07e5852281297292"
     },
     {
       "path": "RELEASE_MANIFEST.json",
       "bytes": 1020,
-      "sha256": "d9f21dd6fc472e87b2963d338e5ca00250dc7335984356b959846e33ee33f425"
+      "sha256": "f4ee1171554eeea69a830181171cb4906522d00c8d214d4e5b9e1bab24de9364"
     },
     {
       "path": "RELEASE_VALIDATION.json",
-      "bytes": 3104,
-      "sha256": "038a647bd0287460102e36f0475a0240a38d4ad336290b1b9b3ea29eb5907cea"
+      "bytes": 3285,
+      "sha256": "9a021084751167c018b1238e1c29a366ebeb7628a4061d99154b918826b63765"
     },
     {
       "path": "requirements.txt",
-      "bytes": 57,
-      "sha256": "bd20eeb289f70aeb5fd10dfe7bd270defa63c24a16235d35334585b8bbfcaaa4"
+      "bytes": 54,
+      "sha256": "d37fdf77cf534d220e880a82cfe1fc67d0b9ab5752b6fdebcc101a52a0307e4e"
     },
     {
       "path": "scripts/build_catalogs.py",
-      "bytes": 695,
-      "sha256": "239e5bdd0122a756c542eab7096749079c388e5954acbcf7590cbd7d03ea093f"
+      "bytes": 667,
+      "sha256": "be6ee10260d76b17553689c46c057b0f25104fdb56d62da7c3e76dd97ea52e5c"
     },
     {
       "path": "scripts/build_manifest.py",
-      "bytes": 639,
-      "sha256": "96d42a967fe72e99ea41942b144927d65d3027a358f84b8e891bc83aac1363c7"
+      "bytes": 618,
+      "sha256": "b45747c066dedb15697c151b0068a697fc9ea24e0446d71e29cff28bf4827a45"
     },
     {
       "path": "scripts/build_package_manifest.py",
-      "bytes": 3650,
-      "sha256": "b7a205a499f88324d6c797bc217dc903d85620f43aac65c4515a772079902c11"
+      "bytes": 3658,
+      "sha256": "7b9df0afa42917d80f2828a664c14bd46ce53ccfa62240603bd2a4dc97a271b3"
     },
     {
       "path": "scripts/build_release.py",
-      "bytes": 2341,
-      "sha256": "4dd83b8122918419924b130ea14711a12a146673cf2332b20be9278899265fcd"
+      "bytes": 2363,
+      "sha256": "84383a90326de7386265c7b338181206888309e651af5d4441264701173f8a65"
     },
     {
       "path": "scripts/build_release_archive.py",
-      "bytes": 3864,
-      "sha256": "0730be72812fa7f8df0ce51ff7d4b691f53bc807e3ed3cff8b2a1ce969ccf038"
+      "bytes": 3871,
+      "sha256": "5c47fe48af970103a0f4b65612ae4028361479ec4bd86199399912bfb5dad1c7"
     },
     {
       "path": "scripts/generate_release_metadata.py",
-      "bytes": 4647,
-      "sha256": "967e958b744c74b66dfb6c81861e6bc8926c9afe037c8efee2f11188e6417ffa"
+      "bytes": 4552,
+      "sha256": "662f1addfdb8dd4d34f7e27aaed540c4360b41a8baefee730af89d666ffd568a"
     },
     {
       "path": "scripts/migrate_database.py",
-      "bytes": 618,
-      "sha256": "6dda0a2c42e8fd14c4e0dc0a6f62faa86da09f1f9ece8353443b3c8919c728a0"
+      "bytes": 598,
+      "sha256": "3e11a6a74b23e6d379bb3d0beecc909c71b71fcb0dea33713f1470826361abcc"
     },
     {
       "path": "scripts/rebuild_derived.py",
-      "bytes": 636,
-      "sha256": "344294449dd212dc86fb2f5250e6c690cc060452726888a2c36e02c497ec8fef"
+      "bytes": 615,
+      "sha256": "ee71129324acb9c6e5e818082dd98fd6f3c9b3372319a73cc35d92413ca4954c"
     },
     {
       "path": "scripts/rollback_database.py",
-      "bytes": 865,
-      "sha256": "7e672c1ed30daaeeab7af7e8d35eec2129771af289bf836919f991e3e8c96dbf"
+      "bytes": 838,
+      "sha256": "a6a41fc36f9b2f1496d9bc0fcb5d311248e04b088616c425718eca95fb74e19c"
     },
     {
       "path": "scripts/run_jsonl_server.py",
-      "bytes": 111,
-      "sha256": "969fd8fbeeece927e7346b8da2344ad608d13740f2d94b135f0165ef6b4b7b54"
+      "bytes": 106,
+      "sha256": "8488afba705ca44d4c2bd6e00acae628dbdecee91f41daa264da03b931f40435"
     },
     {
       "path": "scripts/validate_database.py",
-      "bytes": 627,
-      "sha256": "5fafe7cc7953a23da54e596e2105b6b02a3edae3571e259dbeb04203e32f76bd"
+      "bytes": 606,
+      "sha256": "c8028a54aa1055742c6842f8794e6cb4e6b67faa0906dc3290eb44d1375e02e2"
     },
     {
       "path": "scripts/validate_release.py",
-      "bytes": 13992,
-      "sha256": "9833e87d76ce573bddb643a8e102e675d1faaa8d23e4de3aa74ada2fa226c42b"
+      "bytes": 14741,
+      "sha256": "a42a7114e929957b37fa6ae3f9a6200415fecea1498cbf7bd9782ab7fab651b6"
     },
     {
       "path": "scripts/verify_package_manifest.py",
-      "bytes": 2199,
-      "sha256": "27a2b05f57e9e246f474f9df40c6cc7170bdcdaddec9e31d726b576f3b84293f"
+      "bytes": 2140,
+      "sha256": "34a1492097eb7d9d47515ba6a76429f600670fe1221a3d0283cb2c5bc7b42b7a"
     },
     {
       "path": "src/parmesan/__init__.py",
-      "bytes": 2284,
-      "sha256": "a50cefd41687a7db54b7a0d44fbb8396b000bdd4998791c7c0301be2faff2aa7"
+      "bytes": 2202,
+      "sha256": "806b988f804223c2a88c0acd4c5c0be549bba0bef0cd0688765b962a2425a125"
     },
     {
       "path": "src/parmesan/__main__.py",
-      "bytes": 31,
-      "sha256": "beb133ee5d0ab501495e6781ac82f82497bfc0af69266c049330c6c6973b1e71"
+      "bytes": 28,
+      "sha256": "c1c0ab2f83e31b9d6be7054aa8985ca093d32df1d6d3035b0f7d43ad43743162"
     },
     {
       "path": "src/parmesan/arcp_local.py",
-      "bytes": 2034,
-      "sha256": "436f993136c9a503072783c05500909892641ba56872fb58e908ae7a7850ce32"
+      "bytes": 1985,
+      "sha256": "2c5b8e9b70395d19de6ec4144eca8f84a549548b95305770eae73be4cb8b3e03"
     },
     {
       "path": "src/parmesan/authority.py",
-      "bytes": 469,
-      "sha256": "e63ccd639953f44b113602136ba2254f1cda1c8d678c5d60d223f58c2d01409f"
+      "bytes": 485,
+      "sha256": "5f3c2b2bf75d4822837308036ba4f3931e90cced19880eb383d17df618ae5ad6"
     },
     {
       "path": "src/parmesan/cli.py",
-      "bytes": 8069,
-      "sha256": "dade6a865669a39ed062d81671570df59ea87990a8d255d76d75109ef497722f"
+      "bytes": 7888,
+      "sha256": "3457abd025cc53d7bbe3c20a788fbfebe65bbe332c2d0e1cd8979282a359fc88"
     },
     {
       "path": "src/parmesan/corpus.py",
-      "bytes": 33821,
-      "sha256": "0fed6e20833503c6734deb4a84693691941f2f6bfbaef15e58060b8d674df161"
+      "bytes": 33095,
+      "sha256": "6373bf5054298df4ce1c13e4f93ea1ebcaa89b8cad5a8b21316b31e6d81a82a5"
     },
     {
       "path": "src/parmesan/errors.py",
-      "bytes": 861,
-      "sha256": "8f27fe849c7668dc88e2aa9a8660fc11f31fb1b48452339e4188600cd12c7eec"
+      "bytes": 822,
+      "sha256": "726c882201573429146bdcc3a1e236a3963e89fc19c16f2d8330758bebcb9d9c"
     },
     {
       "path": "src/parmesan/identity.py",
-      "bytes": 1121,
-      "sha256": "c636a240a9cd6d94617488631f2ef21f314bac499164bb3bb91ba6cb91afe35f"
+      "bytes": 1085,
+      "sha256": "d71e5fc783f346d6609b0132ab60d6d5077e1ee805b4b83d945ba46b13f7639d"
     },
     {
       "path": "src/parmesan/legacy_reference.py",
-      "bytes": 4089,
-      "sha256": "0a5d0b7253ca804c3a63b2aa9f868c53892215fd6ed714974fcaf174800b0ad8"
+      "bytes": 3963,
+      "sha256": "7c0c3eaea7034b90c10bf6061dee3e3f0e1d1fbb1a56b547439f510e0e82f343"
     },
     {
       "path": "src/parmesan/manifest.py",
-      "bytes": 5191,
-      "sha256": "ec4fdbd5c4f897473de9bdc24ea097c84683ed4e264e119bd4a02ba5f2e5aa03"
+      "bytes": 5090,
+      "sha256": "d614551b1ef6d3917ce6e2a1ddeb1f9441325d35cf1b16bbb7892e781f2a152c"
     },
     {
       "path": "src/parmesan/migration.py",
-      "bytes": 9666,
-      "sha256": "dd5582229096c572d674211ef1769632b1c075c77f78b2c92eb897c4b8e7ec1d"
+      "bytes": 9477,
+      "sha256": "f74d7e4a068934a9c27ec0e33bbd018f4cd121c6e080163b6786a9648c3f22c8"
     },
     {
       "path": "src/parmesan/models.py",
-      "bytes": 1320,
-      "sha256": "8a35bbc0ecc095b2b6ae062799c5ee3b158a406e65572617e4c014b383c608b1"
+      "bytes": 1332,
+      "sha256": "e01bd1d41cf0f8421bfbbf5317444623e6a0f2c890812d52cb78d485346fe596"
     },
     {
       "path": "src/parmesan/pgx.py",
-      "bytes": 3369,
-      "sha256": "dbec7b64c894dd116fef9cff466af825104ae0c121d7ef8a140282ff3434eef3"
+      "bytes": 3258,
+      "sha256": "d29ca92ee6c4149dc07a3b301608f47545a800b2cc5feccd91c5b4cabaabd59c"
     },
     {
       "path": "src/parmesan/reference.py",
-      "bytes": 16028,
-      "sha256": "86aac78430fa5adfbb273d6f137c23cb25e9ecc82b9d4f71ad18f2cf94c1e44d"
+      "bytes": 15653,
+      "sha256": "fb84c677177f64d89ef6ebb2c11bd0e22a994248179b33bb1ebfb5f6caa4538f"
     },
     {
       "path": "src/parmesan/reference_discipline.py",
-      "bytes": 2623,
-      "sha256": "94207bb0b88e32c840782afc390794283a32f6e852eae3a8cde5d9b1857085a7"
+      "bytes": 2544,
+      "sha256": "54e3e05d87f58aa03c5c2ec5d6984b62efa53910c39c20f20090fdb8d9d20824"
     },
     {
       "path": "src/parmesan/router.py",
-      "bytes": 8317,
-      "sha256": "15dbff462a5fe2f5aad869c9793519a6b11f4a42ec7b29db9adc8c509e61a5db"
+      "bytes": 8356,
+      "sha256": "e82f39166f99070487ddb5b4d3091b2de0cf536a3f5516d2326722ddb0a6a472"
     },
     {
       "path": "src/parmesan/runtime.py",
-      "bytes": 9259,
-      "sha256": "417439797b2a5b23d72e0de84344f827e346ba78a57934a7daf041ab6993e1e0"
+      "bytes": 9315,
+      "sha256": "30a20b74d5f5016109389c01f89b3ea80e5ec8e456fd97cfda1f9d7fecfe2d38"
     },
     {
       "path": "src/parmesan/schema.py",
-      "bytes": 20201,
-      "sha256": "42cdbfa65debcb5c5616f82879b1888e8cc6ea122dcbaada19657b44e516f955"
+      "bytes": 20367,
+      "sha256": "8513c1814fc9f472e686fcf5ee6bbafac7e0bb7f9962d58daea08f3d413c14bd"
     },
     {
       "path": "src/parmesan/store.py",
-      "bytes": 141294,
-      "sha256": "ff0bad65e56e233637182b8c403c811c171842c2c8eb44f7bed4429e2f344696"
+      "bytes": 142609,
+      "sha256": "d8ca9fb9a4e1f8c4ad34d3c6873f639ac235671732cbb61d6ad886ef5685ddf0"
     },
     {
       "path": "src/parmesan/timeutil.py",
-      "bytes": 987,
-      "sha256": "d1907ebc279b77bb8593b5d079cde2bc895b49f0939ecc706f4dc7f4f8aab76b"
+      "bytes": 957,
+      "sha256": "a9212eace1f68ba0c83f5a271ef3449045fd6142ee0d77978dfbcd8c6d8416a9"
     },
     {
       "path": "src/parmesan/tool_contracts.py",
-      "bytes": 33900,
-      "sha256": "16efbe7f39c72c2a8672a425b2b426293fd082f7d701964de20c5ad2070b63e6"
+      "bytes": 34293,
+      "sha256": "6bf51fe02977303a2875bab4cf3b6db906e88eb88df43f37092d7609b2bbdefe"
     },
     {
       "path": "src/parmesan/tools.py",
-      "bytes": 31468,
-      "sha256": "7512378b41cf4bb5b92b68b25b8aed183609030674eee6f8b68f403467a27165"
+      "bytes": 31752,
+      "sha256": "0415b3be8f11deb36087626cedc6855f5e0bba9ad72e925288ea1e38290e5cca"
     },
     {
       "path": "src/parmesan/traversal.py",
-      "bytes": 3383,
-      "sha256": "6caf41fcfd8d021b011d2905589583faf6e726a81bd9764c06228a66b76ee0ac"
+      "bytes": 3282,
+      "sha256": "197cd912dd997aa69ea372afd7a67a0d04f69044d9de3b7978b82a0d4d64cdb8"
     },
     {
       "path": "src/parmesan/version.py",
       "bytes": 208,
-      "sha256": "37fe1c97565731fd5d0cfb7ae2494e9022a84b44e0c890e77a4a0b5fc7ef9941"
+      "sha256": "5c49ca7e25de2095d2a84cd12ac21f80508dd680a9f17c77c8b316fbeb6088a0"
     },
     {
       "path": "src/parmesan/workspace.py",
-      "bytes": 31526,
-      "sha256": "93af11e00302a4af324c803a6d4170457d0fb4b453a3c8231a170a5f2a3b6c51"
+      "bytes": 32262,
+      "sha256": "1df74ce0a3c9ac71e2f0a9adb100b8dad31cdaf7460e50abb4d8b4bd69310eb1"
     },
     {
       "path": "START_HERE.md",
-      "bytes": 12719,
-      "sha256": "042ecf53f24f1a1d60d251636e9952d943244da789ba97440ae86baee8dbe9ad"
+      "bytes": 12750,
+      "sha256": "57dfd2bba98af6dd4efac831091b18ddc59f7a99a6b5506575729bf183a4e8fd"
     },
     {
       "path": "tests/conftest.py",
-      "bytes": 499,
-      "sha256": "de921d68f9d69c2746c08b7660b7eb0819ade81d77013fdbf7e4065c900e8150"
+      "bytes": 478,
+      "sha256": "21f3745061ec6f96addc6e1b812514b528dd94cb7398b7a733ec0c483591138d"
     },
     {
       "path": "tests/test_atomic_batch.py",
-      "bytes": 4992,
-      "sha256": "4d44a7428f6025d815d4df63da6bf5b5f6101bb09179cf2f0f0ec73304b23432"
+      "bytes": 5151,
+      "sha256": "436ccc59b0c871922269785ab0071d9bfc764002d28408eb7b016676083a214d"
     },
     {
       "path": "tests/test_authority_heads.py",
-      "bytes": 4056,
-      "sha256": "11cdf217d569a7b9ea90f95f31513eae694b91f37be4a02643ebcb1cde3b9a3f"
+      "bytes": 4169,
+      "sha256": "931327333a123ea3082459d12373b64a8b636ccba8de2069a1e5fb11d601a150"
     },
     {
       "path": "tests/test_bare_pointer_migration.py",
-      "bytes": 2544,
-      "sha256": "08983db80110ba4dc5447c61cccfcc3bcd3a3b9a221efc28c7fa93ba3bdfebc5"
+      "bytes": 2478,
+      "sha256": "4db21952937e4fdb2d5b569c0890977d8f1e9f58a3c84bc0244261d5ddc5ebef"
     },
     {
       "path": "tests/test_change_sets.py",
-      "bytes": 5048,
-      "sha256": "d6ff482c28020ddd4d5fc253132ed8069352e104998b94142d34364d959ec3f3"
+      "bytes": 5189,
+      "sha256": "8cf3dce121bc4e291fba541fcd520caf206d75e7a95cb5c74731a376de65574b"
     },
     {
       "path": "tests/test_conversational_surface.py",
-      "bytes": 6527,
-      "sha256": "1486d72ed0b9163616857996697c306ebe16a379e3bda606b9b9e1e5a21b7b52"
+      "bytes": 6546,
+      "sha256": "aed0e05a2c35eed749fa0ec64c0948f6fc522a71ea6be44c8210ceeaa8786fd6"
     },
     {
       "path": "tests/test_corpus_operations.py",
-      "bytes": 5368,
-      "sha256": "36b80c1b3c18afa0c82460c89cd74dfd189401fee1c3efb32d2ed356f63e0142"
+      "bytes": 5219,
+      "sha256": "d34fa5d60b0e04cd5e2742ff4904de51595b4c047d1714b609f4dd4b145fd3be"
     },
     {
       "path": "tests/test_graph_namespaces.py",
-      "bytes": 2891,
-      "sha256": "76408c1647599efeed195270f42be8490bd0bdfe390023a7661e85f7881815c0"
+      "bytes": 2988,
+      "sha256": "f82273df12a3664d1acc570694cba518b939f4fdd505aa63e8ab5f333978492d"
     },
     {
       "path": "tests/test_identity_transactions.py",
-      "bytes": 3664,
-      "sha256": "2442f17998f2620caaa2ad26ff173bb0295070a6e128bf032bbeb865e21ff9bf"
+      "bytes": 3584,
+      "sha256": "a1faccd0f42b7c8fe26315160af85ab36db57c4d0a8afc9cd94f1fe65ec0abc5"
     },
     {
       "path": "tests/test_legacy_reference_migration.py",
-      "bytes": 1913,
-      "sha256": "714a8b24f3714c6733a81512dffcbb5b9c870280514d3bb37826cbcc7b1d054c"
+      "bytes": 1853,
+      "sha256": "61c2bea16a42d2ff1b0a7d12359d3fb75a29864839b23d127468da6c2db521a2"
+    },
+    {
+      "path": "tests/test_licensing.py",
+      "bytes": 1140,
+      "sha256": "adcbcb751ff769ed058e23633fe985689500da214f9f21d6249b465f1202a03e"
     },
     {
       "path": "tests/test_lineage_materialization.py",
-      "bytes": 3145,
-      "sha256": "e7007409b11206eb0aeec31005aa33a985562a1812dfa1391f2ec1b87f32c6db"
+      "bytes": 3165,
+      "sha256": "23db58e6524d9b971203ade60e5e0c726e7a306391e47ceae89facde5db6131d"
     },
     {
       "path": "tests/test_operating_modes.py",
-      "bytes": 2633,
-      "sha256": "c79f3db607d39325f0a18b06924de253fe987a554a810cb987e7e1b91d1856a5"
+      "bytes": 2726,
+      "sha256": "7b9362f91728e54100ac6a1c712ae5d582054d3c0eda34117496868aaa815860"
     },
     {
       "path": "tests/test_reference_scope.py",
-      "bytes": 3371,
-      "sha256": "92079696dd31e243b20659f043e5cbbbd542ecf61cf02ae5432ae4c54a7b7365"
+      "bytes": 3376,
+      "sha256": "72dc6ca5e619f58e10312c9fa1f5fc2522127d76f8669e159e4bd8f4c5f029b3"
     },
     {
       "path": "tests/test_references_pgx.py",
-      "bytes": 3840,
-      "sha256": "405eea60d167c3a36913f31d505aac086958c5145b7a9c8f9b25f57768f8533d"
+      "bytes": 3763,
+      "sha256": "26096fb2f7d42577a6a504b977c25ca29f9dcc12fc8a21534e40de6da95c48aa"
     },
     {
       "path": "tests/test_release_identity.py",
-      "bytes": 2527,
-      "sha256": "4156123485c6299f5d886b66335f4ab2c54298d61d87941207acdaae1312c045"
+      "bytes": 2474,
+      "sha256": "10e40793e7fb0a4fa9ab4ebebf5d5760ad26cff472ce2b13296b8d7254d12283"
     },
     {
       "path": "tests/test_traversal_expression_authoring.py",
-      "bytes": 4366,
-      "sha256": "eea8235a45e11d921bebdf18e29d717caf2aefebbd53a8742874ec204bb7e57f"
+      "bytes": 4378,
+      "sha256": "11fb4bc1317e751693fb05222e8c46d28a840a5ed73a5ea048f3ff8bc54c1f31"
     },
     {
       "path": "tests/test_traversal_tools.py",
-      "bytes": 2304,
-      "sha256": "3649dc0e2f2c4ac4fcbcc379bf6ca841c7e73217bbb3110cab6fa488b278e2da"
+      "bytes": 2257,
+      "sha256": "b18436733e8711b4d29b70e02540895f3519231946c881d75beb881d590df92c"
     },
     {
       "path": "tests/test_workspace_adoption.py",
-      "bytes": 6782,
-      "sha256": "f08cbec7d4f0cb3f62c5277a7625aebcf394184c6780e2e1b5ff732d9b1465a2"
+      "bytes": 6967,
+      "sha256": "4aac99e14928c47bfb2266150b94077550f6ca9cb0a1cd976c30b169464844a8"
     },
     {
       "path": "tests/test_workspace_handoffs.py",
-      "bytes": 6133,
-      "sha256": "a1113b0dcd0fc29af9ebbaba25e52d9674a6714325555246e5608a5677d37360"
+      "bytes": 6295,
+      "sha256": "bc058abfe159d068dcb01679eeeff63c1c5422485fb736e83893e6c491ff38b6"
     },
     {
       "path": "TOOL_CATALOG.json",
