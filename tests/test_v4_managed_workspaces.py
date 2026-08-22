@@ -33,6 +33,7 @@ def test_managed_workspace_defaults_to_working_and_publish_blocks_mutation(tmp_p
     store = open_managed_workspace(root)
 
     assert initialized["mode"]["mode_key"] == "working"
+    assert inspect_managed_workspace(root)["valid"] is True
     head = store.current_head()
     changed = store.mode_set("publish", expected_head=head, reason="freeze for an explicit handoff")
     assert changed["mode"] == "publish"

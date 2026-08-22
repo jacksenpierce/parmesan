@@ -24,6 +24,10 @@ def _close_for_archival(database: str | Path) -> None:
 def test_registers_complete_pre_v4_workspace_without_changing_source(tmp_path):
     legacy = tmp_path / "legacy"
     initialized = initialize_workspace(legacy)
+    legacy_manifest_path = legacy / "PARMESAN_WORKSPACE.json"
+    legacy_manifest = json.loads(legacy_manifest_path.read_text(encoding="utf-8"))
+    legacy_manifest["machinery"]["parmesan_version"] = "3.0.2"
+    legacy_manifest_path.write_text(json.dumps(legacy_manifest, indent=2) + "\n", encoding="utf-8")
     source_database = initialized["database"]
     _close_for_archival(source_database)
     before = sha256_file(source_database)

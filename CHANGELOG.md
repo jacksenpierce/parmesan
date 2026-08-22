@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 4.0.0
 
 - Began the isolated Parmesan 4 composable-workspace foundation with
   operation-derived object identities, scoped alias assertions, multi-parent
@@ -11,6 +11,12 @@
 - Added the initial Parmesan 4 migration boundary: pre-v4 databases and managed
   workspaces can be copied into self-verifying immutable resource bundles and
   inspected without importing them into live v4 semantic state.
+- Added the production `parmesan pm4` surface for managed initialization,
+  exact-head object and membership mutation, bounded inspection, fork,
+  multi-parent composition, conflict inventory, and registered resources.
+- Made working mode the PM4 default and publish mode an explicit semantic
+  freeze. Mode changes never automatically rebuild, serialize, or publish a
+  knowledge base.
 
 ## 3.0.2
 

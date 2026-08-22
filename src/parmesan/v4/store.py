@@ -109,7 +109,7 @@ class ComposableWorkspace:
                 "INSERT INTO semantic_operations(operation_uuid,origin_replica_uuid,operation_kind,payload_hash,payload_json,created_at) VALUES (?,?,?,?,?,?)",
                 (operation, replica, "workspace.initialize", _hash_json(payload), _canonical(payload), now),
             )
-            fingerprint = _hash_json({"objects": [], "aliases": [], "revisions": [], "revision_parents": [], "memberships": []})
+            fingerprint = _hash_json({table: [] for table, _ in FINGERPRINT_TABLES})
             connection.execute(
                 "INSERT INTO semantic_snapshots(snapshot_uuid,corpus_uuid,operation_uuid,state_fingerprint,created_at) VALUES (?,?,?,?,?)",
                 (snapshot, corpus, operation, fingerprint, now),
