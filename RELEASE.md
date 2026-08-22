@@ -1,10 +1,10 @@
 # Parmesan release and delivery convention
 
-This artifact is **Parmesan 4.0.0**.
+This artifact is **Parmesan 4.0.1**.
 
-- Human filename: `PARMESAN_v4_0_0.zip`
-- Root directory after unpacking: `PARMESAN_v4_0_0/`
-- Immutable release ID: `1bd757fc-87f0-4427-86f0-251996a335fa`
+- Human filename: `PARMESAN_v4_0_1.zip`
+- Root directory after unpacking: `PARMESAN_v4_0_1/`
+- Immutable release ID: `c1437c4c-ec7a-467f-a02d-5d3ffdd979e0`
 - Artifact type: conversational-LLM software; no corpus is bundled
 
 ## Versioning

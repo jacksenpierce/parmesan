@@ -21,7 +21,7 @@ The traversal-expression tool is intentionally small, but its notation and inter
 1. [`PGX_Traversal_4C_Guide/4C_MODEL_CONTEXT.md`](PGX_Traversal_4C_Guide/4C_MODEL_CONTEXT.md)
 2. [`PGX_Traversal_4C_Guide/USING_PGX_TRAVERSAL_NOTATION_AND_EXPRESSIONS.md`](PGX_Traversal_4C_Guide/USING_PGX_TRAVERSAL_NOTATION_AND_EXPRESSIONS.md)
 
-The files above are preserved verbatim from the supplied `PGX_Traversal_4C_Guide` package. Parmesan's current `pgx.traversal.embed` tool accepts resolved pointers expressed either directly in traversal notation or as nested expression trees. It canonicalizes both forms to the same stored representation, while the guide describes the broader notation and its open conceptual vocabulary.
+The files above are preserved verbatim from the supplied `PGX_Traversal_4C_Guide` package. Parmesan's current `pgx.traversal.embed` tool accepts resolved pointers expressed either directly in traversal notation or as nested structured trees. Direct notation may contain any positive number of ordered terms and has no required operand–operator–operand shape. It canonicalizes each form while preserving encounter order and nesting, while the guide describes the broader notation and its open conceptual vocabulary.
 
 ## Architecture work
 

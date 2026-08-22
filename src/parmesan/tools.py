@@ -685,11 +685,11 @@ def _parse(store, args, ctx):
 
 @register(
     "pgx.traversal.embed",
-    "Accept a structured tree or traversal notation, validate its pointers, and append canonical notation to one node description.",
+    "Accept a structured ternary tree or arbitrary-arity traversal notation, validate its pointers, and append canonical notation to one node description.",
     TraversalEmbedArgs,
     **MUTATION_META,
     preconditions=("the target node and every expression pointer exist in the active corpus",),
-    postconditions=("notation is validated and canonically rendered", "nested composition preserves branch geometry", "the node receives one immutable appended revision"),
+    postconditions=("notation is validated and canonically rendered without a fixed arity requirement", "nested composition preserves encounter order and geometry", "the node receives one immutable appended revision"),
     max_output="one canonical traversal expression and one updated node revision",
 )
 def _traversal_embed(store, args, ctx):

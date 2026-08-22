@@ -1,5 +1,16 @@
 # Changelog
 
+## 4.0.1
+
+- Added canonical M2 semantic virtual infrastructure and M3 view algebra as
+  packaged default resources, with simple instruction-precedence and
+  compatibility disclaimers.
+- Added mandatory managed-workspace orientation that emits verified M2 then M3
+  content before operations; forks and compositions reset orientation.
+- Generalized direct traversal notation to one or more ordered, nestable terms,
+  removing the operand–operator–operand arity constraint while retaining the
+  structured ternary-tree compatibility input.
+
 ## 4.0.0
 
 - Began the isolated Parmesan 4 composable-workspace foundation with

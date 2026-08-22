@@ -62,19 +62,19 @@ The released schema deliberately does not force a universal ontology of “conce
 
 ### Traversal notation and expressions
 
-A PGX traversal expression has the conceptual form:
+A common PGX traversal expression has the conceptual form:
 
 ```text
 [(left):(operator):(right)]
 ```
 
-Its operands and operator are pointers to existing graph material. Grouping and order are meaningful:
+This ternary form is a convention, not a grammar constraint. Direct notation may contain one, two, three, or many pointer terms, and terms may themselves be nested expressions. Grouping and order are meaningful:
 
 ```text
 [((C1):(O1):(C2)):(O2):(C3)]
 ```
 
-The released authoring path is `pgx.traversal.embed`. Supply either traversal notation or a structured expression tree. Parmesan parses the chosen form, resolves every pointer, preserves tree structure and encounter order, records an append-only revision, and embeds validated canonical notation in the target node.
+The released authoring path is `pgx.traversal.embed`. Supply either arbitrary-arity traversal notation or a structured ternary expression tree. Parmesan parses the chosen form, resolves every pointer, preserves nesting and encounter order, records an append-only revision, and embeds validated canonical notation in the target node.
 
 ```json
 {

@@ -15,10 +15,12 @@ python PARMESAN_LLM.py catalog --profile core
 
 Then read these in order:
 
-1. [`docs/PARMESAN_4_QUICKSTART.md`](docs/PARMESAN_4_QUICKSTART.md) — new PM4 managed workspaces, composition, and migration.
-2. [`START_HERE.md`](START_HERE.md) — zero-context operating path and compatibility tools.
-3. [`docs/OPERATIONAL_PHILOSOPHY.md`](docs/OPERATIONAL_PHILOSOPHY.md) — authority, evidence, lineage, session machinery, sentinels, and handoff.
-4. [`docs/CONSTRUAL_ENGINEERING.md`](docs/CONSTRUAL_ENGINEERING.md) — the 4C model and PGX practice for meaning-sensitive work.
+1. [`M2_SEMANTIC_VIRTUAL_INFRASTRUCTURE.md`](src/parmesan/default_resources/M2_SEMANTIC_VIRTUAL_INFRASTRUCTURE.md) — canonical Method 2 semantic virtual infrastructure.
+2. [`M3_VIEW_ALGEBRA.md`](src/parmesan/default_resources/M3_VIEW_ALGEBRA.md) — canonical Method 3 view algebra, dependent on M2.
+3. [`docs/PARMESAN_4_QUICKSTART.md`](docs/PARMESAN_4_QUICKSTART.md) — new PM4 managed workspaces, composition, and migration.
+4. [`START_HERE.md`](START_HERE.md) — zero-context operating path and compatibility tools.
+5. [`docs/OPERATIONAL_PHILOSOPHY.md`](docs/OPERATIONAL_PHILOSOPHY.md) — authority, evidence, lineage, session machinery, sentinels, and handoff.
+6. [`docs/CONSTRUAL_ENGINEERING.md`](docs/CONSTRUAL_ENGINEERING.md) — the 4C model and PGX practice for meaning-sensitive work.
 
 ## What Parmesan is for
 
@@ -41,7 +43,7 @@ The normal semantic-link form is:
 [natural-language anchor](POINTER)
 ```
 
-The pointer is an exact, case-sensitive identity in the active corpus—not a URL, file path, or network target. For traversal work, use `pgx.traversal.embed` with either direct traversal notation or a structured tree; Parmesan resolves pointers and serializes lawful notation such as:
+The pointer is an exact, case-sensitive identity in the active corpus—not a URL, file path, or network target. For traversal work, use `pgx.traversal.embed` with either direct traversal notation or a structured ternary tree. Direct notation may contain one, two, three, or many ordered terms and may be nested; it is not constrained to operand–operator–operand shape. Parmesan resolves pointers and serializes lawful notation such as:
 
 ```text
 [((C1):(O1):(C2)):(O2):(C3)]
@@ -93,6 +95,7 @@ The release command stages a clean copy, removes transients, runs declared check
 | Read when you need to… | Document |
 | --- | --- |
 | Operate Parmesan with minimal prior context | [`START_HERE.md`](START_HERE.md) |
+| Apply the canonical M2 and M3 virtual-workspace methods | [`M2`](src/parmesan/default_resources/M2_SEMANTIC_VIRTUAL_INFRASTRUCTURE.md), then [`M3`](src/parmesan/default_resources/M3_VIEW_ALGEBRA.md) |
 | Start, fork, compose, or migrate a PM4 workspace | [`docs/PARMESAN_4_QUICKSTART.md`](docs/PARMESAN_4_QUICKSTART.md) |
 | Understand operational authority and corpus lifecycle | [`docs/OPERATIONAL_PHILOSOPHY.md`](docs/OPERATIONAL_PHILOSOPHY.md) |
 | Do conceptually or meaning-sensitive work with PGX | [`docs/CONSTRUAL_ENGINEERING.md`](docs/CONSTRUAL_ENGINEERING.md) |

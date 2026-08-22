@@ -40,6 +40,17 @@ def test_traversal_parser_accepts_bracketed_or_unbracketed_notation():
     assert serialize_expression(parse_expression(unbracketed)) == bracketed
 
 
+def test_traversal_notation_has_no_operand_operator_operand_arity_constraint():
+    examples = {
+        "(E1)": "[(E1)]",
+        "(E1):(E2)": "[(E1):(E2)]",
+        "(E1):(E2):(E3):(E4)": "[(E1):(E2):(E3):(E4)]",
+        "((E1):(E2)):(E3):(E4):(E5)": "[((E1):(E2)):(E3):(E4):(E5)]",
+    }
+    for supplied, canonical in examples.items():
+        assert serialize_expression(parse_expression(supplied)) == canonical
+
+
 def test_embed_tool_composes_resolves_and_appends_atomically(store):
     _create(store, "E1", "object: Eleanor")
     _create(store, "E2", "role: CEO")
@@ -110,6 +121,28 @@ def test_embed_tool_accepts_notation_without_a_method_constraint(store):
     assert response["ok"] is True, response
     assert response["result"]["notation"] == "[(E1):(E5):(E2)]"
     assert store.validate_database(full=True)["valid"] is True
+
+
+def test_embed_tool_accepts_nonternary_traversal_composition(store):
+    for pointer in ("E1", "E2", "E3", "E4", "E5"):
+        _create(store, pointer, f"object: {pointer}")
+    before = store.get_node("E5")
+
+    response = dispatch_request({
+        "tool": "pgx.traversal.embed",
+        "database": str(store.path),
+        "request_id": str(uuid.uuid4()),
+        "expected_head": store.current_head(),
+        "arguments": {
+            "node_pointer": "E5",
+            "expression": "((E1):(E2)):(E3):(E4)",
+            "expected_revision_uuid": before["revision_uuid"],
+        },
+    })
+
+    assert response["ok"] is True, response
+    assert response["result"]["notation"] == "[((E1):(E2)):(E3):(E4)]"
+    assert {item["pointer"] for item in response["result"]["resolved_pointers"]} == {"E1", "E2", "E3", "E4"}
 
 
 def test_embed_tool_rejects_unresolved_expression_pointer_without_revision(store):

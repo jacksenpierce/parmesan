@@ -63,7 +63,7 @@ For cyclic knowledge, create link-free seed revisions until every target exists,
 
 The conceptual and notational context is mandatory and preserved in `docs/PGX_Traversal_4C_Guide/`; begin with `docs/CONSTRUAL_ENGINEERING.md`, then read the two source documents it links. The guide files retain their original shape and are release-validated.
 
-`pgx.traversal.embed` is the lawful authoring path in the PM3 compatibility surface. The caller may supply direct traversal notation or a recursive `left`/`operator`/`right` tree. Every expression pointer must resolve in the active corpus. Parmesan parses and validates the selected form, preserves branch order, canonicalizes the notation, and appends it to the target node description as literal `pgx-traversal` Markdown.
+`pgx.traversal.embed` is the lawful authoring path in the PM3 compatibility surface. The caller may supply direct traversal notation or a recursive `left`/`operator`/`right` tree. Direct notation accepts any positive number of ordered terms, with nesting, and has no operand–operator–operand arity requirement. Every expression pointer must resolve in the active corpus. Parmesan parses and validates the selected form, preserves encounter order and nesting, canonicalizes the notation, and appends it to the target node description as literal `pgx-traversal` Markdown.
 
 This preserves the intended freedom boundary: the LLM controls composition and reading; Parmesan controls punctuation, nesting syntax, pointer resolution, revision creation, and embedding.
 

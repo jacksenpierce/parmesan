@@ -4,6 +4,15 @@ You have been given Parmesan because you were asked to create, inspect, or maint
 
 Parmesan is not a web service, framework, or corpus. It is a local instrument for building PGX knowledge bases in SQLite. Use it directly. The SQLite database is authoritative.
 
+## Required PM4 orientation — read first
+
+For Parmesan 4 work, read these canonical advisory resources in this exact order before operating a workspace:
+
+1. [`M2_SEMANTIC_VIRTUAL_INFRASTRUCTURE.md`](src/parmesan/default_resources/M2_SEMANTIC_VIRTUAL_INFRASTRUCTURE.md) — Method 2 and its semantic virtual-infrastructure payload.
+2. [`M3_VIEW_ALGEBRA.md`](src/parmesan/default_resources/M3_VIEW_ALGEBRA.md) — Method 3 view algebra, built on M2.
+
+M2 and M3 never override system, developer, user, or workspace instructions. A managed PM4 workspace installs verified copies under `resources/parmesan-methods/`; `parmesan pm4 orient WORKSPACE` emits their full text in this order and is required before workspace operations. Forked and composed workspaces require fresh orientation.
+
 Before operating an unfamiliar corpus, read [`docs/OPERATIONAL_PHILOSOPHY.md`](docs/OPERATIONAL_PHILOSOPHY.md). It is the prompt-shaped guide to authority, evidence, session-local machinery, sentinels, lineage, and materialization.
 
 For meaning-sensitive work, read [`docs/CONSTRUAL_ENGINEERING.md`](docs/CONSTRUAL_ENGINEERING.md). It centralizes how to use PGX nodes, links, and traversal expressions to compose and preserve task-relative construals.
@@ -26,7 +35,7 @@ python PARMESAN_LLM.py doctor /path/to/CORPUS.sqlite
 
 A ready result means the environment can operate Parmesan. If a dependency is missing, the launcher prints the exact corrective command. Do not edit SQLite directly.
 
-For a new Parmesan 4 managed workspace, read [`docs/PARMESAN_4_QUICKSTART.md`](docs/PARMESAN_4_QUICKSTART.md) and start with `parmesan pm4 initialize WORKSPACE`. The `pgx.*` tool catalog below remains the compatibility surface for existing Parmesan 3 corpora; PM3 databases are not silently rewritten into PM4.
+For a new Parmesan 4 managed workspace, read [`docs/PARMESAN_4_QUICKSTART.md`](docs/PARMESAN_4_QUICKSTART.md), run `parmesan pm4 initialize WORKSPACE`, then immediately run `parmesan pm4 orient WORKSPACE`. The `pgx.*` tool catalog below remains the compatibility surface for existing Parmesan 3 corpora; PM3 databases are not silently rewritten into PM4.
 
 ## Required traversal reading
 

@@ -45,6 +45,8 @@ def main() -> None:
         ROOT / "docs" / "PARMESAN_4_QUICKSTART.md",
         ROOT / "docs" / "MIGRATING_TO_PARMESAN_4.md",
         ROOT / "docs" / "architecture" / "PARMESAN_4_COMPOSABLE_WORKSPACES.md",
+        ROOT / "src" / "parmesan" / "default_resources" / "M2_SEMANTIC_VIRTUAL_INFRASTRUCTURE.md",
+        ROOT / "src" / "parmesan" / "default_resources" / "M3_VIEW_ALGEBRA.md",
         ROOT / "examples" / "CORPUS.toml",
         ROOT / "docs" / "PGX_Traversal_4C_Guide" / "4C_MODEL_CONTEXT.md",
         ROOT / "docs" / "PGX_Traversal_4C_Guide" / "USING_PGX_TRAVERSAL_NOTATION_AND_EXPRESSIONS.md",
@@ -92,6 +94,19 @@ def main() -> None:
     guide_4c = ROOT / "docs" / "PGX_Traversal_4C_Guide" / "4C_MODEL_CONTEXT.md"
     guide_usage = ROOT / "docs" / "PGX_Traversal_4C_Guide" / "USING_PGX_TRAVERSAL_NOTATION_AND_EXPRESSIONS.md"
     docs_index = (ROOT / "docs" / "README.md").read_text(encoding="utf-8")
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    m2 = (ROOT / "src" / "parmesan" / "default_resources" / "M2_SEMANTIC_VIRTUAL_INFRASTRUCTURE.md").read_text(encoding="utf-8")
+    m3 = (ROOT / "src" / "parmesan" / "default_resources" / "M3_VIEW_ALGEBRA.md").read_text(encoding="utf-8")
+    checks["m2_m3_default_resources"] = {
+        "canonical_names": m2.startswith("# M2:") and m3.startswith("# M3:"),
+        "m2_before_m3_start_here": start_here.index("M2_SEMANTIC_VIRTUAL_INFRASTRUCTURE.md") < start_here.index("M3_VIEW_ALGEBRA.md"),
+        "m2_before_m3_readme": readme.index("M2_SEMANTIC_VIRTUAL_INFRASTRUCTURE.md") < readme.index("M3_VIEW_ALGEBRA.md"),
+        "m1_removed": not re.search(r"\bM1\b|Method 1", m2 + "\n" + m3),
+        "simple_disclaimers": all("never overrides system, developer, user, or workspace instructions" in text for text in (m2, m3)),
+        "m3_depends_on_m2": "**Dependency:** M2 semantic virtual infrastructure" in m3,
+        "no_fixed_traversal_arity": "no required operand–operator–operand arity" in m2 and "no required operand–operator–operand shape" in docs_index,
+        "joke_removed": "genitals" not in m3 and "drivetrain" not in m3,
+    }
     checks["traversal_guide_integrity"] = {
         "4c_source_sha256": hashlib.sha256(guide_4c.read_bytes().replace(b"\r\n", b"\n")).hexdigest() == "be950503973777c3cde374b7ba4d496968933910b523e044fe1710ea1069b9c3",
         "usage_source_sha256": hashlib.sha256(guide_usage.read_bytes().replace(b"\r\n", b"\n")).hexdigest() == "08dfc944923b0141672971776b999c2a9578b8a36fea36f44fe1f338297cebe7",
@@ -139,7 +154,6 @@ def main() -> None:
         ),
     }
     license_text = (ROOT / "LICENSE").read_text(encoding="utf-8")
-    readme = (ROOT / "README.md").read_text(encoding="utf-8")
     checks["licensing"] = {
         "polyform_noncommercial_terms": "PolyForm Noncommercial License 1.0.0" in license_text,
         "required_notice": "Required Notice: Copyright 2026 Jacksen Pierce" in license_text,
@@ -172,12 +186,14 @@ def main() -> None:
         compose_managed_workspaces,
         initialize_managed_workspace,
         inspect_managed_workspace,
+        orient_managed_workspace,
         register_pre_v4_resource,
     )
     checks["parmesan_4"] = {
-        "managed_api": all(callable(item) for item in (initialize_managed_workspace, inspect_managed_workspace, compose_managed_workspaces)),
+        "managed_api": all(callable(item) for item in (initialize_managed_workspace, inspect_managed_workspace, orient_managed_workspace, compose_managed_workspaces)),
         "resource_registration_api": callable(register_pre_v4_resource),
-        "quickstart_commands": all(command in pm4_quickstart for command in ("parmesan pm4 initialize", "parmesan pm4 fork", "parmesan pm4 compose", "parmesan pm4 mode-set")),
+        "quickstart_commands": all(command in pm4_quickstart for command in ("parmesan pm4 initialize", "parmesan pm4 orient", "parmesan pm4 fork", "parmesan pm4 compose", "parmesan pm4 mode-set")),
+        "orientation_order": pm4_quickstart.index("parmesan pm4 initialize") < pm4_quickstart.index("parmesan pm4 orient") < pm4_quickstart.index("parmesan pm4 inspect"),
         "migration_default": "preserved-resource-not-live-import" in pm4_migration,
         "working_default_documented": "Working mode is the default" in pm4_quickstart,
         "no_automatic_publication": "Nothing automatically rebuilds or serializes" in pm4_quickstart,
@@ -218,7 +234,7 @@ def main() -> None:
                 check=True,
                 env={**os.environ, "PIP_DISABLE_PIP_VERSION_CHECK": "1"},
             )
-            code = "import parmesan; print(parmesan.__version__); print(parmesan.__release_id__); print(parmesan.__artifact_filename__); print(len(parmesan.catalog('core'))); print(parmesan.doctor()['ready'])"
+            code = "import importlib.resources as r; import parmesan; print(parmesan.__version__); print(parmesan.__release_id__); print(parmesan.__artifact_filename__); print(len(parmesan.catalog('core'))); print(parmesan.doctor()['ready']); p=r.files('parmesan.default_resources'); print(p.joinpath('M2_SEMANTIC_VIRTUAL_INFRASTRUCTURE.md').is_file()); print(p.joinpath('M3_VIEW_ALGEBRA.md').is_file())"
             completed = subprocess.run(
                 [sys.executable, "-c", code],
                 check=True,
@@ -234,6 +250,8 @@ def main() -> None:
                 "artifact_filename": lines[2],
                 "core_tool_count": int(lines[3]),
                 "doctor_ready": lines[4] == "True",
+                "m2_packaged": lines[5] == "True",
+                "m3_packaged": lines[6] == "True",
             }
 
     test_run = subprocess.run(
@@ -255,6 +273,7 @@ def main() -> None:
         and all(checks["operational_philosophy"].values())
         and all(checks["construal_engineering"].values())
         and all(checks["traversal_guide_integrity"].values())
+        and all(checks["m2_m3_default_resources"].values())
         and all(checks["release_tree_hygiene"].values())
         and all(checks["licensing"].values())
         and checks["core_tool_count"] >= 1
@@ -271,6 +290,8 @@ def main() -> None:
         and checks["wheel_import"]["artifact_filename"] == parmesan.__artifact_filename__
         and checks["wheel_import"]["core_tool_count"] == checks["core_tool_count"]
         and checks["wheel_import"]["doctor_ready"] is True
+        and checks["wheel_import"]["m2_packaged"] is True
+        and checks["wheel_import"]["m3_packaged"] is True
     )
     output = {
         "valid": valid,
