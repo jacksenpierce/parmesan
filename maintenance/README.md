@@ -6,5 +6,6 @@ This directory contains secondary machinery and design records that should not d
 
 - `TOOL_CATALOG.json` — advanced, migration, rebuild, and deprecated compatibility operations.
 - `decisions/` — durable architectural decisions.
+- `incidents/` — preserved, explicitly qualified field reports and their issue routing.
 
 Use this surface only when the task is explicitly administrative, migratory, compatibility-related, or requires an advanced PGX feature.
