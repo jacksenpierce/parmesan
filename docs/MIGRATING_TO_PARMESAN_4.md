@@ -10,6 +10,7 @@ recoverable corpus and head metadata. Inspection verifies those facts without
 opening the artifact for mutation.
 
 The registered resource remains evidence, not live Parmesan 4 semantic state.
+Its recorded migration policy is `preserved-resource-not-live-import`.
 Its internal pointers do not silently enter the active alias scope; its old
 revision chain is not rewritten as a v4 snapshot DAG; and composition does not
 claim that matching text or identifiers represent the same object.

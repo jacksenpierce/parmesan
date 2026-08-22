@@ -1,5 +1,11 @@
 # Parmesan documentation
 
+## Parmesan 4
+
+Start with [`PARMESAN_4_QUICKSTART.md`](PARMESAN_4_QUICKSTART.md) for managed
+workspace initialization, exact-head mutation, explicit operating modes, fork,
+composition, conflict inspection, and the pre-v4 resource migration boundary.
+
 ## Operating philosophy
 
 Before operating an unfamiliar corpus, read [`OPERATIONAL_PHILOSOPHY.md`](OPERATIONAL_PHILOSOPHY.md). It provides the prompt-shaped working model for the operating LLM: the authoritative graph, materialized projections, evidence and uncertainty, advisory sentinels, session-local machinery, and deliberate reconciliation of parallel work.

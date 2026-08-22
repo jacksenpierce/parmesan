@@ -18,6 +18,14 @@ CREATE TABLE workspace_state (
   created_at TEXT NOT NULL
 ) STRICT, WITHOUT ROWID;
 
+CREATE TABLE operating_mode_state (
+  singleton_id INTEGER NOT NULL PRIMARY KEY CHECK(singleton_id=1),
+  mode_key TEXT NOT NULL CHECK(mode_key IN ('working','publish')),
+  revision INTEGER NOT NULL CHECK(revision>=1),
+  updated_at TEXT NOT NULL,
+  reason TEXT NOT NULL
+) STRICT, WITHOUT ROWID;
+
 CREATE TABLE corpus_components (
   composite_corpus_uuid TEXT NOT NULL,
   component_corpus_uuid TEXT NOT NULL,

@@ -119,6 +119,10 @@ class ComposableWorkspace:
                 (workspace, replica, corpus, now),
             )
             connection.execute(
+                "INSERT INTO operating_mode_state(singleton_id,mode_key,revision,updated_at,reason) VALUES (1,'working',1,?,'default safe working mode')",
+                (now,),
+            )
+            connection.execute(
                 "INSERT INTO corpus_components(composite_corpus_uuid,component_corpus_uuid) VALUES (?,?)",
                 (corpus, corpus),
             )
@@ -154,6 +158,53 @@ class ComposableWorkspace:
         finally:
             connection.close()
 
+    def mode_show(self) -> dict[str, Any]:
+        connection = connect(self.path, readonly=True)
+        try:
+            row = connection.execute(
+                "SELECT mode_key,revision,updated_at,reason FROM operating_mode_state WHERE singleton_id=1"
+            ).fetchone()
+            if row is None:
+                raise ValueError("workspace has no operating mode")
+            return dict(row)
+        finally:
+            connection.close()
+
+    def mode_set(self, mode: str, *, expected_head: V4Head, reason: str) -> dict[str, Any]:
+        if mode not in {"working", "publish"}:
+            raise ValueError("mode must be working or publish")
+        if not reason.strip():
+            raise ValueError("mode transition reason must be non-empty")
+        connection = connect(self.path)
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            actual = connection.execute(
+                "SELECT corpus_uuid,snapshot_uuid,local_sequence FROM corpus_head WHERE singleton_id=1"
+            ).fetchone()
+            if actual is None or (
+                actual["corpus_uuid"], actual["snapshot_uuid"], int(actual["local_sequence"])
+            ) != (expected_head.corpus_uuid, expected_head.snapshot_uuid, expected_head.local_sequence):
+                raise ValueError("stale Parmesan 4 workspace head")
+            current = connection.execute(
+                "SELECT mode_key,revision FROM operating_mode_state WHERE singleton_id=1"
+            ).fetchone()
+            if current is None:
+                raise ValueError("workspace has no operating mode")
+            changed = current["mode_key"] != mode
+            revision = int(current["revision"]) + (1 if changed else 0)
+            if changed:
+                connection.execute(
+                    "UPDATE operating_mode_state SET mode_key=?,revision=?,updated_at=?,reason=? WHERE singleton_id=1",
+                    (mode, revision, _now(), reason),
+                )
+            connection.commit()
+            return {"mode": mode, "revision": revision, "changed": changed, "head": expected_head.as_dict()}
+        except Exception:
+            connection.rollback()
+            raise
+        finally:
+            connection.close()
+
     def semantic_fingerprint(self, connection=None) -> str:
         owned = connection is None
         con = connection or connect(self.path, readonly=True)
@@ -183,6 +234,11 @@ class ComposableWorkspace:
             connection.execute("BEGIN IMMEDIATE")
             state = self._state(connection)
             active_replica = state["active_replica_uuid"]
+            mode = connection.execute(
+                "SELECT mode_key FROM operating_mode_state WHERE singleton_id=1"
+            ).fetchone()
+            if mode is None or mode["mode_key"] != "working":
+                raise ValueError("semantic mutation requires working mode")
             replay = connection.execute(
                 "SELECT input_hash,result_json FROM local_requests WHERE replica_uuid=? AND request_uuid=?",
                 (active_replica, request),
@@ -394,6 +450,10 @@ class ComposableWorkspace:
                 "UPDATE workspace_state SET workspace_uuid=?,active_replica_uuid=?,created_at=? WHERE singleton_id=1",
                 (str(uuid.uuid4()), replica, now),
             )
+            connection.execute(
+                "UPDATE operating_mode_state SET mode_key='working',revision=revision+1,updated_at=?,reason='fork opens in working mode' WHERE singleton_id=1",
+                (now,),
+            )
             connection.commit()
         except Exception:
             connection.rollback()
@@ -505,6 +565,10 @@ class ComposableWorkspace:
                 "INSERT INTO workspace_state(singleton_id,workspace_uuid,active_replica_uuid,corpus_uuid,created_at) VALUES (1,?,?,?,?)",
                 (workspace, replica, corpus, now),
             )
+            destination.execute(
+                "INSERT INTO operating_mode_state(singleton_id,mode_key,revision,updated_at,reason) VALUES (1,'working',1,?,'composition opens in working mode')",
+                (now,),
+            )
             destination.executemany(
                 "INSERT INTO corpus_components(composite_corpus_uuid,component_corpus_uuid) VALUES (?,?)",
                 [(corpus, component) for component in sorted(components)],
@@ -605,6 +669,38 @@ class ComposableWorkspace:
         finally:
             connection.close()
 
+    def objects(self, *, limit: int = 100) -> list[dict[str, Any]]:
+        if not 1 <= limit <= 1000:
+            raise ValueError("limit must be between 1 and 1000")
+        connection = connect(self.path, readonly=True)
+        try:
+            output = []
+            for row in connection.execute(
+                "SELECT object_uuid,object_kind,created_at FROM semantic_objects ORDER BY created_at,object_uuid LIMIT ?",
+                (limit,),
+            ):
+                aliases = [
+                    {"scope_replica_uuid": item["scope_replica_uuid"], "alias": item["alias_text"]}
+                    for item in connection.execute(
+                        "SELECT scope_replica_uuid,alias_text FROM object_alias_assertions WHERE object_uuid=? ORDER BY scope_replica_uuid,alias_text",
+                        (row["object_uuid"],),
+                    )
+                ]
+                revisions = [
+                    dict(item)
+                    for item in connection.execute(
+                        """SELECT revision_uuid,title,description,created_at FROM node_revisions r
+                           WHERE node_uuid=? AND NOT EXISTS(
+                             SELECT 1 FROM revision_parents p WHERE p.parent_revision_uuid=r.revision_uuid
+                           ) ORDER BY revision_uuid""",
+                        (row["object_uuid"],),
+                    )
+                ]
+                output.append({**dict(row), "aliases": aliases, "revision_frontier": revisions})
+            return output
+        finally:
+            connection.close()
+
     def memberships(self, graph_uuid: str) -> list[dict[str, Any]]:
         connection = connect(self.path, readonly=True)
         try:
@@ -629,12 +725,16 @@ class ComposableWorkspace:
                 (head.snapshot_uuid,),
             ).fetchone()
             actual = self.semantic_fingerprint(connection)
+            mode = connection.execute(
+                "SELECT mode_key,revision FROM operating_mode_state WHERE singleton_id=1"
+            ).fetchone()
             return {
-                "valid": integrity == "ok" and not foreign_keys and stored is not None and stored[0] == actual,
+                "valid": integrity == "ok" and not foreign_keys and stored is not None and stored[0] == actual and mode is not None and mode["mode_key"] in {"working", "publish"},
                 "integrity_check": integrity,
                 "foreign_key_errors": foreign_keys,
                 "head": head.as_dict(),
                 "state_fingerprint_matches": stored is not None and stored[0] == actual,
+                "mode": dict(mode) if mode is not None else None,
                 "conflicts": self.conflicts(),
             }
         finally:

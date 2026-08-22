@@ -42,6 +42,9 @@ def main() -> None:
         ROOT / "docs" / "CONSTRUAL_ENGINEERING.md",
         ROOT / "docs" / "CONSTRUAL_ENGINEERING_WITH_PARMESAN.md",
         ROOT / "docs" / "CORPUS_OPERATIONS.md",
+        ROOT / "docs" / "PARMESAN_4_QUICKSTART.md",
+        ROOT / "docs" / "MIGRATING_TO_PARMESAN_4.md",
+        ROOT / "docs" / "architecture" / "PARMESAN_4_COMPOSABLE_WORKSPACES.md",
         ROOT / "examples" / "CORPUS.toml",
         ROOT / "docs" / "PGX_Traversal_4C_Guide" / "4C_MODEL_CONTEXT.md",
         ROOT / "docs" / "PGX_Traversal_4C_Guide" / "USING_PGX_TRAVERSAL_NOTATION_AND_EXPRESSIONS.md",
@@ -163,6 +166,22 @@ def main() -> None:
         "release_command_documented": "parmesan corpus release" in corpus_docs,
         "contract_example_present": (ROOT / "examples" / "CORPUS.toml").is_file(),
     }
+    pm4_quickstart = (ROOT / "docs" / "PARMESAN_4_QUICKSTART.md").read_text(encoding="utf-8")
+    pm4_migration = (ROOT / "docs" / "MIGRATING_TO_PARMESAN_4.md").read_text(encoding="utf-8")
+    from parmesan.v4 import (  # noqa: E402
+        compose_managed_workspaces,
+        initialize_managed_workspace,
+        inspect_managed_workspace,
+        register_pre_v4_resource,
+    )
+    checks["parmesan_4"] = {
+        "managed_api": all(callable(item) for item in (initialize_managed_workspace, inspect_managed_workspace, compose_managed_workspaces)),
+        "resource_registration_api": callable(register_pre_v4_resource),
+        "quickstart_commands": all(command in pm4_quickstart for command in ("parmesan pm4 initialize", "parmesan pm4 fork", "parmesan pm4 compose", "parmesan pm4 mode-set")),
+        "migration_default": "preserved-resource-not-live-import" in pm4_migration,
+        "working_default_documented": "Working mode is the default" in pm4_quickstart,
+        "no_automatic_publication": "Nothing automatically rebuilds or serializes" in pm4_quickstart,
+    }
 
     database_reports = {}
     with tempfile.TemporaryDirectory() as tmp:
@@ -243,6 +262,7 @@ def main() -> None:
         and checks["core_contracts_guaranteed"] is True
         and checks["doctor_ready"] is True
         and all(checks["corpus_operations"].values())
+        and all(checks["parmesan_4"].values())
         and all(database_reports.values())
         and checks["zero_context_build"]["valid"] is True
         and checks["wheel_exists"] is True

@@ -26,6 +26,8 @@ python PARMESAN_LLM.py doctor /path/to/CORPUS.sqlite
 
 A ready result means the environment can operate Parmesan. If a dependency is missing, the launcher prints the exact corrective command. Do not edit SQLite directly.
 
+For a new Parmesan 4 managed workspace, read [`docs/PARMESAN_4_QUICKSTART.md`](docs/PARMESAN_4_QUICKSTART.md) and start with `parmesan pm4 initialize WORKSPACE`. The `pgx.*` tool catalog below remains the compatibility surface for existing Parmesan 3 corpora; PM3 databases are not silently rewritten into PM4.
+
 ## Required traversal reading
 
 Before creating or interpreting traversal expressions, read [`docs/README.md`](docs/README.md), then read the two preserved source documents it indexes:
@@ -62,7 +64,7 @@ For work that may span turns, open `pgx.change_set.open` with a concise title an
 
 After the semantic choices are already decided, use `pgx.batch.preflight` and then `pgx.batch.apply` for up to 50 node creates, node revisions, traversal embeddings, or triple additions. Preflight requires the current `expected_head`, executes the plan inside a transaction that is always rolled back, and reports `semantic_writes: 0`. Apply uses one request ID and one transaction; an invalid member writes nothing, while success advances the corpus head once. Batch tools do not choose content or reconcile meaning.
 
-Do not migrate a supplied legacy database in place. Use `pgx.workspace.adopt` to copy it into a new managed workspace. The tool preserves the source byte hash and semantic row counts in `ADOPTION.json`, installs authority only in the copy, and starts in working mode. Every non-core table must be named under an extension with a version, required machinery, and one of four classifications: `semantic`, `operational`, `derived`, or `excluded`. Unknown tables or later schema drift block mutation. Inspect the registry with `pgx.extension.inspect`.
+Within the PM3 compatibility surface, do not migrate a supplied legacy database in place. `pgx.workspace.adopt` remains available for older PM3 workflows. For PM4, the recommended boundary is `parmesan pm4 register-pre-v4`: preserve the complete closed workspace as a hashed immutable resource, and import nothing into live PM4 state automatically.
 
 ## Canonical reference discipline
 

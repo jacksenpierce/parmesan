@@ -15,9 +15,10 @@ python PARMESAN_LLM.py catalog --profile core
 
 Then read these in order:
 
-1. [`START_HERE.md`](START_HERE.md) — zero-context operating path.
-2. [`docs/OPERATIONAL_PHILOSOPHY.md`](docs/OPERATIONAL_PHILOSOPHY.md) — authority, evidence, lineage, session machinery, sentinels, and handoff.
-3. [`docs/CONSTRUAL_ENGINEERING.md`](docs/CONSTRUAL_ENGINEERING.md) — the 4C model and PGX practice for meaning-sensitive work.
+1. [`docs/PARMESAN_4_QUICKSTART.md`](docs/PARMESAN_4_QUICKSTART.md) — new PM4 managed workspaces, composition, and migration.
+2. [`START_HERE.md`](START_HERE.md) — zero-context operating path and compatibility tools.
+3. [`docs/OPERATIONAL_PHILOSOPHY.md`](docs/OPERATIONAL_PHILOSOPHY.md) — authority, evidence, lineage, session machinery, sentinels, and handoff.
+4. [`docs/CONSTRUAL_ENGINEERING.md`](docs/CONSTRUAL_ENGINEERING.md) — the 4C model and PGX practice for meaning-sensitive work.
 
 ## What Parmesan is for
 
@@ -92,6 +93,7 @@ The release command stages a clean copy, removes transients, runs declared check
 | Read when you need to… | Document |
 | --- | --- |
 | Operate Parmesan with minimal prior context | [`START_HERE.md`](START_HERE.md) |
+| Start, fork, compose, or migrate a PM4 workspace | [`docs/PARMESAN_4_QUICKSTART.md`](docs/PARMESAN_4_QUICKSTART.md) |
 | Understand operational authority and corpus lifecycle | [`docs/OPERATIONAL_PHILOSOPHY.md`](docs/OPERATIONAL_PHILOSOPHY.md) |
 | Do conceptually or meaning-sensitive work with PGX | [`docs/CONSTRUAL_ENGINEERING.md`](docs/CONSTRUAL_ENGINEERING.md) |
 | Author or interpret traversal expressions | [`docs/README.md`](docs/README.md) and the linked 4C guides |
