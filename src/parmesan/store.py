@@ -18,7 +18,7 @@ from .reference import BARE_POINTER_TEMPLATE, ReferenceEngine, ReferenceProfile
 from .reference_discipline import bare_pointer_profile, rewrite_to_bare_pointer_links
 from .schema import CORE_TABLE_NAMES, DEFAULT_POINTER_PATTERN, DEFAULT_URI_TEMPLATE, SCHEMA_VERSION, create_empty_database, connect
 from .timeutil import is_rfc3339_ns, now_rfc3339_ns, unique_timestamp
-from .traversal import pointer_roles, render_embedding, serialize_expression, tree_from_mapping
+from .traversal import pointer_roles, render_embedding, serialize_expression, tree_from_input
 from .version import __release_id__
 
 
@@ -1484,7 +1484,7 @@ class SQLitePGXStore:
         *,
         request_id: str | None,
         node_pointer: str,
-        expression: dict[str, Any],
+        expression: dict[str, Any] | str,
         read: str | None = None,
         expected_revision_uuid: str | None = None,
         reason: str = "embed lawful PGX traversal expression",
@@ -1516,12 +1516,12 @@ class SQLitePGXStore:
         req: str,
         *,
         node_pointer: str,
-        expression: dict[str, Any],
+        expression: dict[str, Any] | str,
         read: str | None = None,
         expected_revision_uuid: str | None = None,
         reason: str = "embed lawful PGX traversal expression",
     ) -> dict[str, Any]:
-        tree = tree_from_mapping(expression)
+        tree = tree_from_input(expression)
         notation = serialize_expression(tree)
         roles = pointer_roles(tree)
         block = render_embedding(notation, read)

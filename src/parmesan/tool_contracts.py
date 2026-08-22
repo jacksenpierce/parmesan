@@ -225,7 +225,7 @@ RESULT_SCHEMAS: dict[str, dict[str, Any]] = {
             "uuid": _string(),
             "previous_revision_uuid": _string(),
             "revision_uuid": _string(),
-            "notation": _string("Canonical traversal notation with exactly one outer square-bracket boundary."),
+            "notation": _string("Validated canonical traversal notation."),
             "markdown": _string("Canonical Markdown block appended to the node description."),
             "resolved_pointers": {"type": "array", "items": {"type": "object"}},
             "reference_count": {"type": "integer"},

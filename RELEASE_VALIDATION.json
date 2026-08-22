@@ -1,8 +1,8 @@
 {
   "valid": true,
-  "version": "3.0.2",
-  "release_id": "b0efed0a-5176-45bf-8a85-ee75f21f1de7",
-  "artifact_filename": "PARMESAN_v3_0_2.zip",
+  "version": "4.0.0",
+  "release_id": "1bd757fc-87f0-4427-86f0-251996a335fa",
+  "artifact_filename": "PARMESAN_v4_0_0.zip",
   "checks": {
     "required_files": true,
     "release_metadata_consistency": {
@@ -77,6 +77,14 @@
       "release_command_documented": true,
       "contract_example_present": true
     },
+    "parmesan_4": {
+      "managed_api": true,
+      "resource_registration_api": true,
+      "quickstart_commands": true,
+      "migration_default": true,
+      "working_default_documented": true,
+      "no_automatic_publication": true
+    },
     "bundled_database_validation": {
       "BARE_POINTER_SCOPE_TEST.sqlite": true,
       "DIG_BARE_POINTER.sqlite": true,
@@ -88,12 +96,12 @@
     },
     "wheel_exists": true,
     "wheel_import": {
-      "version": "3.0.2",
-      "release_id": "b0efed0a-5176-45bf-8a85-ee75f21f1de7",
-      "artifact_filename": "PARMESAN_v3_0_2.zip",
+      "version": "4.0.0",
+      "release_id": "1bd757fc-87f0-4427-86f0-251996a335fa",
+      "artifact_filename": "PARMESAN_v4_0_0.zip",
       "core_tool_count": 31,
       "doctor_ready": true
     },
-    "tests": "........................................................................ [ 85%]\n............                                                             [100%]"
+    "tests": "........................................................................ [ 72%]\n............................                                             [100%]"
   }
 }

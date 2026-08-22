@@ -15,9 +15,10 @@ python PARMESAN_LLM.py catalog --profile core
 
 Then read these in order:
 
-1. [`START_HERE.md`](START_HERE.md) — zero-context operating path.
-2. [`docs/OPERATIONAL_PHILOSOPHY.md`](docs/OPERATIONAL_PHILOSOPHY.md) — authority, evidence, lineage, session machinery, sentinels, and handoff.
-3. [`docs/CONSTRUAL_ENGINEERING.md`](docs/CONSTRUAL_ENGINEERING.md) — the 4C model and PGX practice for meaning-sensitive work.
+1. [`docs/PARMESAN_4_QUICKSTART.md`](docs/PARMESAN_4_QUICKSTART.md) — new PM4 managed workspaces, composition, and migration.
+2. [`START_HERE.md`](START_HERE.md) — zero-context operating path and compatibility tools.
+3. [`docs/OPERATIONAL_PHILOSOPHY.md`](docs/OPERATIONAL_PHILOSOPHY.md) — authority, evidence, lineage, session machinery, sentinels, and handoff.
+4. [`docs/CONSTRUAL_ENGINEERING.md`](docs/CONSTRUAL_ENGINEERING.md) — the 4C model and PGX practice for meaning-sensitive work.
 
 ## What Parmesan is for
 
@@ -40,7 +41,7 @@ The normal semantic-link form is:
 [natural-language anchor](POINTER)
 ```
 
-The pointer is an exact, case-sensitive identity in the active corpus—not a URL, file path, or network target. For traversal work, use `pgx.traversal.embed` with a structured tree; Parmesan resolves pointers and serializes lawful notation such as:
+The pointer is an exact, case-sensitive identity in the active corpus—not a URL, file path, or network target. For traversal work, use `pgx.traversal.embed` with either direct traversal notation or a structured tree; Parmesan resolves pointers and serializes lawful notation such as:
 
 ```text
 [((C1):(O1):(C2)):(O2):(C3)]
@@ -92,11 +93,13 @@ The release command stages a clean copy, removes transients, runs declared check
 | Read when you need to… | Document |
 | --- | --- |
 | Operate Parmesan with minimal prior context | [`START_HERE.md`](START_HERE.md) |
+| Start, fork, compose, or migrate a PM4 workspace | [`docs/PARMESAN_4_QUICKSTART.md`](docs/PARMESAN_4_QUICKSTART.md) |
 | Understand operational authority and corpus lifecycle | [`docs/OPERATIONAL_PHILOSOPHY.md`](docs/OPERATIONAL_PHILOSOPHY.md) |
 | Do conceptually or meaning-sensitive work with PGX | [`docs/CONSTRUAL_ENGINEERING.md`](docs/CONSTRUAL_ENGINEERING.md) |
 | Author or interpret traversal expressions | [`docs/README.md`](docs/README.md) and the linked 4C guides |
 | Inspect request, response, and tool guarantees | [`LLM_TOOL_CONTRACT.md`](LLM_TOOL_CONTRACT.md) and `TOOL_CATALOG.json` |
 | Validate and release a corpus directory | [`docs/CORPUS_OPERATIONS.md`](docs/CORPUS_OPERATIONS.md) |
+| Preserve a Parmesan 3 or earlier workspace for PM4+ | [`docs/MIGRATING_TO_PARMESAN_4.md`](docs/MIGRATING_TO_PARMESAN_4.md) |
 | Verify a software release | [`RELEASE.md`](RELEASE.md), `RELEASE.json`, `PACKAGE_MANIFEST.json`, and `SHA256SUMS.txt` |
 | Make a small change or prepare a release | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
 | Inspect an annotated external corpus materialization | [`corpus-artifacts/README.md`](corpus-artifacts/README.md) |

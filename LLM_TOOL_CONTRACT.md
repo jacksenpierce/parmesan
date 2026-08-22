@@ -18,6 +18,12 @@ catalog, dispatch, doctor, initialize_corpus, open_corpus
 
 The default `core` catalog contains the normal corpus-building and retrieval tools. Advanced, maintenance, and deprecated compatibility operations are excluded from that first surface.
 
+Parmesan 4 managed workspaces use the `parmesan pm4` command group or the
+`parmesan.v4` Python package. They provide collision-resistant object identity,
+scoped aliases, exact-head mutation, explicit working/publish modes, fork,
+multi-parent composition, conflict inspection, and registered pre-v4
+resources. The `pgx.*` catalog remains available for existing PM3 corpora.
+
 ## Requests and mutations
 
 Every dispatched request contains a tool name, arguments, a database path when required, and a UUID request ID for mutations. After initialization, a mutation also carries the exact last-observed corpus `expected_head`; the successful result's `head` becomes the authority token for the next mutation. A database path alone never grants write authority. Ordinary semantic mutations use one `BEGIN IMMEDIATE` transaction. Identity changes, revisions, reference validation, occurrence indexing, graph membership, FTS, audit records, operation-ledger state, and sequence advancement commit together or roll back together.
@@ -28,7 +34,7 @@ For multi-turn work, `pgx.change_set.open` stores durable intent and a base snap
 
 `pgx.batch.preflight` and `pgx.batch.apply` accept at most 50 already-decided node-create, node-update, traversal-embed, and triple-add operations. Preflight rolls back unconditionally. Apply uses one `BEGIN IMMEDIATE` boundary and one authority transition; any member failure rolls back the whole batch. These tools optimize prepared execution, not semantic selection.
 
-Legacy adoption is copy-only. `pgx.workspace.adopt` backs the supplied database into a new workspace, records source identity and preserved counts, and installs current authority structures only in the copy. Every non-core table must be registered with an extension version, required machinery, and semantic/operational/derived/excluded classification. Unknown tables and extension schema drift fail closed.
+PM3-and-earlier workspaces enter PM4 as immutable registered resources by default. `parmesan pm4 register-pre-v4` copies and hashes the complete closed workspace, records recoverable corpus and head identity, and does not import legacy pointers or revisions into live PM4 state. A future selective import must remain explicit. The older `pgx.workspace.adopt` behavior remains part of the PM3 compatibility surface.
 
 Errors are structured and may include `retryable`, `suggested_tool`, and `suggested_action` fields. Follow those hints before improvising.
 
@@ -57,7 +63,7 @@ For cyclic knowledge, create link-free seed revisions until every target exists,
 
 The conceptual and notational context is mandatory and preserved in `docs/PGX_Traversal_4C_Guide/`; begin with `docs/CONSTRUAL_ENGINEERING.md`, then read the two source documents it links. The guide files retain their original shape and are release-validated.
 
-`pgx.traversal.embed` is the lawful authoring path. The caller supplies a recursive tree, never a raw traversal string. Each operand is either a pointer object or another `left`/`operator`/`right` tree. Every expression pointer must resolve in the active corpus. Parmesan serializes `(left):(operator):(right)`, preserves branch order, gives only the complete expression an outer `[...]` boundary, and appends the result to the target node description as literal `pgx-traversal` Markdown.
+`pgx.traversal.embed` is the lawful authoring path in the PM3 compatibility surface. The caller may supply direct traversal notation or a recursive `left`/`operator`/`right` tree. Every expression pointer must resolve in the active corpus. Parmesan parses and validates the selected form, preserves branch order, canonicalizes the notation, and appends it to the target node description as literal `pgx-traversal` Markdown.
 
 This preserves the intended freedom boundary: the LLM controls composition and reading; Parmesan controls punctuation, nesting syntax, pointer resolution, revision creation, and embedding.
 
