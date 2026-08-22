@@ -74,7 +74,7 @@ Its operands and operator are pointers to existing graph material. Grouping and 
 [((C1):(O1):(C2)):(O2):(C3)]
 ```
 
-The released authoring path is `pgx.traversal.embed`. Supply a structured expression tree, not handwritten traversal punctuation. Parmesan resolves every pointer, preserves tree structure and encounter order, serializes exactly one outer square-bracket boundary, records an append-only revision, and embeds the canonical notation in the target node.
+The released authoring path is `pgx.traversal.embed`. Supply either traversal notation or a structured expression tree. Parmesan parses the chosen form, resolves every pointer, preserves tree structure and encounter order, records an append-only revision, and embeds validated canonical notation in the target node.
 
 ```json
 {

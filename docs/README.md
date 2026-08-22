@@ -15,7 +15,11 @@ The traversal-expression tool is intentionally small, but its notation and inter
 1. [`PGX_Traversal_4C_Guide/4C_MODEL_CONTEXT.md`](PGX_Traversal_4C_Guide/4C_MODEL_CONTEXT.md)
 2. [`PGX_Traversal_4C_Guide/USING_PGX_TRAVERSAL_NOTATION_AND_EXPRESSIONS.md`](PGX_Traversal_4C_Guide/USING_PGX_TRAVERSAL_NOTATION_AND_EXPRESSIONS.md)
 
-The files above are preserved verbatim from the supplied `PGX_Traversal_4C_Guide` package. Parmesan's current `pgx.traversal.embed` tool implements a pointer-first safe authoring profile: it accepts resolved pointers and nested expression trees, while the guide describes the broader notation and its open conceptual vocabulary.
+The files above are preserved verbatim from the supplied `PGX_Traversal_4C_Guide` package. Parmesan's current `pgx.traversal.embed` tool accepts resolved pointers expressed either directly in traversal notation or as nested expression trees. It canonicalizes both forms to the same stored representation, while the guide describes the broader notation and its open conceptual vocabulary.
+
+## Architecture work
+
+The design contract for the experimental collision-preserving workspace model is in [`architecture/PARMESAN_4_COMPOSABLE_WORKSPACES.md`](architecture/PARMESAN_4_COMPOSABLE_WORKSPACES.md). It is isolated from the stable Parmesan 3 behavior while the version 4 implementation is developed and tested in stages.
 
 ## Corpus lifecycle operations
 

@@ -192,7 +192,7 @@ TraversalTreeArgs.model_rebuild()
 
 class TraversalEmbedArgs(ToolArgs):
     node_pointer: str
-    expression: TraversalTreeArgs
+    expression: TraversalTreeArgs | str
     read: str | None = None
     expected_revision_uuid: str | None = None
     reason: str = "embed lawful PGX traversal expression"
@@ -685,11 +685,11 @@ def _parse(store, args, ctx):
 
 @register(
     "pgx.traversal.embed",
-    "Compose a lawful pointer-only PGX traversal expression and append its canonical notation to one node description.",
+    "Accept a structured tree or traversal notation, validate its pointers, and append canonical notation to one node description.",
     TraversalEmbedArgs,
     **MUTATION_META,
     preconditions=("the target node and every expression pointer exist in the active corpus",),
-    postconditions=("notation has exactly one outer square-bracket boundary", "nested composition preserves branch geometry", "the node receives one immutable appended revision"),
+    postconditions=("notation is validated and canonically rendered", "nested composition preserves branch geometry", "the node receives one immutable appended revision"),
     max_output="one canonical traversal expression and one updated node revision",
 )
 def _traversal_embed(store, args, ctx):

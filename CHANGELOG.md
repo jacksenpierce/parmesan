@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Began the isolated Parmesan 4 composable-workspace foundation with
+  operation-derived object identities, scoped alias assertions, multi-parent
+  snapshots, collision-preserving memberships, and algebraic composition
+  tests, without changing the Parmesan 3 store.
+- Removed the single traversal-authoring-method constraint: `pgx.traversal.embed`
+  now accepts either a structured expression tree or traversal notation.
+
 ## 3.0.2
 
 - Removed the bespoke consulting-use exception. Parmesan is now distributed

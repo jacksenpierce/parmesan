@@ -96,7 +96,7 @@ A complete executable example is in `examples/zero_context_build.py`.
 
 ## Author a traversal expression inside a node
 
-Read the required traversal documents above first. Use `pgx.traversal.embed`. Do not hand-build traversal punctuation. Supply a recursive expression tree whose operands are either `{"pointer": "..."}` objects or nested trees with `left`, `operator`, and `right`. Parmesan resolves every pointer, writes all parentheses and colons, applies exactly one outer square-bracket boundary, and appends the canonical notation to the chosen node description in a fenced `pgx-traversal` block.
+Read the required traversal documents above first. Use `pgx.traversal.embed`. Supply either traversal notation directly or a recursive expression tree whose operands are `{"pointer": "..."}` objects or nested trees with `left`, `operator`, and `right`. Parmesan parses the chosen form, resolves every pointer, preserves grouping and encounter order, and appends validated canonical notation to the chosen node description in a fenced `pgx-traversal` block.
 
 ```json
 {

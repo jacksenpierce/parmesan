@@ -100,7 +100,7 @@ def main() -> None:
         "cyclic_authoring": "expected_revision_uuid" in start_here,
         "serialize_result_path": 'response["result"]["pgx"]' in start_here and 'response["result"]["pgx"]' in contract,
         "clean_sqlite_handoff": "-wal" in start_here and "-shm" in start_here,
-        "traversal_expression_authoring": "pgx.traversal.embed" in start_here and "exactly one outer square-bracket" in start_here and "pgx.traversal.embed" in contract,
+        "traversal_expression_authoring": "pgx.traversal.embed" in start_here and "traversal notation directly" in start_here and "pgx.traversal.embed" in contract,
     }
     checks["operational_philosophy"] = {
         "linked_from_start_here": "docs/OPERATIONAL_PHILOSOPHY.md" in start_here,

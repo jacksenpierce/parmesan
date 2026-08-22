@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 
 from parmesan.router import dispatch_request
-from parmesan.traversal import serialize_expression, tree_from_mapping
+from parmesan.traversal import parse_expression, serialize_expression, tree_from_mapping
 
 
 def _create(store, pointer: str, title: str, description: str = "Test node.") -> None:
@@ -31,6 +31,13 @@ def _nested_expression() -> dict:
 def test_traversal_serializer_owns_all_punctuation():
     tree = tree_from_mapping(_nested_expression())
     assert serialize_expression(tree) == "[((E1):(E5):(E2)):(E6):(E3)]"
+
+
+def test_traversal_parser_accepts_bracketed_or_unbracketed_notation():
+    bracketed = "[((E1):(E5):(E2)):(E6):(E3)]"
+    unbracketed = "((E1):(E5):(E2)):(E6):(E3)"
+    assert serialize_expression(parse_expression(bracketed)) == bracketed
+    assert serialize_expression(parse_expression(unbracketed)) == bracketed
 
 
 def test_embed_tool_composes_resolves_and_appends_atomically(store):
@@ -79,6 +86,30 @@ def test_embed_tool_composes_resolves_and_appends_atomically(store):
     assert replay["idempotent_replay"] is True
     assert replay["result"]["revision_uuid"] == result["revision_uuid"]
     assert store.node_history("E4")["total"] == 2
+
+
+def test_embed_tool_accepts_notation_without_a_method_constraint(store):
+    _create(store, "E1", "object: Eleanor")
+    _create(store, "E2", "role: CEO")
+    _create(store, "E4", "object: traversal laboratory", "Initial description.")
+    _create(store, "E5", "operator: as")
+    before = store.get_node("E4")
+
+    response = dispatch_request({
+        "tool": "pgx.traversal.embed",
+        "database": str(store.path),
+        "request_id": str(uuid.uuid4()),
+        "expected_head": store.current_head(),
+        "arguments": {
+            "node_pointer": "E4",
+            "expression": "(E1):(E5):(E2)",
+            "expected_revision_uuid": before["revision_uuid"],
+        },
+    })
+
+    assert response["ok"] is True, response
+    assert response["result"]["notation"] == "[(E1):(E5):(E2)]"
+    assert store.validate_database(full=True)["valid"] is True
 
 
 def test_embed_tool_rejects_unresolved_expression_pointer_without_revision(store):

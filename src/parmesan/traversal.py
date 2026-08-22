@@ -34,6 +34,15 @@ def tree_from_mapping(value: Mapping[str, Any]) -> TraversalTree:
     return TraversalTree(left=left, operator=operator, right=right)
 
 
+def tree_from_input(value: Mapping[str, Any] | str) -> TraversalTree:
+    """Accept either the structured authoring form or traversal notation."""
+    if isinstance(value, str):
+        return parse_expression(value)
+    if isinstance(value, Mapping):
+        return tree_from_mapping(value)
+    raise ContractError("traversal expression must be a structured tree or notation string")
+
+
 def operand_from_mapping(value: Mapping[str, Any]) -> TraversalOperand:
     if not isinstance(value, Mapping):
         raise ContractError("traversal operand must be a pointer object or a traversal tree")
@@ -63,6 +72,58 @@ def serialize_operand(operand: TraversalOperand) -> str:
 def serialize_expression(tree: TraversalTree) -> str:
     """Serialize with exactly one outer square-bracket boundary."""
     return f"[{serialize_tree(tree)}]"
+
+
+def parse_expression(notation: str) -> TraversalTree:
+    """Parse bracketed or unbracketed traversal notation into a tree."""
+    if not isinstance(notation, str) or not notation.strip():
+        raise ContractError("traversal notation must be a non-empty string")
+    source = "".join(notation.split())
+    if source.startswith("[") or source.endswith("]"):
+        if not (source.startswith("[") and source.endswith("]")):
+            raise ContractError("traversal notation has an unmatched square-bracket boundary")
+        source = source[1:-1]
+
+    def group(text: str, start: int) -> tuple[str, int]:
+        if start >= len(text) or text[start] != "(":
+            raise ContractError("traversal term must begin with an opening parenthesis", {"offset": start})
+        depth = 0
+        for index in range(start, len(text)):
+            character = text[index]
+            if character == "(":
+                depth += 1
+            elif character == ")":
+                depth -= 1
+                if depth == 0:
+                    return text[start + 1:index], index + 1
+                if depth < 0:
+                    break
+        raise ContractError("traversal term has unmatched parentheses", {"offset": start})
+
+    def operand(text: str) -> TraversalOperand:
+        if not text:
+            raise ContractError("traversal operand must not be empty")
+        if text.startswith("("):
+            return parse_tree(text)
+        if any(character in text for character in "()[]:"):
+            raise ContractError("traversal operand is not a pointer token", {"value": text})
+        return PointerOperand(text)
+
+    def parse_tree(text: str) -> TraversalTree:
+        left_text, offset = group(text, 0)
+        if offset >= len(text) or text[offset] != ":":
+            raise ContractError("traversal expression is missing its first separator", {"offset": offset})
+        operator_text, offset = group(text, offset + 1)
+        if offset >= len(text) or text[offset] != ":":
+            raise ContractError("traversal expression is missing its second separator", {"offset": offset})
+        right_text, offset = group(text, offset + 1)
+        if offset != len(text):
+            raise ContractError("traversal expression contains trailing material", {"offset": offset})
+        if not operator_text or any(character in operator_text for character in "()[]:"):
+            raise ContractError("traversal operator must be a pointer token", {"value": operator_text})
+        return TraversalTree(left=operand(left_text), operator=operator_text, right=operand(right_text))
+
+    return parse_tree(source)
 
 
 def pointer_roles(tree: TraversalTree) -> dict[str, set[str]]:
