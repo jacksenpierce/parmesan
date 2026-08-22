@@ -59,15 +59,20 @@ scope and appear in the conflict inventory.
 
 ## Compatibility plan
 
-Parmesan 3 databases will be upgraded copy-only. The upgrader will preserve the
-source hash, legacy UUIDs, pointers, revisions, references, graph membership,
-and available provenance in an attestation and a legacy identity map. It will
-import the supplied database as a checkpoint rather than claim that the v3
-operation ledger is a complete replay log.
+Parmesan 3 and earlier workspaces are registered as immutable resources by
+default, not silently upgraded into live v4 semantic state. Registration copies
+the original bytes, hashes every file, records recoverable corpus and head
+metadata, and produces a self-verifying attestation. This preserves the old
+workspace as evidence without pretending its identity and provenance model is
+already a v4 snapshot DAG.
+
+Importing selected legacy material into live v4 objects may be added as an
+explicit operation later. Opening, registering, searching, composing, and
+publishing a resource must never trigger that import automatically.
 
 The v3 store and release surface remain unchanged until the v4 store has:
 
-- a verified copy-only upgrader;
+- verified pre-v4 resource registration and inspection;
 - collision-free mutation;
 - composition planning and application;
 - bounded conflict inspection;

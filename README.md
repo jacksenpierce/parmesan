@@ -40,7 +40,7 @@ The normal semantic-link form is:
 [natural-language anchor](POINTER)
 ```
 
-The pointer is an exact, case-sensitive identity in the active corpus—not a URL, file path, or network target. For traversal work, use `pgx.traversal.embed` with a structured tree; Parmesan resolves pointers and serializes lawful notation such as:
+The pointer is an exact, case-sensitive identity in the active corpus—not a URL, file path, or network target. For traversal work, use `pgx.traversal.embed` with either direct traversal notation or a structured tree; Parmesan resolves pointers and serializes lawful notation such as:
 
 ```text
 [((C1):(O1):(C2)):(O2):(C3)]
@@ -97,6 +97,7 @@ The release command stages a clean copy, removes transients, runs declared check
 | Author or interpret traversal expressions | [`docs/README.md`](docs/README.md) and the linked 4C guides |
 | Inspect request, response, and tool guarantees | [`LLM_TOOL_CONTRACT.md`](LLM_TOOL_CONTRACT.md) and `TOOL_CATALOG.json` |
 | Validate and release a corpus directory | [`docs/CORPUS_OPERATIONS.md`](docs/CORPUS_OPERATIONS.md) |
+| Preserve a Parmesan 3 or earlier workspace for PM4+ | [`docs/MIGRATING_TO_PARMESAN_4.md`](docs/MIGRATING_TO_PARMESAN_4.md) |
 | Verify a software release | [`RELEASE.md`](RELEASE.md), `RELEASE.json`, `PACKAGE_MANIFEST.json`, and `SHA256SUMS.txt` |
 | Make a small change or prepare a release | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
 | Inspect an annotated external corpus materialization | [`corpus-artifacts/README.md`](corpus-artifacts/README.md) |

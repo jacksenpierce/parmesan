@@ -21,6 +21,8 @@ The files above are preserved verbatim from the supplied `PGX_Traversal_4C_Guide
 
 The design contract for the experimental collision-preserving workspace model is in [`architecture/PARMESAN_4_COMPOSABLE_WORKSPACES.md`](architecture/PARMESAN_4_COMPOSABLE_WORKSPACES.md). It is isolated from the stable Parmesan 3 behavior while the version 4 implementation is developed and tested in stages.
 
+For the recommended treatment of Parmesan 3 and earlier workspaces, read [`MIGRATING_TO_PARMESAN_4.md`](MIGRATING_TO_PARMESAN_4.md). Pre-v4 workspaces are preserved as immutable registered resources by default rather than silently rewritten into live v4 state.
+
 ## Corpus lifecycle operations
 
 For corpus-independent validation, manifests, staged semantic-version releases, and post-extraction artifact checks, read [`CORPUS_OPERATIONS.md`](CORPUS_OPERATIONS.md).

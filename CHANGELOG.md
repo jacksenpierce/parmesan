@@ -8,6 +8,9 @@
   tests, without changing the Parmesan 3 store.
 - Removed the single traversal-authoring-method constraint: `pgx.traversal.embed`
   now accepts either a structured expression tree or traversal notation.
+- Added the initial Parmesan 4 migration boundary: pre-v4 databases and managed
+  workspaces can be copied into self-verifying immutable resource bundles and
+  inspected without importing them into live v4 semantic state.
 
 ## 3.0.2
 

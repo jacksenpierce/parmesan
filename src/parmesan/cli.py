@@ -13,15 +13,22 @@ from .migration import migrate_v1_database
 from .router import dispatch_request, tool_catalog
 from .runtime import doctor as runtime_doctor
 from .store import SQLitePGXStore
+from .v4.resources import inspect_pre_v4_resource, inspect_registered_resource, register_pre_v4_resource
 
 app = typer.Typer(add_completion=False, no_args_is_help=True, help="Parmesan: local PGX tools for conversational LLMs.")
 legacy_app = app
 corpus_app = typer.Typer(add_completion=False, no_args_is_help=True, help="Validate and release a declared Parmesan corpus.")
+resource_app = typer.Typer(add_completion=False, no_args_is_help=True, help="Preserve and verify immutable Parmesan resources.")
 app.add_typer(corpus_app, name="corpus")
+app.add_typer(resource_app, name="resource")
 
 
 def _corpus_error(exc: Exception) -> str:
     return json.dumps({"valid": False, "error": {"code": "corpus_operation_failed", "message": str(exc), "exception_type": type(exc).__name__, "suggested_action": "Inspect CORPUS.toml and run parmesan corpus check before retrying."}}, indent=2, ensure_ascii=False)
+
+
+def _resource_error(exc: Exception) -> str:
+    return json.dumps({"valid": False, "error": {"code": "resource_operation_failed", "message": str(exc), "exception_type": type(exc).__name__, "suggested_action": "Close the source workspace, remove live SQLite sidecars through its owning application, and retry without modifying the source."}}, indent=2, ensure_ascii=False)
 
 
 @app.command("doctor")
@@ -127,6 +134,44 @@ def migrate_bare_pointer_links(database: Path, include_staged: bool = True, reas
         request_id=str(uuid.uuid4()), include_staged=include_staged, reason=reason
     )
     typer.echo(json.dumps(report, indent=2, ensure_ascii=False))
+
+
+@resource_app.command("inspect-pre-v4")
+def resource_inspect_pre_v4(source: Path = typer.Argument(..., exists=True)) -> None:
+    """Read the identity and integrity of a closed Parmesan 3 or earlier workspace."""
+    try:
+        report = inspect_pre_v4_resource(source)
+    except Exception as exc:
+        typer.echo(_resource_error(exc))
+        raise typer.Exit(code=1) from exc
+    typer.echo(json.dumps(report, indent=2, ensure_ascii=False))
+
+
+@resource_app.command("register-pre-v4")
+def resource_register_pre_v4(
+    source: Path = typer.Argument(..., exists=True),
+    destination: Path = typer.Argument(...),
+) -> None:
+    """Copy a pre-v4 workspace into a new self-verifying resource bundle."""
+    try:
+        report = register_pre_v4_resource(source, destination)
+    except Exception as exc:
+        typer.echo(_resource_error(exc))
+        raise typer.Exit(code=1) from exc
+    typer.echo(json.dumps(report, indent=2, ensure_ascii=False))
+
+
+@resource_app.command("verify")
+def resource_verify(resource: Path = typer.Argument(..., exists=True, file_okay=False)) -> None:
+    """Verify the bytes, identity, and recorded inspection of a resource bundle."""
+    try:
+        report = inspect_registered_resource(resource)
+    except Exception as exc:
+        typer.echo(_resource_error(exc))
+        raise typer.Exit(code=1) from exc
+    typer.echo(json.dumps(report, indent=2, ensure_ascii=False))
+    if not report["valid"]:
+        raise typer.Exit(code=1)
 
 
 @corpus_app.command("check")
