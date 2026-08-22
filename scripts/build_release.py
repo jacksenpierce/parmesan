@@ -42,6 +42,9 @@ def main() -> None:
         env=build_environment,
         check=True,
     )
+    # Build a preliminary manifest before validation so identity and inventory
+    # are validated. Rebuild it afterward to capture the final validation report.
+    run("build_package_manifest.py")
     run("validate_release.py")
     # validate_release.py writes RELEASE_VALIDATION.json.  Generate the
     # package manifest afterward so its recorded hash reflects that final

@@ -19,6 +19,7 @@ sys.path.insert(0, str(SRC))
 import parmesan  # noqa: E402
 from parmesan.store import SQLitePGXStore  # noqa: E402
 from build_release_archive import release_files  # noqa: E402
+from verify_package_manifest import verify as verify_package_manifest  # noqa: E402
 
 
 def main() -> None:
@@ -78,10 +79,11 @@ def main() -> None:
         "root_directory_declares_expected_name": release["root_directory"] == expected_root,
         "filename_convention": release["artifact_filename"] == f"PARMESAN_v{parmesan.__version__.replace('.', '_')}.zip",
     }
+    checks["package_manifest"] = verify_package_manifest(ROOT)
     if args.require_artifact_root:
         checks["artifact_root_directory_matches"] = ROOT.name == expected_root
     if args.metadata_only:
-        valid = checks["required_files"] is True and all(checks["release_metadata_consistency"].values()) and all(checks["release_identity"].values()) and checks.get("artifact_root_directory_matches", True)
+        valid = checks["required_files"] is True and all(checks["release_metadata_consistency"].values()) and all(checks["release_identity"].values()) and checks["package_manifest"]["valid"] is True and checks.get("artifact_root_directory_matches", True)
         print(json.dumps({"valid": valid, "checks": checks}, indent=2))
         if not valid:
             raise SystemExit(1)
@@ -268,6 +270,7 @@ def main() -> None:
         checks["required_files"] is True
         and all(checks["release_metadata_consistency"].values())
         and all(checks["release_identity"].values())
+        and checks["package_manifest"]["valid"] is True
         and checks.get("artifact_root_directory_matches", True)
         and all(checks["zero_context_hardening_docs"].values())
         and all(checks["operational_philosophy"].values())

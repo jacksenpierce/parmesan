@@ -16,6 +16,25 @@ def digest(path: Path) -> str:
 
 def verify(root: Path) -> dict[str, object]:
     manifest = json.loads((root / "PACKAGE_MANIFEST.json").read_text(encoding="utf-8"))
+    release = json.loads((root / "RELEASE.json").read_text(encoding="utf-8"))
+    source_release = json.loads((root / "RELEASE_MANIFEST.json").read_text(encoding="utf-8"))
+    markdown = (root / "PACKAGE_MANIFEST.md").read_text(encoding="utf-8")
+    expected_artifact = f"PARMESAN_v{release['version'].replace('.', '_')}.zip"
+    expected_root = f"PARMESAN_v{release['version'].replace('.', '_')}"
+    expected_wheel = f"dist/parmesan-{release['version']}-py3-none-any.whl"
+    identity = {
+        "release_sources_agree": release == {**source_release, "artifact_filename": expected_artifact},
+        "version": manifest.get("version") == release["version"],
+        "release_id": manifest.get("release_id") == release["release_id"],
+        "artifact_filename": manifest.get("artifact_filename") == release["artifact_filename"] == expected_artifact,
+        "root_directory": manifest.get("root_directory") == release["root_directory"] == expected_root,
+        "built_at_utc": manifest.get("built_at_utc") == release["built_at_utc"],
+        "wheel": manifest.get("wheel") == expected_wheel,
+        "markdown_version": f"# Parmesan {release['version']} package manifest" in markdown,
+        "markdown_release_id": f"- Release ID: `{release['release_id']}`" in markdown,
+        "markdown_artifact_filename": f"- Artifact filename: `{release['artifact_filename']}`" in markdown,
+        "markdown_wheel": f"- Wheel: `{expected_wheel}`" in markdown,
+    }
     failures = []
     for item in manifest["files"]:
         path = root / item["path"]
@@ -30,7 +49,12 @@ def verify(root: Path) -> dict[str, object]:
         path = root / relative
         if not path.is_file() or digest(path) != expected:
             failures.append(relative)
-    return {"valid": not failures, "failures": sorted(set(failures)), "file_count": len(manifest["files"])}
+    return {
+        "valid": not failures and all(identity.values()),
+        "failures": sorted(set(failures)),
+        "identity": identity,
+        "file_count": len(manifest["files"]),
+    }
 
 
 def main() -> None:

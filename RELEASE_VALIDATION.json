@@ -1,8 +1,8 @@
 {
   "valid": true,
-  "version": "4.0.1",
-  "release_id": "c1437c4c-ec7a-467f-a02d-5d3ffdd979e0",
-  "artifact_filename": "PARMESAN_v4_0_1.zip",
+  "version": "4.0.2",
+  "release_id": "bfcd8364-f46e-4e97-ae59-085f82fe4a69",
+  "artifact_filename": "PARMESAN_v4_0_2.zip",
   "checks": {
     "required_files": true,
     "release_metadata_consistency": {
@@ -23,6 +23,24 @@
       "artifact_filename_matches": true,
       "root_directory_declares_expected_name": true,
       "filename_convention": true
+    },
+    "package_manifest": {
+      "valid": true,
+      "failures": [],
+      "identity": {
+        "release_sources_agree": true,
+        "version": true,
+        "release_id": true,
+        "artifact_filename": true,
+        "root_directory": true,
+        "built_at_utc": true,
+        "wheel": true,
+        "markdown_version": true,
+        "markdown_release_id": true,
+        "markdown_artifact_filename": true,
+        "markdown_wheel": true
+      },
+      "file_count": 113
     },
     "m2_m3_default_resources": {
       "canonical_names": true,
@@ -107,14 +125,14 @@
     },
     "wheel_exists": true,
     "wheel_import": {
-      "version": "4.0.1",
-      "release_id": "c1437c4c-ec7a-467f-a02d-5d3ffdd979e0",
-      "artifact_filename": "PARMESAN_v4_0_1.zip",
+      "version": "4.0.2",
+      "release_id": "bfcd8364-f46e-4e97-ae59-085f82fe4a69",
+      "artifact_filename": "PARMESAN_v4_0_2.zip",
       "core_tool_count": 31,
       "doctor_ready": true,
       "m2_packaged": true,
       "m3_packaged": true
     },
-    "tests": "........................................................................ [ 69%]\n................................                                         [100%]"
+    "tests": "........................................................................ [ 67%]\n..................................                                       [100%]"
   }
 }

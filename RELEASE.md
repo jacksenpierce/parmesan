@@ -1,10 +1,10 @@
 # Parmesan release and delivery convention
 
-This artifact is **Parmesan 4.0.1**.
+This artifact is **Parmesan 4.0.2**.
 
-- Human filename: `PARMESAN_v4_0_1.zip`
-- Root directory after unpacking: `PARMESAN_v4_0_1/`
-- Immutable release ID: `c1437c4c-ec7a-467f-a02d-5d3ffdd979e0`
+- Human filename: `PARMESAN_v4_0_2.zip`
+- Root directory after unpacking: `PARMESAN_v4_0_2/`
+- Immutable release ID: `bfcd8364-f46e-4e97-ae59-085f82fe4a69`
 - Artifact type: conversational-LLM software; no corpus is bundled
 
 ## Versioning
@@ -25,7 +25,7 @@ The final ZIP SHA-256 is the identity of the delivered bytes. It is reported alo
 
 ## Single source of truth
 
-`RELEASE_MANIFEST.json` is the only authored release-identity record. `RELEASE.json`, this file, the runtime version module, and package metadata are generated or checked from it. Run `python scripts/generate_release_metadata.py` after changing the source manifest; never edit generated release identity by hand.
+`RELEASE_MANIFEST.json` is the only authored release-identity record. `RELEASE.json`, this file, the runtime version module, and package metadata are generated or checked from it. After changing the source manifest, run `python scripts/build_release.py`; it owns the complete generation, validation, wheel, manifest, checksum, archive, and archive-verification sequence. Never edit generated release identity by hand or manually sequence its subordinate scripts.
 
 ## Standard handoff
 

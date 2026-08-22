@@ -48,6 +48,18 @@ When a coherent batch is ready, make a dedicated release-preparation change:
 4. Run the complete validation procedure against the delivered archive.
 5. Commit the release-preparation result, tag it as `vMAJOR.MINOR.PATCH`, push `main` and the tag, and publish the verified ZIP in GitHub Releases.
 
+After authoring `RELEASE_MANIFEST.json`, run exactly one build command:
+
+```bash
+python scripts/build_release.py
+```
+
+That entry point regenerates release metadata and catalogs, builds the wheel,
+builds and identity-checks the package manifests, runs the full tests and
+release validation, creates the ZIP, and verifies the delivered archive. The
+scripts it calls are implementation details; a release operator does not need
+to remember or manually sequence them.
+
 Never alter a published tag or its attached artifact. If a shipped artifact needs a byte-level change, cut a new version and release UUID.
 
 ## Scope and safety
