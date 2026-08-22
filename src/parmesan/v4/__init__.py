@@ -8,6 +8,8 @@ from .workspace import (
     initialize_managed_workspace,
     inspect_managed_workspace,
     open_managed_workspace,
+    orient_managed_workspace,
+    require_managed_orientation,
     register_legacy_workspace_resource,
 )
 
@@ -22,5 +24,7 @@ __all__ = [
     "initialize_managed_workspace",
     "inspect_managed_workspace",
     "open_managed_workspace",
+    "orient_managed_workspace",
+    "require_managed_orientation",
     "register_legacy_workspace_resource",
 ]

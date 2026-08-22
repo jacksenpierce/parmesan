@@ -11,6 +11,7 @@ After installing the bundled wheel, run:
 
 ```bash
 parmesan pm4 initialize my-workspace
+parmesan pm4 orient my-workspace
 parmesan pm4 inspect my-workspace
 ```
 
@@ -23,7 +24,9 @@ python -m parmesan.cli pm4
 Initialization creates `authoritative/`, `resources/`, `machinery/`,
 `projections/`, `scratch/`, and `handoffs/`. The authoritative database starts
 in `working` mode. Nothing automatically rebuilds or serializes a knowledge
-base.
+base. It also installs canonical M2 and M3 resources under
+`resources/parmesan-methods/`. The required `orient` step emits their complete
+text in M2-then-M3 order; other operations remain locked until it succeeds.
 
 ## Mutate with an exact head
 
@@ -51,13 +54,18 @@ resistant across independent workspaces.
 ```bash
 parmesan pm4 fork my-workspace left-workspace --label left
 parmesan pm4 fork my-workspace right-workspace --label right
+parmesan pm4 orient left-workspace
+parmesan pm4 orient right-workspace
 parmesan pm4 compose left-workspace right-workspace --output joined-workspace
+parmesan pm4 orient joined-workspace
 parmesan pm4 conflicts joined-workspace
 ```
 
 Composition creates a new workspace, leaves every input unchanged, records a
 multi-parent snapshot, preserves both sides of alias or revision conflicts, and
-deduplicates identical registered resources by content-derived identity.
+deduplicates identical registered resources by content-derived identity. Every
+new fork or composition resets orientation so a new zero-context operator must
+receive M2 and M3 before proceeding.
 
 ## Working and publish modes
 

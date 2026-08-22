@@ -1,8 +1,8 @@
 {
   "valid": true,
-  "version": "4.0.0",
-  "release_id": "1bd757fc-87f0-4427-86f0-251996a335fa",
-  "artifact_filename": "PARMESAN_v4_0_0.zip",
+  "version": "4.0.1",
+  "release_id": "c1437c4c-ec7a-467f-a02d-5d3ffdd979e0",
+  "artifact_filename": "PARMESAN_v4_0_1.zip",
   "checks": {
     "required_files": true,
     "release_metadata_consistency": {
@@ -23,6 +23,16 @@
       "artifact_filename_matches": true,
       "root_directory_declares_expected_name": true,
       "filename_convention": true
+    },
+    "m2_m3_default_resources": {
+      "canonical_names": true,
+      "m2_before_m3_start_here": true,
+      "m2_before_m3_readme": true,
+      "m1_removed": true,
+      "simple_disclaimers": true,
+      "m3_depends_on_m2": true,
+      "no_fixed_traversal_arity": true,
+      "joke_removed": true
     },
     "traversal_guide_integrity": {
       "4c_source_sha256": true,
@@ -81,6 +91,7 @@
       "managed_api": true,
       "resource_registration_api": true,
       "quickstart_commands": true,
+      "orientation_order": true,
       "migration_default": true,
       "working_default_documented": true,
       "no_automatic_publication": true
@@ -96,12 +107,14 @@
     },
     "wheel_exists": true,
     "wheel_import": {
-      "version": "4.0.0",
-      "release_id": "1bd757fc-87f0-4427-86f0-251996a335fa",
-      "artifact_filename": "PARMESAN_v4_0_0.zip",
+      "version": "4.0.1",
+      "release_id": "c1437c4c-ec7a-467f-a02d-5d3ffdd979e0",
+      "artifact_filename": "PARMESAN_v4_0_1.zip",
       "core_tool_count": 31,
-      "doctor_ready": true
+      "doctor_ready": true,
+      "m2_packaged": true,
+      "m3_packaged": true
     },
-    "tests": "........................................................................ [ 72%]\n............................                                             [100%]"
+    "tests": "........................................................................ [ 69%]\n................................                                         [100%]"
   }
 }

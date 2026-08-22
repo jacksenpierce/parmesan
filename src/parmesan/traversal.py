@@ -21,6 +21,17 @@ class TraversalTree:
 TraversalOperand = PointerOperand | TraversalTree
 
 
+@dataclass(frozen=True)
+class TraversalSequence:
+    """An ordered traversal composition with no prescribed semantic arity."""
+
+    terms: tuple["TraversalTerm", ...]
+
+
+TraversalTerm = PointerOperand | TraversalSequence
+TraversalExpression = TraversalTree | TraversalSequence
+
+
 def tree_from_mapping(value: Mapping[str, Any]) -> TraversalTree:
     """Build a traversal tree from the structured model-facing representation."""
     try:
@@ -34,7 +45,7 @@ def tree_from_mapping(value: Mapping[str, Any]) -> TraversalTree:
     return TraversalTree(left=left, operator=operator, right=right)
 
 
-def tree_from_input(value: Mapping[str, Any] | str) -> TraversalTree:
+def tree_from_input(value: Mapping[str, Any] | str) -> TraversalExpression:
     """Accept either the structured authoring form or traversal notation."""
     if isinstance(value, str):
         return parse_expression(value)
@@ -69,13 +80,23 @@ def serialize_operand(operand: TraversalOperand) -> str:
     return serialize_tree(operand)
 
 
-def serialize_expression(tree: TraversalTree) -> str:
-    """Serialize with exactly one outer square-bracket boundary."""
-    return f"[{serialize_tree(tree)}]"
+def serialize_sequence(sequence: TraversalSequence) -> str:
+    def serialize_term(term: TraversalTerm) -> str:
+        if isinstance(term, PointerOperand):
+            return term.pointer
+        return serialize_sequence(term)
+
+    return ":".join(f"({serialize_term(term)})" for term in sequence.terms)
 
 
-def parse_expression(notation: str) -> TraversalTree:
-    """Parse bracketed or unbracketed traversal notation into a tree."""
+def serialize_expression(expression: TraversalExpression) -> str:
+    """Serialize one validated composition with a single outer boundary."""
+    body = serialize_tree(expression) if isinstance(expression, TraversalTree) else serialize_sequence(expression)
+    return f"[{body}]"
+
+
+def parse_expression(notation: str) -> TraversalSequence:
+    """Parse bracketed or unbracketed notation without imposing a fixed arity."""
     if not isinstance(notation, str) or not notation.strip():
         raise ContractError("traversal notation must be a non-empty string")
     source = "".join(notation.split())
@@ -100,33 +121,36 @@ def parse_expression(notation: str) -> TraversalTree:
                     break
         raise ContractError("traversal term has unmatched parentheses", {"offset": start})
 
-    def operand(text: str) -> TraversalOperand:
+    def term(text: str) -> TraversalTerm:
         if not text:
-            raise ContractError("traversal operand must not be empty")
+            raise ContractError("traversal term must not be empty")
         if text.startswith("("):
-            return parse_tree(text)
+            return parse_sequence(text)
         if any(character in text for character in "()[]:"):
-            raise ContractError("traversal operand is not a pointer token", {"value": text})
+            raise ContractError("traversal term is not a pointer token", {"value": text})
         return PointerOperand(text)
 
-    def parse_tree(text: str) -> TraversalTree:
-        left_text, offset = group(text, 0)
-        if offset >= len(text) or text[offset] != ":":
-            raise ContractError("traversal expression is missing its first separator", {"offset": offset})
-        operator_text, offset = group(text, offset + 1)
-        if offset >= len(text) or text[offset] != ":":
-            raise ContractError("traversal expression is missing its second separator", {"offset": offset})
-        right_text, offset = group(text, offset + 1)
-        if offset != len(text):
-            raise ContractError("traversal expression contains trailing material", {"offset": offset})
-        if not operator_text or any(character in operator_text for character in "()[]:"):
-            raise ContractError("traversal operator must be a pointer token", {"value": operator_text})
-        return TraversalTree(left=operand(left_text), operator=operator_text, right=operand(right_text))
+    def parse_sequence(text: str) -> TraversalSequence:
+        terms: list[TraversalTerm] = []
+        offset = 0
+        while offset < len(text):
+            term_text, offset = group(text, offset)
+            terms.append(term(term_text))
+            if offset == len(text):
+                break
+            if text[offset] != ":":
+                raise ContractError("traversal expression contains trailing material", {"offset": offset})
+            offset += 1
+            if offset == len(text):
+                raise ContractError("traversal expression has an empty trailing term", {"offset": offset})
+        if not terms:
+            raise ContractError("traversal expression must contain at least one term")
+        return TraversalSequence(tuple(terms))
 
-    return parse_tree(source)
+    return parse_sequence(source)
 
 
-def pointer_roles(tree: TraversalTree) -> dict[str, set[str]]:
+def pointer_roles(tree: TraversalExpression) -> dict[str, set[str]]:
     """Return every pointer used by the expression and its structural roles."""
     roles: dict[str, set[str]] = {}
 
@@ -144,7 +168,17 @@ def pointer_roles(tree: TraversalTree) -> dict[str, set[str]]:
         add(current.operator, "operator")
         visit_operand(current.right)
 
-    visit_tree(tree)
+    def visit_sequence(current: TraversalSequence) -> None:
+        for term in current.terms:
+            if isinstance(term, PointerOperand):
+                add(term.pointer, "term")
+            else:
+                visit_sequence(term)
+
+    if isinstance(tree, TraversalTree):
+        visit_tree(tree)
+    else:
+        visit_sequence(tree)
     return roles
 
 

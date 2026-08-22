@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "parmesan"
-version = "4.0.0"
+version = "4.0.1"
 description = "Local SQLite-first PGX knowledge tools for conversational LLMs"
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -28,6 +28,9 @@ license-files = ["LICENSE"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+parmesan = ["default_resources/*.md"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

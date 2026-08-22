@@ -21,6 +21,7 @@ from .v4.workspace import (
     initialize_managed_workspace,
     inspect_managed_workspace,
     open_managed_workspace,
+    orient_managed_workspace,
     register_legacy_workspace_resource,
 )
 
@@ -212,6 +213,12 @@ def pm4_initialize(workspace: Path) -> None:
 def pm4_inspect(workspace: Path = typer.Argument(..., exists=True, file_okay=False)) -> None:
     """Validate a PM4 workspace, its head, mode, conflicts, and registered resources."""
     _emit_pm4(lambda: inspect_managed_workspace(workspace))
+
+
+@pm4_app.command("orient")
+def pm4_orient(workspace: Path = typer.Argument(..., exists=True, file_okay=False)) -> None:
+    """Emit the required M2 then M3 reading and unlock PM4 workspace operations."""
+    _emit_pm4(lambda: orient_managed_workspace(workspace))
 
 
 @pm4_app.command("fork")
