@@ -5,7 +5,7 @@
 - **Context:** YHX3.2 → YHX3.2.2
 - **Evidence status:** Unverified field report. The maintainer does not have the referenced workspaces, databases, receipts, or packages.
 - **Preservation policy:** The report below is preserved verbatim from the user-supplied incident note. Statements in it do not override Parmesan's current contracts or establish a diagnosis.
-- **Issue routing:** Resource canonicalization/rehydration, fork continuity inheritance, detached-resource lifecycle, and SQLite sidecar hygiene are tracked separately in GitHub.
+- **Issue routing:** [`#39`](https://github.com/jacksenpierce/parmesan/issues/39) investigates resource canonicalization and rehydration; [`#40`](https://github.com/jacksenpierce/parmesan/issues/40) defines fork continuity inheritance; [`#41`](https://github.com/jacksenpierce/parmesan/issues/41) covers detached-resource lifecycle; existing [`#30`](https://github.com/jacksenpierce/parmesan/issues/30) covers SQLite sidecar hygiene.
 
 ---
 
