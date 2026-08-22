@@ -37,22 +37,29 @@ def inventory() -> list[dict[str, object]]:
 
 
 def main() -> None:
-    from parmesan import __artifact_filename__, __release_id__, __version__, catalog
-
     release = json.loads((ROOT / "RELEASE_MANIFEST.json").read_text(encoding="utf-8"))
+    generated_release = json.loads((ROOT / "RELEASE.json").read_text(encoding="utf-8"))
+    version = str(release["version"])
+    release_id = str(release["release_id"])
+    artifact_filename = f"PARMESAN_v{version.replace('.', '_')}.zip"
+    expected_release = {**release, "artifact_filename": artifact_filename}
+    if generated_release != expected_release:
+        raise ValueError("RELEASE.json must be regenerated from RELEASE_MANIFEST.json before building the package manifest")
+    core_catalog = json.loads((ROOT / "TOOL_CATALOG.json").read_text(encoding="utf-8"))
+    secondary_catalog = json.loads((ROOT / "maintenance" / "TOOL_CATALOG.json").read_text(encoding="utf-8"))
     files = inventory()
-    wheel = f"dist/parmesan-{__version__}-py3-none-any.whl"
+    wheel = f"dist/parmesan-{version}-py3-none-any.whl"
     manifest = {
         "product": "Parmesan",
-        "version": __version__,
-        "release_id": __release_id__,
-        "artifact_filename": __artifact_filename__,
+        "version": version,
+        "release_id": release_id,
+        "artifact_filename": artifact_filename,
         "root_directory": release["root_directory"],
         "built_at_utc": release["built_at_utc"],
         "operator": "conversational_llm",
         "amazon_corpus_bundled": False,
-        "core_tools": len(catalog("core")),
-        "all_tools": len(catalog("all")),
+        "core_tools": len(core_catalog),
+        "all_tools": len(core_catalog) + len(secondary_catalog),
         "wheel": wheel,
         "files": files,
     }
@@ -62,10 +69,10 @@ def main() -> None:
     )
 
     lines = [
-        f"# Parmesan {__version__} package manifest",
+        f"# Parmesan {version} package manifest",
         "",
-        f"- Release ID: `{__release_id__}`",
-        f"- Artifact filename: `{__artifact_filename__}`",
+        f"- Release ID: `{release_id}`",
+        f"- Artifact filename: `{artifact_filename}`",
         f"- Files: **{len(files)}**",
         f"- Core conversational tools: **{manifest['core_tools']}**",
         f"- Total tools: **{manifest['all_tools']}**",

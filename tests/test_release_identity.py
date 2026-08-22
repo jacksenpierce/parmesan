@@ -19,6 +19,48 @@ def test_generated_release_metadata_matches_single_source():
     assert release["artifact_filename"] == f"PARMESAN_v{source['version'].replace('.', '_')}.zip"
 
 
+def test_package_manifest_builder_ignores_an_installed_parmesan(tmp_path: Path):
+    copy = tmp_path / "checkout"
+    shutil.copytree(ROOT, copy, ignore=shutil.ignore_patterns("__pycache__", ".pytest_cache", "build"))
+    fake_site = tmp_path / "fake-site" / "parmesan"
+    fake_site.mkdir(parents=True)
+    (fake_site / "__init__.py").write_text(
+        "__version__='0.0.0'\n__release_id__='wrong'\n__artifact_filename__='wrong.zip'\n",
+        encoding="utf-8",
+    )
+    subprocess.run(
+        [sys.executable, str(copy / "scripts" / "build_package_manifest.py")],
+        cwd=copy,
+        env={**__import__("os").environ, "PYTHONPATH": str(fake_site.parent)},
+        check=True,
+    )
+    package = json.loads((copy / "PACKAGE_MANIFEST.json").read_text(encoding="utf-8"))
+    release = json.loads((copy / "RELEASE.json").read_text(encoding="utf-8"))
+    assert package["version"] == release["version"]
+    assert package["release_id"] == release["release_id"]
+    assert package["artifact_filename"] == release["artifact_filename"]
+    assert package["wheel"] == f"dist/parmesan-{release['version']}-py3-none-any.whl"
+
+
+def test_validator_rejects_stale_package_manifest_identity(tmp_path: Path):
+    copy = tmp_path / ROOT.name
+    shutil.copytree(ROOT, copy, ignore=shutil.ignore_patterns("__pycache__", ".pytest_cache", "build"))
+    package_path = copy / "PACKAGE_MANIFEST.json"
+    package = json.loads(package_path.read_text(encoding="utf-8"))
+    package["version"] = "3.0.0"
+    package_path.write_text(json.dumps(package, indent=2) + "\n", encoding="utf-8")
+    completed = subprocess.run(
+        [sys.executable, str(copy / "scripts" / "validate_release.py"), "--metadata-only"],
+        cwd=copy,
+        env={**__import__("os").environ, "PYTHONPATH": str(copy / "src")},
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode == 1
+    assert '"package_manifest"' in completed.stdout
+    assert '"version": false' in completed.stdout
+
+
 def test_validator_rejects_mismatched_release_markdown(tmp_path: Path):
     copy = tmp_path / ROOT.name
     shutil.copytree(ROOT, copy, ignore=shutil.ignore_patterns("__pycache__", ".pytest_cache", "build", "*.whl"))

@@ -1,5 +1,15 @@
 # Changelog
 
+## 4.0.2
+
+- Made package-manifest generation independent of any installed Parmesan
+  package by deriving identity from canonical release metadata and generated
+  catalogs only.
+- Made release validation cross-check JSON and Markdown package-manifest
+  identity, inventory, checksums, canonical release metadata, and wheel naming.
+- Updated the one-command release builder to create a preliminary package
+  manifest before validation and regenerate it after the final report.
+
 ## 4.0.1
 
 - Added canonical M2 semantic virtual infrastructure and M3 view algebra as

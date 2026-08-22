@@ -194,7 +194,15 @@
               "type": "string"
             },
             "expression": {
-              "$ref": "#/$defs/TraversalTreeArgs"
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/TraversalTreeArgs"
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "title": "Expression"
             },
             "read": {
               "anyOf": [
@@ -731,7 +739,15 @@
               "type": "string"
             },
             "expression": {
-              "$ref": "#/$defs/TraversalTreeArgs"
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/TraversalTreeArgs"
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "title": "Expression"
             },
             "read": {
               "anyOf": [
@@ -6758,7 +6774,7 @@
     "name": "pgx.traversal.embed",
     "profile": "core",
     "status": "active",
-    "description": "Compose a lawful pointer-only PGX traversal expression and append its canonical notation to one node description.",
+    "description": "Accept a structured ternary tree or arbitrary-arity traversal notation, validate its pointers, and append canonical notation to one node description.",
     "database_required": true,
     "mutates": true,
     "idempotency": "request_id replay returns the previously committed result; reuse with different input is rejected",
@@ -6767,8 +6783,8 @@
       "the target node and every expression pointer exist in the active corpus"
     ],
     "postconditions": [
-      "notation has exactly one outer square-bracket boundary",
-      "nested composition preserves branch geometry",
+      "notation is validated and canonically rendered without a fixed arity requirement",
+      "nested composition preserves encounter order and geometry",
       "the node receives one immutable appended revision"
     ],
     "error_codes": [
@@ -6841,7 +6857,15 @@
           "type": "string"
         },
         "expression": {
-          "$ref": "#/$defs/TraversalTreeArgs"
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TraversalTreeArgs"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "title": "Expression"
         },
         "read": {
           "anyOf": [
@@ -6912,7 +6936,7 @@
         },
         "notation": {
           "type": "string",
-          "description": "Canonical traversal notation with exactly one outer square-bracket boundary."
+          "description": "Validated canonical traversal notation."
         },
         "markdown": {
           "type": "string",
@@ -7022,7 +7046,7 @@
                 },
                 "notation": {
                   "type": "string",
-                  "description": "Canonical traversal notation with exactly one outer square-bracket boundary."
+                  "description": "Validated canonical traversal notation."
                 },
                 "markdown": {
                   "type": "string",
