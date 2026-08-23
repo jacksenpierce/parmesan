@@ -5,7 +5,7 @@
 - **Context:** Handrolled resource-thin export of a live WAL-mode PM4 workspace
 - **Evidence status:** Unverified field report. The maintainer does not have the referenced workspace, databases, ZIPs, or repair artifacts. The current source does independently confirm that the PM4 CLI has no dedicated handoff-publication command, while the older managed-workspace surface provides `pgx.handoff.publish` and `pgx.handoff.inspect`.
 - **Preservation policy:** The report below is preserved verbatim from the user-supplied incident note. Statements in it do not override Parmesan's current contracts or establish a diagnosis.
-- **Issue routing:** Pending triage against existing handoff, artifact-identity, and SQLite-sidecar issues.
+- **Issue routing:** New [`#47`](https://github.com/jacksenpierce/parmesan/issues/47) covers cold-validated resource-thin PM4 publication; existing [`#30`](https://github.com/jacksenpierce/parmesan/issues/30) covers SQLite sidecar detection; existing [`#25`](https://github.com/jacksenpierce/parmesan/issues/25) covers artifact identity and receipts; existing [`#21`](https://github.com/jacksenpierce/parmesan/issues/21) covers fresh-agent conversational handoff.
 
 ---
 
