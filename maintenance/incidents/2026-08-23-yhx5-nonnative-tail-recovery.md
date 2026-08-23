@@ -5,7 +5,7 @@
 - **Context:** Forensic diagnosis and replay recovery of an inherited PM4-shaped database tail
 - **Evidence status:** Unverified field report. The maintainer does not have the referenced databases, ZIPs, reconstructions, crosswalk, or recovery receipts. Current source independently confirms that PM4 validates the active state fingerprint but does not audit operation-tail derivation invariants or provide a native replay-recovery command.
 - **Preservation policy:** The report below is preserved verbatim from the user-supplied incident note. Statements in it do not override Parmesan's current contracts or establish that the reported reconstruction is correct.
-- **Issue routing:** Pending triage for operation-provenance audit, replay recovery, and handoff-head verification.
+- **Issue routing:** New [`#50`](https://github.com/jacksenpierce/parmesan/issues/50) covers operation-tail provenance audit and first-incompatible-sequence diagnostics; new [`#51`](https://github.com/jacksenpierce/parmesan/issues/51) covers native replay recovery into a clean fork; existing [`#47`](https://github.com/jacksenpierce/parmesan/issues/47) covers cold-validated handoff publication and exact delivered-head verification.
 
 ---
 
