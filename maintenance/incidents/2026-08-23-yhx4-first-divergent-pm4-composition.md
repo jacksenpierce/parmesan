@@ -5,7 +5,7 @@
 - **Context:** Attempted reconciliation of YHX3.2 and YHX3.2.2
 - **Evidence status:** Unverified field report. The maintainer does not have the referenced workspaces, databases, resources, or reconciliation artifacts.
 - **Preservation policy:** The report below is preserved verbatim from the user-supplied incident note. Statements in it do not override Parmesan's current contracts or establish a diagnosis.
-- **Issue routing:** GitHub investigations are linked here after triage.
+- **Issue routing:** Existing [`#32`](https://github.com/jacksenpierce/parmesan/issues/32) now covers the composition conflict ledger and reconciliation receipts; new [`#44`](https://github.com/jacksenpierce/parmesan/issues/44) covers branch-scoped alias lookup and parent-interior reads; existing [`#39`](https://github.com/jacksenpierce/parmesan/issues/39) covers the historical resource-attestation mismatch and re-registration pattern.
 
 ---
 
