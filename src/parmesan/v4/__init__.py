@@ -2,6 +2,7 @@
 
 from .store import ComposableWorkspace, V4Head
 from .resources import inspect_pre_v4_resource, inspect_registered_resource, register_pre_v4_resource
+from .capsule import inspect_capsule, receive_capsule, share_managed_workspace
 from .workspace import (
     compose_managed_workspaces,
     fork_managed_workspace,
@@ -19,6 +20,9 @@ __all__ = [
     "inspect_pre_v4_resource",
     "inspect_registered_resource",
     "register_pre_v4_resource",
+    "inspect_capsule",
+    "receive_capsule",
+    "share_managed_workspace",
     "compose_managed_workspaces",
     "fork_managed_workspace",
     "initialize_managed_workspace",

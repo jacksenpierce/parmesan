@@ -1,5 +1,26 @@
 # Changelog
 
+## 4.1.0
+
+- Added deterministic PM4 semantic capsules and the LLM-oriented
+  `parmesan pm4 share` / `receive` workflow. A conversation can hand off its
+  complete current semantic head as one verified ZIP without entering publish
+  mode or manually coordinating paths, SQLite sidecars, or checksums.
+- Made capsule database capture use SQLite's online backup API followed by a
+  cold, standalone validation. Committed WAL state is included, while `-wal`,
+  `-shm`, machinery, scratch files, projections, and prior handoffs are not.
+- Added first-class detached registered-resource declarations. Resource-thin
+  workspaces remain valid and operable while separately reporting incomplete
+  hydration, and PM4 composition preserves or upgrades detached declarations
+  when an attached copy is available.
+- Added deterministic capsule identity, exact file inventory, safe extraction,
+  cold identity/head/fingerprint checks, tamper rejection, and idempotent
+  re-sharing of the same workspace head.
+- Made PM4 JSON output independent of the Windows console code page and
+  repaired four damaged separators in the canonical M2 resource.
+- This first capsule format carries a complete PM4 authority head. Selective
+  semantic roots and automatic node-dependency closure remain follow-on work.
+
 ## 4.0.2
 
 - Made package-manifest generation independent of any installed Parmesan

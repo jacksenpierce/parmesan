@@ -392,10 +392,10 @@ These may be separate graphs, facets within fewer graphs, or a combination. Thei
 
 A durable semantic system often contains at least four different kinds of thing:
 
-1. **Domain referents** � the things, concepts, events, sources, states, or phenomena the corpus is about.
-2. **Construal material** � frames, roles, operators, readings, semantic routes, criteria, and other structures used to understand domain material.
-3. **Virtual infrastructure** � research threads, experiments, notebooks, sentinels, tooling identities, working state, and projections used to operate the project.
-4. **Executable machinery** � deterministic code that parses, measures, transforms, compares, evaluates, simulates, indexes, or projects.
+1. **Domain referents** — the things, concepts, events, sources, states, or phenomena the corpus is about.
+2. **Construal material** — frames, roles, operators, readings, semantic routes, criteria, and other structures used to understand domain material.
+3. **Virtual infrastructure** — research threads, experiments, notebooks, sentinels, tooling identities, working state, and projections used to operate the project.
+4. **Executable machinery** — deterministic code that parses, measures, transforms, compares, evaluates, simulates, indexes, or projects.
 
 These layers should communicate without being collapsed.
 

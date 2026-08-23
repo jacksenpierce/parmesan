@@ -73,6 +73,28 @@ Legacy or project-extended corpora are adopted with `pgx.workspace.adopt`, never
 
 ### Materialize a handoff or compare parallel work
 
+For PM4 conversations, the normal handoff is now a resource-thin semantic
+capsule:
+
+```bash
+parmesan pm4 inspect my-workspace
+parmesan pm4 share my-workspace \
+  --expected-workspace WORKSPACE_UUID \
+  --expected-snapshot SNAPSHOT_UUID \
+  --expected-sequence SEQUENCE
+parmesan pm4 receive PARMESAN_PM4_SHARE_….zip --output received-workspace
+parmesan pm4 orient received-workspace
+```
+
+`share` captures the complete committed semantic head through SQLite's backup
+API, cold-validates it, excludes live journal sidecars and local machinery, and
+returns one attachment path plus its SHA-256. Registered historical resources
+are carried as detached identity descriptors rather than copied wholesale. A
+received workspace remains valid and semantically operable while reporting
+resource hydration separately. This 4.1 capsule is deliberately a complete-head
+handoff; selective graph roots and automatic pointer-dependency closure are the
+next capsule layer.
+
 Ordinary work remains in the default `working` mode and never automatically rebuilds or serializes an external knowledge base. When a clean database copy or another publication surface is explicitly needed, use `pgx.mode.set` to enter `publish` mode before invoking the advanced materialization tools. Publish mode freezes semantic mutation so each output comes from one fixed database state. Return to `working` mode afterward.
 
 A materialization receives its own identity while retaining its corpus and semantic-snapshot lineage. Use lineage comparison when independently continued copies need deliberate LLM reconciliation.
