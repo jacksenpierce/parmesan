@@ -194,7 +194,7 @@ def main() -> None:
     checks["parmesan_4"] = {
         "managed_api": all(callable(item) for item in (initialize_managed_workspace, inspect_managed_workspace, orient_managed_workspace, compose_managed_workspaces)),
         "resource_registration_api": callable(register_pre_v4_resource),
-        "quickstart_commands": all(command in pm4_quickstart for command in ("parmesan pm4 initialize", "parmesan pm4 orient", "parmesan pm4 fork", "parmesan pm4 compose", "parmesan pm4 mode-set")),
+        "quickstart_commands": all(command in pm4_quickstart for command in ("parmesan pm4 initialize", "parmesan pm4 orient", "parmesan pm4 fork", "parmesan pm4 compose", "parmesan pm4 share", "parmesan pm4 receive", "parmesan pm4 mode-set")),
         "orientation_order": pm4_quickstart.index("parmesan pm4 initialize") < pm4_quickstart.index("parmesan pm4 orient") < pm4_quickstart.index("parmesan pm4 inspect"),
         "migration_default": "preserved-resource-not-live-import" in pm4_migration,
         "working_default_documented": "Working mode is the default" in pm4_quickstart,

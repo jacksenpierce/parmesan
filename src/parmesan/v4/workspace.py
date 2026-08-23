@@ -192,26 +192,60 @@ def inspect_managed_workspace(root: str | Path) -> dict[str, Any]:
         errors.append({"code": "corpus_identity_mismatch"})
     resources = []
     declared_paths: set[Path] = set()
+    hydration = {"attached": 0, "detached": 0, "invalid": 0}
     for item in manifest.get("registered_resources", []):
         if not isinstance(item, dict) or not isinstance(item.get("path"), str):
             errors.append({"code": "invalid_resource_declaration"})
+            hydration["invalid"] += 1
             continue
         path = (workspace / item["path"]).resolve()
         try:
             path.relative_to(workspace / "resources")
         except ValueError:
             errors.append({"code": "resource_path_escape", "path": str(path)})
+            hydration["invalid"] += 1
             continue
         declared_paths.add(path)
+        attachment_state = item.get("attachment_state", "attached")
+        if attachment_state == "detached":
+            resource_uuid = item.get("resource_uuid")
+            descriptor = item.get("descriptor")
+            if not isinstance(resource_uuid, str) or (
+                isinstance(descriptor, dict)
+                and descriptor.get("resource_uuid") not in {None, resource_uuid}
+            ):
+                errors.append({"code": "invalid_detached_resource_descriptor", "path": str(path)})
+                hydration["invalid"] += 1
+                continue
+            hydration["detached"] += 1
+            resources.append({
+                "valid": True,
+                "resource": str(path),
+                "resource_uuid": resource_uuid,
+                "attachment_state": "detached",
+                "hydrated": False,
+                "descriptor": descriptor,
+                "errors": [],
+            })
+            continue
+        if attachment_state != "attached":
+            errors.append({"code": "invalid_resource_attachment_state", "path": str(path), "value": attachment_state})
+            hydration["invalid"] += 1
+            continue
         try:
             report = inspect_registered_resource(path)
         except Exception as exc:
             report = {"valid": False, "resource": str(path), "errors": [{"code": "inspection_failed", "message": str(exc)}]}
+        report = {**report, "attachment_state": "attached", "hydrated": report.get("valid", False)}
         resources.append(report)
         if not report["valid"]:
             errors.append({"code": "invalid_registered_resource", "path": str(path)})
+            hydration["invalid"] += 1
         elif report["resource_uuid"] != item.get("resource_uuid"):
             errors.append({"code": "resource_identity_mismatch", "path": str(path)})
+            hydration["invalid"] += 1
+        else:
+            hydration["attached"] += 1
     discovered = {path.parent.resolve() for path in (workspace / "resources").rglob("RESOURCE.json")}
     for path in sorted(discovered - declared_paths, key=str):
         errors.append({"code": "unregistered_resource_bundle", "path": str(path)})
@@ -226,6 +260,10 @@ def inspect_managed_workspace(root: str | Path) -> dict[str, Any]:
         "mode": store.mode_show(),
         "database_validation": validation,
         "resources": resources,
+        "resource_hydration": {
+            **hydration,
+            "complete": hydration["detached"] == 0 and hydration["invalid"] == 0,
+        },
         "default_resources": default_resources,
         "orientation": {
             **orientation,
@@ -244,7 +282,11 @@ def register_legacy_workspace_resource(root: str | Path, source: str | Path, *, 
     destination = workspace / "resources" / name
     report = register_pre_v4_resource(source, destination)
     try:
-        entry = {"resource_uuid": report["resource_uuid"], "path": destination.relative_to(workspace).as_posix()}
+        entry = {
+            "resource_uuid": report["resource_uuid"],
+            "path": destination.relative_to(workspace).as_posix(),
+            "attachment_state": "attached",
+        }
         existing = manifest.get("registered_resources", [])
         if not isinstance(existing, list):
             raise ValueError("workspace resource registry is invalid")
@@ -304,18 +346,34 @@ def compose_managed_workspaces(sources: Iterable[str | Path], output: str | Path
             (destination / name).mkdir()
         target_database = destination / "authoritative" / "corpus.sqlite"
         composition = ComposableWorkspace.compose([database for _, _, database in loaded], target_database)
-        registrations: dict[str, dict[str, str]] = {}
+        registrations: dict[str, dict[str, Any]] = {}
         for source_root, manifest, _ in loaded:
             for item in manifest.get("registered_resources", []):
+                resource_uuid = item.get("resource_uuid")
+                if not isinstance(resource_uuid, str):
+                    raise ValueError(f"cannot compose invalid resource declaration: {item}")
+                if item.get("attachment_state", "attached") == "detached":
+                    registrations.setdefault(resource_uuid, {
+                        "resource_uuid": resource_uuid,
+                        "path": f"resources/{resource_uuid}",
+                        "attachment_state": "detached",
+                        "descriptor": item.get("descriptor"),
+                    })
+                    continue
                 resource = inspect_registered_resource(source_root / item["path"])
                 if not resource["valid"]:
                     raise ValueError(f"cannot compose invalid resource: {item['path']}")
-                resource_uuid = resource["resource_uuid"]
-                if resource_uuid in registrations:
+                existing = registrations.get(resource_uuid)
+                if existing and existing.get("attachment_state") == "attached":
                     continue
                 target = destination / "resources" / resource_uuid
-                shutil.copytree(source_root / item["path"], target)
-                registrations[resource_uuid] = {"resource_uuid": resource_uuid, "path": target.relative_to(destination).as_posix()}
+                if not target.exists():
+                    shutil.copytree(source_root / item["path"], target)
+                registrations[resource_uuid] = {
+                    "resource_uuid": resource_uuid,
+                    "path": target.relative_to(destination).as_posix(),
+                    "attachment_state": "attached",
+                }
         store = ComposableWorkspace(target_database)
         identity = store.workspace_identity()
         default_resources, orientation_digest = _install_default_resources(destination)

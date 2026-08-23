@@ -15,6 +15,7 @@ from .runtime import doctor as runtime_doctor
 from .store import SQLitePGXStore
 from .v4.resources import inspect_pre_v4_resource, inspect_registered_resource, register_pre_v4_resource
 from .v4 import V4Head
+from .v4.capsule import inspect_capsule, receive_capsule, share_managed_workspace
 from .v4.workspace import (
     compose_managed_workspaces,
     fork_managed_workspace,
@@ -44,7 +45,7 @@ def _resource_error(exc: Exception) -> str:
 
 
 def _pm4_error(exc: Exception) -> str:
-    return json.dumps({"valid": False, "error": {"code": "pm4_operation_failed", "message": str(exc), "exception_type": type(exc).__name__, "suggested_action": "Inspect the workspace, use its exact current head for mutation, and retry in working mode."}}, indent=2, ensure_ascii=False)
+    return json.dumps({"valid": False, "error": {"code": "pm4_operation_failed", "message": str(exc), "exception_type": type(exc).__name__, "suggested_action": "Inspect the workspace, use its exact current head for mutation, and retry in working mode."}}, indent=2, ensure_ascii=True)
 
 
 def _pm4_expected(store, snapshot: str, sequence: int) -> V4Head:
@@ -57,7 +58,10 @@ def _emit_pm4(operation) -> None:
     except Exception as exc:
         typer.echo(_pm4_error(exc))
         raise typer.Exit(code=1) from exc
-    typer.echo(json.dumps(report, indent=2, ensure_ascii=False))
+    # PM4 is operated through machine-readable conversation tooling. ASCII-safe
+    # JSON remains lossless after parsing and does not depend on the host's
+    # Windows console code page.
+    typer.echo(json.dumps(report, indent=2, ensure_ascii=True))
 
 
 @app.command("doctor")
@@ -238,6 +242,41 @@ def pm4_compose(
 ) -> None:
     """Compose managed PM4 workspaces into a new multi-parent workspace."""
     _emit_pm4(lambda: compose_managed_workspaces(sources, output))
+
+
+@pm4_app.command("share")
+def pm4_share(
+    workspace: Path = typer.Argument(..., exists=True, file_okay=False),
+    output: Optional[Path] = typer.Option(None, "--output", "-o"),
+    expected_workspace: str = typer.Option(..., "--expected-workspace"),
+    expected_snapshot: str = typer.Option(..., "--expected-snapshot"),
+    expected_sequence: int = typer.Option(..., "--expected-sequence", min=0),
+) -> None:
+    """Package the current complete PM4 head as a verified, resource-thin capsule."""
+    def operation():
+        store = open_managed_workspace(workspace)
+        return share_managed_workspace(
+            workspace,
+            output,
+            expected_workspace_uuid=expected_workspace,
+            expected_head=V4Head(store.current_head().corpus_uuid, expected_snapshot, expected_sequence),
+        )
+    _emit_pm4(operation)
+
+
+@pm4_app.command("receive")
+def pm4_receive(
+    capsule: Path = typer.Argument(..., exists=True, dir_okay=False),
+    output: Optional[Path] = typer.Option(None, "--output", "-o"),
+) -> None:
+    """Verify a PM4 capsule and optionally materialize it as a new workspace."""
+    _emit_pm4(lambda: receive_capsule(capsule, output))
+
+
+@pm4_app.command("inspect-capsule")
+def pm4_inspect_capsule(capsule: Path = typer.Argument(..., exists=True, dir_okay=False)) -> None:
+    """Cold-verify a PM4 capsule without materializing it."""
+    _emit_pm4(lambda: inspect_capsule(capsule))
 
 
 @pm4_app.command("create-object")

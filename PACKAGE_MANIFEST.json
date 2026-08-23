@@ -1,15 +1,15 @@
 {
   "product": "Parmesan",
-  "version": "4.0.2",
-  "release_id": "bfcd8364-f46e-4e97-ae59-085f82fe4a69",
-  "artifact_filename": "PARMESAN_v4_0_2.zip",
-  "root_directory": "PARMESAN_v4_0_2",
-  "built_at_utc": "2026-08-22T17:07:55Z",
+  "version": "4.1.0",
+  "release_id": "72f76bcd-0c96-4532-8a19-2c7f2991c5a7",
+  "artifact_filename": "PARMESAN_v4_1_0.zip",
+  "root_directory": "PARMESAN_v4_1_0",
+  "built_at_utc": "2026-08-23T17:48:45Z",
   "operator": "conversational_llm",
   "amazon_corpus_bundled": false,
   "core_tools": 31,
   "all_tools": 54,
-  "wheel": "dist/parmesan-4.0.2-py3-none-any.whl",
+  "wheel": "dist/parmesan-4.1.0-py3-none-any.whl",
   "files": [
     {
       "path": ".github/workflows/tests.yml",
@@ -28,13 +28,13 @@
     },
     {
       "path": "CHANGELOG.md",
-      "bytes": 11354,
-      "sha256": "1a415b49a40d3fdf1d06616f816b397e8cd6e6b25909e471dc569fc7d6d687c2"
+      "bytes": 12652,
+      "sha256": "9a8eebbc50d380cb031572653434be54a92b9945687b55411eef6f97febbcc6d"
     },
     {
       "path": "CONTRIBUTING.md",
-      "bytes": 4138,
-      "sha256": "b4a118b871dfd5e0ea69613f453168be233bf3fbcdf29d268ff2a51ef107eb7c"
+      "bytes": 4157,
+      "sha256": "dd48746fe89de3df87beb411a4df2df1bc689f97034b7f41156f0d71204c36de"
     },
     {
       "path": "corpus-artifacts/construal-engineering-lab-v0.0.12/ANNOTATION.md",
@@ -57,9 +57,9 @@
       "sha256": "2a3fae65e669e58f9377f705cb9248a7508b72eb49f9b60bfb02857773db0c5e"
     },
     {
-      "path": "dist/parmesan-4.0.2-py3-none-any.whl",
-      "bytes": 131513,
-      "sha256": "0a6f85b2bd209ce24268034d7bb633f0c6d9bcb89fa1f201459a9664c9155516"
+      "path": "dist/parmesan-4.1.0-py3-none-any.whl",
+      "bytes": 137802,
+      "sha256": "376e9b13a28bde7d065a5d006abdc26ce79acc80d9fbb5db59536c3d82544ecd"
     },
     {
       "path": "docs/architecture/PARMESAN_4_COMPOSABLE_WORKSPACES.md",
@@ -93,8 +93,8 @@
     },
     {
       "path": "docs/PARMESAN_4_QUICKSTART.md",
-      "bytes": 3911,
-      "sha256": "36a317056e33b28cde202f105c8272baaccebab815acd5fb0e2f33c251419b9b"
+      "bytes": 6019,
+      "sha256": "e8db5872886307dcefcb1779ce41aa26cfe366a9c5bebe1bab0b23c622a00325"
     },
     {
       "path": "docs/PGX_Traversal_4C_Guide/4C_MODEL_CONTEXT.md",
@@ -167,14 +167,39 @@
       "sha256": "2c99f78a18c3f50370acd9168e495780f38873da881d20b3daa12785780e01a8"
     },
     {
+      "path": "maintenance/incidents/2026-08-22-yhx3-2-2-pm4-fork-resource-rehydration.md",
+      "bytes": 15099,
+      "sha256": "2eba6870d363095371c13bb1cb39235057a7f2270d9ecb315639b61d572edbb1"
+    },
+    {
+      "path": "maintenance/incidents/2026-08-23-yhx4-first-divergent-pm4-composition.md",
+      "bytes": 18113,
+      "sha256": "94ec11606aa58919fc2a0c99ac3c353b6696211636ff44a5b020c01d33231a34"
+    },
+    {
+      "path": "maintenance/incidents/2026-08-23-yhx4-stale-snapshot-export-sqlite-wal.md",
+      "bytes": 14448,
+      "sha256": "1f7b0ca32907a00ba179205b7cd61e9a712092da6bb61e3e6981fc05ccd5e3f9"
+    },
+    {
+      "path": "maintenance/incidents/2026-08-23-yhx5-nonnative-tail-recovery.md",
+      "bytes": 13084,
+      "sha256": "af03b4769d1c937c757a9f47fffde23434f646f758a577ca3f811b0e993c2a32"
+    },
+    {
+      "path": "maintenance/incidents/README.md",
+      "bytes": 1337,
+      "sha256": "bc2d4d08364ecb6126cfeecdd96b2de89cc062ce2f87fa33042215336e6a896d"
+    },
+    {
       "path": "maintenance/quarantine/README.md",
       "bytes": 75,
       "sha256": "36a594578c26288f508fc76239eb155272d523951493e8879b9a6d8ed01fb2b8"
     },
     {
       "path": "maintenance/README.md",
-      "bytes": 556,
-      "sha256": "268f78032497b46a18a8cf9cc682e05b5b6247567c46b4e6991bdc9f06e87f5b"
+      "bytes": 657,
+      "sha256": "2f1eb521a1f064deca6a11a1d37447a8db4299ac73f636816f3a99eae8df4c2a"
     },
     {
       "path": "maintenance/TOOL_CATALOG.json",
@@ -189,32 +214,32 @@
     {
       "path": "pyproject.toml",
       "bytes": 847,
-      "sha256": "e34926b51620cc4b58873b3ed3ec7b3af0f837b2edaa4d23e9e1430c0d9f7c00"
+      "sha256": "abe705aac8890112230200f4f6bbdbec6a98be32c3b51a721fb73c0a4fc5c109"
     },
     {
       "path": "README.md",
-      "bytes": 10627,
-      "sha256": "b0a61df2267fb194eab1fc5a5ca1d654ce4fe32729753922440987901f173a3e"
+      "bytes": 11582,
+      "sha256": "47fb9165e1f01f9316e858fe68553830636598fc8ab7bbe7428162e5ab0fb7ba"
     },
     {
       "path": "RELEASE.json",
       "bytes": 1072,
-      "sha256": "bd46dbfd31e745d4c51778131bf7169b8feee3c6a836dceb04fb6acae9f298cc"
+      "sha256": "452d01eb1d0d2100cd8a4ccd97c153eb55c4535774890886b4d400407de3c429"
     },
     {
       "path": "RELEASE.md",
       "bytes": 2396,
-      "sha256": "c2ad4773f59856a8b752ea16c0a5e77154e7ea85f9d8dc7403e479b9c523a3b3"
+      "sha256": "635c33700791b93b0423c8358a7bbd4d7959ce58f6ff4d59bdf3fc3b2042d81e"
     },
     {
       "path": "RELEASE_MANIFEST.json",
       "bytes": 1020,
-      "sha256": "87c17b76d5f09201a3e6bf47939dd79416772f4bea527bdbf212b41ba975f35e"
+      "sha256": "28828b017a37057223f7ca8c6ed3ac6d4c19eef61b4f3d29b64fb0fe26f611ca"
     },
     {
       "path": "RELEASE_VALIDATION.json",
       "bytes": 4409,
-      "sha256": "36d3bcc05165a3bb3a0a094b482d82ea0dab434229e43648c29b437a17d90858"
+      "sha256": "4d09e790733ab5e7940a03d88a995d394f41161c69c1e4127be1761cafc80460"
     },
     {
       "path": "requirements.txt",
@@ -233,13 +258,13 @@
     },
     {
       "path": "scripts/build_package_manifest.py",
-      "bytes": 4230,
-      "sha256": "51e38fbccbd3d0959a8837aeeb12b33e92c930f84d03e85b8178e6d8b24b6a46"
+      "bytes": 4253,
+      "sha256": "e2fec6ab29382b4461f4f97d302c7b893867912ef4834941d3a17cfdb1bad67a"
     },
     {
       "path": "scripts/build_release.py",
-      "bytes": 2557,
-      "sha256": "7f563a0030726cabfc615d5072eb78dd18bf2c91eaf0f16bed75b2b127439837"
+      "bytes": 2564,
+      "sha256": "d48feba8c6d5e00559e497d920db5adbf1e21bb41cf55f5ddb1b1f409343f2c4"
     },
     {
       "path": "scripts/build_release_archive.py",
@@ -248,8 +273,8 @@
     },
     {
       "path": "scripts/generate_release_metadata.py",
-      "bytes": 4702,
-      "sha256": "553e33d346243bc88f770b15cefffc6dd8ae88bddeee9da8bf1f2a3c200328eb"
+      "bytes": 4797,
+      "sha256": "2121193f72fc99d2cf4cefc21192fed61475f5ec2cbbba7413f4b740ae16b9a3"
     },
     {
       "path": "scripts/migrate_database.py",
@@ -278,13 +303,13 @@
     },
     {
       "path": "scripts/validate_release.py",
-      "bytes": 18192,
-      "sha256": "4d6985d63fc7722a658403fceaee92bca37f258ea4262752eb7b5e69a0d2b057"
+      "bytes": 18245,
+      "sha256": "0cc2fd6c20ced283f88f7fbc3d7cf3470aa0ffb375218f410d703ec579347bef"
     },
     {
       "path": "scripts/verify_package_manifest.py",
-      "bytes": 3688,
-      "sha256": "1fcc185c634726d03ff92208940efb83f0e4b91d97f3270c7a1e3d3f1b817d59"
+      "bytes": 3771,
+      "sha256": "34c760962b2cc2702e579d6d2a25175906caa7bc023ead6c5ba77de460e439ac"
     },
     {
       "path": "src/parmesan/__init__.py",
@@ -308,8 +333,8 @@
     },
     {
       "path": "src/parmesan/cli.py",
-      "bytes": 17996,
-      "sha256": "6866bf24414a16e00caedd4e0f1b505c685326ad9e2f2ed1744d7ba1d686c27e"
+      "bytes": 19691,
+      "sha256": "6444afc90305209edc886e1576b4fa9fad380585b0b99ecc0b616eb9d7d9cc72"
     },
     {
       "path": "src/parmesan/corpus.py",
@@ -323,8 +348,8 @@
     },
     {
       "path": "src/parmesan/default_resources/M2_SEMANTIC_VIRTUAL_INFRASTRUCTURE.md",
-      "bytes": 26726,
-      "sha256": "6909dc1361ca0ef24abb01a0283c30c6792874b5fe385a2fe3289e399600a320"
+      "bytes": 26722,
+      "sha256": "4e16c4f06dcaa241a2f1acbd4a1a0564881f94ba0184f08c3a9d60c39f29ec7c"
     },
     {
       "path": "src/parmesan/default_resources/M3_VIEW_ALGEBRA.md",
@@ -418,8 +443,13 @@
     },
     {
       "path": "src/parmesan/v4/__init__.py",
-      "bytes": 952,
-      "sha256": "68d61f8724077c3154a61d3f09c485cd97b136ac78099138b3f8338e449d05b0"
+      "bytes": 1106,
+      "sha256": "8021087a1d87b8692cf8a76b844ebaf59bb8d838869bdbbe108b37db7a425d6e"
+    },
+    {
+      "path": "src/parmesan/v4/capsule.py",
+      "bytes": 18787,
+      "sha256": "f84ff8bed76ddf5cb32a66ad048935e8838d31f35eb3fb836b6c9ff89f4db9ef"
     },
     {
       "path": "src/parmesan/v4/resources.py",
@@ -438,13 +468,13 @@
     },
     {
       "path": "src/parmesan/v4/workspace.py",
-      "bytes": 16420,
-      "sha256": "e9d8d5687569b412877590cad6776debdf1a016eb2003ecf0bfc4f43e9712820"
+      "bytes": 18973,
+      "sha256": "2bab994e074f50f57fda7e6d44ebf8260eb3c23c21c1d48fe7595450a2bf522c"
     },
     {
       "path": "src/parmesan/version.py",
       "bytes": 208,
-      "sha256": "47f88a13331c09c8752170455ec7a0b99f68376ca247548b845dce11b92a21fc"
+      "sha256": "f0284f3a24967ed00e20e3cb28e7a8a8eef22b00ba02c7f20e3b7cb42aff1db3"
     },
     {
       "path": "src/parmesan/workspace.py",
@@ -533,8 +563,8 @@
     },
     {
       "path": "tests/test_release_identity.py",
-      "bytes": 4461,
-      "sha256": "c28dcd410a65b4b0ffd7c3c62408d7f625cb06ba70c95b61b8ddb84e6f27609d"
+      "bytes": 4556,
+      "sha256": "c7dd5f873b3760ac9bd131a34b4d3afe22f942f1b997ef0699108c6464060209"
     },
     {
       "path": "tests/test_traversal_expression_authoring.py",
@@ -545,6 +575,11 @@
       "path": "tests/test_traversal_tools.py",
       "bytes": 2257,
       "sha256": "b18436733e8711b4d29b70e02540895f3519231946c881d75beb881d590df92c"
+    },
+    {
+      "path": "tests/test_v4_capsules.py",
+      "bytes": 5801,
+      "sha256": "e47fa03750e6d14ff75ec96e868a94c172fa7f2dc52542cd14050ad157b67a6e"
     },
     {
       "path": "tests/test_v4_composable_foundation.py",

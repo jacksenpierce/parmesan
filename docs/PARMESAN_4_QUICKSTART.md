@@ -67,6 +67,53 @@ deduplicates identical registered resources by content-derived identity. Every
 new fork or composition resets orientation so a new zero-context operator must
 receive M2 and M3 before proceeding.
 
+## Share with another conversation
+
+The shortest safe PM4 handoff is:
+
+```bash
+parmesan pm4 inspect my-workspace
+parmesan pm4 share my-workspace \
+  --expected-workspace WORKSPACE_UUID \
+  --expected-snapshot SNAPSHOT_UUID \
+  --expected-sequence SEQUENCE
+```
+
+The result names one verified ZIP and tells the LLM to attach it to the other
+conversation. The recipient can inspect without writing anything, then choose a
+new local workspace directory:
+
+```bash
+parmesan pm4 receive PARMESAN_PM4_SHARE_….zip
+parmesan pm4 receive PARMESAN_PM4_SHARE_….zip --output received-workspace
+parmesan pm4 orient received-workspace
+```
+
+The capsule contains the complete committed semantic authority at one exact
+head, its branch/workspace identity, a deterministic manifest and inventory,
+and the required M2/M3 orientation resources. It does not copy local machinery,
+scratch files, projections, earlier handoff archives, or registered historical
+resource bodies. Those registered resources remain explicit as detached
+descriptors: `pm4 inspect` reports the workspace itself as valid while reporting
+resource hydration separately.
+
+The expected workspace and head come directly from `pm4 inspect`. They are a
+machine-facing stale-context interlock: if the conversation points at the wrong
+fork or the workspace advances between inspection and sharing, no capsule is
+published.
+
+`share` is safe in ordinary working mode. It uses SQLite's online backup API so
+committed state in a live WAL is included, then validates a standalone cold copy
+and refuses to package journal sidecars. Repeating `share` at the same semantic
+head is idempotent. `receive` rejects traversal paths, symbolic links, duplicate
+archive entries, undeclared files, altered bytes, and mismatched workspace,
+corpus, head, or semantic fingerprint.
+
+Capsule v1 is intentionally a complete-head handoff. It does not yet select a
+few graph roots or calculate the transitive closure of their node-pointer
+dependencies. Until that later format exists, use PM4 composition when two
+continued complete heads need to become lawful parents of a new workspace.
+
 ## Working and publish modes
 
 Working mode is the default and the only mode that permits semantic mutation.
