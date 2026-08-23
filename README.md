@@ -18,9 +18,10 @@ Then read these in order:
 1. [`M2_SEMANTIC_VIRTUAL_INFRASTRUCTURE.md`](src/parmesan/default_resources/M2_SEMANTIC_VIRTUAL_INFRASTRUCTURE.md) — canonical Method 2 semantic virtual infrastructure.
 2. [`M3_VIEW_ALGEBRA.md`](src/parmesan/default_resources/M3_VIEW_ALGEBRA.md) — canonical Method 3 view algebra, dependent on M2.
 3. [`docs/PARMESAN_4_QUICKSTART.md`](docs/PARMESAN_4_QUICKSTART.md) — new PM4 managed workspaces, composition, and migration.
-4. [`START_HERE.md`](START_HERE.md) — zero-context operating path and compatibility tools.
-5. [`docs/OPERATIONAL_PHILOSOPHY.md`](docs/OPERATIONAL_PHILOSOPHY.md) — authority, evidence, lineage, session machinery, sentinels, and handoff.
-6. [`docs/CONSTRUAL_ENGINEERING.md`](docs/CONSTRUAL_ENGINEERING.md) — the 4C model and PGX practice for meaning-sensitive work.
+4. [`docs/SEMANTIC_CAPSULES.md`](docs/SEMANTIC_CAPSULES.md) — safe complete-head and selective-piece sharing between conversations.
+5. [`START_HERE.md`](START_HERE.md) — zero-context operating path and compatibility tools.
+6. [`docs/OPERATIONAL_PHILOSOPHY.md`](docs/OPERATIONAL_PHILOSOPHY.md) — authority, evidence, lineage, session machinery, sentinels, and handoff.
+7. [`docs/CONSTRUAL_ENGINEERING.md`](docs/CONSTRUAL_ENGINEERING.md) — the 4C model and PGX practice for meaning-sensitive work.
 
 ## What Parmesan is for
 
@@ -91,9 +92,27 @@ API, cold-validates it, excludes live journal sidecars and local machinery, and
 returns one attachment path plus its SHA-256. Registered historical resources
 are carried as detached identity descriptors rather than copied wholesale. A
 received workspace remains valid and semantically operable while reporting
-resource hydration separately. This 4.1 capsule is deliberately a complete-head
-handoff; selective graph roots and automatic pointer-dependency closure are the
-next capsule layer.
+resource hydration separately. This remains the whole-workspace handoff; 4.2's
+selective piece workflow below is the smaller alternative.
+
+When the other conversation needs only part of the workspace, plan and share a
+selective piece instead:
+
+```bash
+parmesan pm4 plan-piece my-workspace --root GRAPH_OR_NODE \
+  --expected-workspace WORKSPACE_UUID --expected-snapshot SNAPSHOT_UUID \
+  --expected-sequence SEQUENCE
+parmesan pm4 share-piece my-workspace --root GRAPH_OR_NODE \
+  --expected-workspace WORKSPACE_UUID --expected-snapshot SNAPSHOT_UUID \
+  --expected-sequence SEQUENCE
+```
+
+Parmesan recursively carries graph members and exact node-pointer dependencies,
+preserves branch-scoped identities, and withholds the artifact if a semantic
+pointer is missing or ambiguous. The recipient can inspect the attachment
+without writing, receive it as a small PM4 workspace, and use ordinary PM4
+composition to combine it with another workspace. Exact identities already
+present are deduplicated; aliases are never treated as global identity.
 
 Ordinary work remains in the default `working` mode and never automatically rebuilds or serializes an external knowledge base. When a clean database copy or another publication surface is explicitly needed, use `pgx.mode.set` to enter `publish` mode before invoking the advanced materialization tools. Publish mode freezes semantic mutation so each output comes from one fixed database state. Return to `working` mode afterward.
 
@@ -119,6 +138,7 @@ The release command stages a clean copy, removes transients, runs declared check
 | Operate Parmesan with minimal prior context | [`START_HERE.md`](START_HERE.md) |
 | Apply the canonical M2 and M3 virtual-workspace methods | [`M2`](src/parmesan/default_resources/M2_SEMANTIC_VIRTUAL_INFRASTRUCTURE.md), then [`M3`](src/parmesan/default_resources/M3_VIEW_ALGEBRA.md) |
 | Start, fork, compose, or migrate a PM4 workspace | [`docs/PARMESAN_4_QUICKSTART.md`](docs/PARMESAN_4_QUICKSTART.md) |
+| Share a complete head or selective semantic piece | [`docs/SEMANTIC_CAPSULES.md`](docs/SEMANTIC_CAPSULES.md) |
 | Understand operational authority and corpus lifecycle | [`docs/OPERATIONAL_PHILOSOPHY.md`](docs/OPERATIONAL_PHILOSOPHY.md) |
 | Do conceptually or meaning-sensitive work with PGX | [`docs/CONSTRUAL_ENGINEERING.md`](docs/CONSTRUAL_ENGINEERING.md) |
 | Author or interpret traversal expressions | [`docs/README.md`](docs/README.md) and the linked 4C guides |

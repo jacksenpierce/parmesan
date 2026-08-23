@@ -1,15 +1,15 @@
 {
   "product": "Parmesan",
-  "version": "4.1.0",
-  "release_id": "72f76bcd-0c96-4532-8a19-2c7f2991c5a7",
-  "artifact_filename": "PARMESAN_v4_1_0.zip",
-  "root_directory": "PARMESAN_v4_1_0",
-  "built_at_utc": "2026-08-23T17:48:45Z",
+  "version": "4.2.0",
+  "release_id": "41141a3e-9c36-4a30-a149-1d9321c6bcdb",
+  "artifact_filename": "PARMESAN_v4_2_0.zip",
+  "root_directory": "PARMESAN_v4_2_0",
+  "built_at_utc": "2026-08-23T18:07:50Z",
   "operator": "conversational_llm",
   "amazon_corpus_bundled": false,
   "core_tools": 31,
   "all_tools": 54,
-  "wheel": "dist/parmesan-4.1.0-py3-none-any.whl",
+  "wheel": "dist/parmesan-4.2.0-py3-none-any.whl",
   "files": [
     {
       "path": ".github/workflows/tests.yml",
@@ -28,8 +28,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "bytes": 12652,
-      "sha256": "9a8eebbc50d380cb031572653434be54a92b9945687b55411eef6f97febbcc6d"
+      "bytes": 14058,
+      "sha256": "c272fe18c6794134b36b4368fa83b5e28182be213265505a092a9e5e8f647bff"
     },
     {
       "path": "CONTRIBUTING.md",
@@ -57,9 +57,9 @@
       "sha256": "2a3fae65e669e58f9377f705cb9248a7508b72eb49f9b60bfb02857773db0c5e"
     },
     {
-      "path": "dist/parmesan-4.1.0-py3-none-any.whl",
-      "bytes": 137802,
-      "sha256": "376e9b13a28bde7d065a5d006abdc26ce79acc80d9fbb5db59536c3d82544ecd"
+      "path": "dist/parmesan-4.2.0-py3-none-any.whl",
+      "bytes": 146144,
+      "sha256": "5e92a6034be4d666bf9f815d1405889a71a382ad941197c379accfa88e505e5e"
     },
     {
       "path": "docs/architecture/PARMESAN_4_COMPOSABLE_WORKSPACES.md",
@@ -93,8 +93,8 @@
     },
     {
       "path": "docs/PARMESAN_4_QUICKSTART.md",
-      "bytes": 6019,
-      "sha256": "e8db5872886307dcefcb1779ce41aa26cfe366a9c5bebe1bab0b23c622a00325"
+      "bytes": 8003,
+      "sha256": "fc6879f0131c4e9fb0cf418d8c8e3511ea503ceb11a088c8aa9fb9990b51df3e"
     },
     {
       "path": "docs/PGX_Traversal_4C_Guide/4C_MODEL_CONTEXT.md",
@@ -108,8 +108,13 @@
     },
     {
       "path": "docs/README.md",
-      "bytes": 3053,
-      "sha256": "0f4df3059b5653ceecd4e041be3599d2ef28676f5a5587e3b405e72f944312d8"
+      "bytes": 3174,
+      "sha256": "3e50820d4095cb494495c9fda069a7cdfe29b5dd5c73848862745053dfac1d13"
+    },
+    {
+      "path": "docs/SEMANTIC_CAPSULES.md",
+      "bytes": 4251,
+      "sha256": "2928b32d34005d387c9fbae9eea66090d7a24ae52d816f66e283cfdb16105275"
     },
     {
       "path": "examples/BARE_POINTER_SCOPE_TEST.sqlite",
@@ -214,32 +219,32 @@
     {
       "path": "pyproject.toml",
       "bytes": 847,
-      "sha256": "abe705aac8890112230200f4f6bbdbec6a98be32c3b51a721fb73c0a4fc5c109"
+      "sha256": "114101fab1cde7a185324a330359176bc11d5cfccfce4b0ffefebe5b00e9bc5b"
     },
     {
       "path": "README.md",
-      "bytes": 11582,
-      "sha256": "47fb9165e1f01f9316e858fe68553830636598fc8ab7bbe7428162e5ab0fb7ba"
+      "bytes": 12706,
+      "sha256": "0e4a47b112fc8455d25067eed50bbe1e571837fcaeeb9bb6dd7d46b426bb8611"
     },
     {
       "path": "RELEASE.json",
       "bytes": 1072,
-      "sha256": "452d01eb1d0d2100cd8a4ccd97c153eb55c4535774890886b4d400407de3c429"
+      "sha256": "830372344e6317abf1b3c5f68e2a03ad9c844bcef9be43649c519452d74f3428"
     },
     {
       "path": "RELEASE.md",
       "bytes": 2396,
-      "sha256": "635c33700791b93b0423c8358a7bbd4d7959ce58f6ff4d59bdf3fc3b2042d81e"
+      "sha256": "984aace72d2932cffa27540b5dd1514981e91818d3bcb7cae888a5c71b369d60"
     },
     {
       "path": "RELEASE_MANIFEST.json",
       "bytes": 1020,
-      "sha256": "28828b017a37057223f7ca8c6ed3ac6d4c19eef61b4f3d29b64fb0fe26f611ca"
+      "sha256": "44951e8304d8b671d047753ee68a4f96c0cca22f6c0fed142b4ddf934987821e"
     },
     {
       "path": "RELEASE_VALIDATION.json",
       "bytes": 4409,
-      "sha256": "4d09e790733ab5e7940a03d88a995d394f41161c69c1e4127be1761cafc80460"
+      "sha256": "e7aadf3dcde20c11032c5184887bda2a54a511f6e91abe6218933fc186e14afc"
     },
     {
       "path": "requirements.txt",
@@ -303,8 +308,8 @@
     },
     {
       "path": "scripts/validate_release.py",
-      "bytes": 18245,
-      "sha256": "0cc2fd6c20ced283f88f7fbc3d7cf3470aa0ffb375218f410d703ec579347bef"
+      "bytes": 18300,
+      "sha256": "6488a2bae416a30bf3b2cd466a5dd7ebb4f687b81017dd111a93b205d71325e0"
     },
     {
       "path": "scripts/verify_package_manifest.py",
@@ -333,8 +338,8 @@
     },
     {
       "path": "src/parmesan/cli.py",
-      "bytes": 19691,
-      "sha256": "6444afc90305209edc886e1576b4fa9fad380585b0b99ecc0b616eb9d7d9cc72"
+      "bytes": 21710,
+      "sha256": "cc672a2fda62574ad19031e0ccc008a768734f388cc7c0080a784586cb88a252"
     },
     {
       "path": "src/parmesan/corpus.py",
@@ -348,8 +353,8 @@
     },
     {
       "path": "src/parmesan/default_resources/M2_SEMANTIC_VIRTUAL_INFRASTRUCTURE.md",
-      "bytes": 26722,
-      "sha256": "4e16c4f06dcaa241a2f1acbd4a1a0564881f94ba0184f08c3a9d60c39f29ec7c"
+      "bytes": 26726,
+      "sha256": "93dfafa393b88de37784d30431f2344791cc18801437b9b8a1a9810374a4a251"
     },
     {
       "path": "src/parmesan/default_resources/M3_VIEW_ALGEBRA.md",
@@ -443,13 +448,18 @@
     },
     {
       "path": "src/parmesan/v4/__init__.py",
-      "bytes": 1106,
-      "sha256": "8021087a1d87b8692cf8a76b844ebaf59bb8d838869bdbbe108b37db7a425d6e"
+      "bytes": 1190,
+      "sha256": "92a425fb679e89cc80bd41cfb28934432109131329e52bd86d908c7dc6a170ce"
     },
     {
       "path": "src/parmesan/v4/capsule.py",
-      "bytes": 18787,
-      "sha256": "f84ff8bed76ddf5cb32a66ad048935e8838d31f35eb3fb836b6c9ff89f4db9ef"
+      "bytes": 20438,
+      "sha256": "499dc2484219027dc3aa2a27e017859479842d0c894460d789cce87cbf30a23b"
+    },
+    {
+      "path": "src/parmesan/v4/piece.py",
+      "bytes": 32563,
+      "sha256": "5df86e8cf482fcc85a02a48a2c5fca284f73ff2d4d41379adfe59bfbee9ce7bb"
     },
     {
       "path": "src/parmesan/v4/resources.py",
@@ -468,13 +478,13 @@
     },
     {
       "path": "src/parmesan/v4/workspace.py",
-      "bytes": 18973,
-      "sha256": "2bab994e074f50f57fda7e6d44ebf8260eb3c23c21c1d48fe7595450a2bf522c"
+      "bytes": 19065,
+      "sha256": "2fff71f3caa7220c67f2846cc1ec6d519b01b87c8c0890eac94452ae74fd4f87"
     },
     {
       "path": "src/parmesan/version.py",
       "bytes": 208,
-      "sha256": "f0284f3a24967ed00e20e3cb28e7a8a8eef22b00ba02c7f20e3b7cb42aff1db3"
+      "sha256": "9086126053bec222d83b30c8478b8facf126eea8b6ca9ebd207e3a8f5bf6f610"
     },
     {
       "path": "src/parmesan/workspace.py",
@@ -578,8 +588,8 @@
     },
     {
       "path": "tests/test_v4_capsules.py",
-      "bytes": 5801,
-      "sha256": "e47fa03750e6d14ff75ec96e868a94c172fa7f2dc52542cd14050ad157b67a6e"
+      "bytes": 5951,
+      "sha256": "e22738b87682df4b4292321350d10439e767fbda419124cdf817b30fb9411a6e"
     },
     {
       "path": "tests/test_v4_composable_foundation.py",
@@ -595,6 +605,11 @@
       "path": "tests/test_v4_managed_workspaces.py",
       "bytes": 7594,
       "sha256": "6f7db5dbd6e5de7c6c9346ea4c3fd8bd956cdad961bfd78b3944b1d394197c4a"
+    },
+    {
+      "path": "tests/test_v4_selective_capsules.py",
+      "bytes": 10313,
+      "sha256": "8898d5dc57f2d609c044c6c0eba632b7c78b8c99a24ce053424f0d90b300225b"
     },
     {
       "path": "tests/test_workspace_adoption.py",

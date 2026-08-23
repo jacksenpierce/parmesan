@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "parmesan"
-version = "4.1.0"
+version = "4.2.0"
 description = "Local SQLite-first PGX knowledge tools for conversational LLMs"
 readme = "README.md"
 license = { file = "LICENSE" }

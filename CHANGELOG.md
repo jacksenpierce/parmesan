@@ -1,5 +1,28 @@
 # Changelog
 
+## 4.2.0
+
+- Added `pm4 plan-piece` and `pm4 share-piece` for deterministic selective
+  semantic capsules rooted at one or more object UUIDs or unambiguous aliases.
+- Added recursive dependency closure over nested graph memberships and semantic
+  Markdown links. Exact `pm4://object/<UUID>` and UUID destinations are
+  portable; unique aliases are resolved at the inspected source head. Missing
+  or ambiguous semantic dependencies fail closed before any artifact is named
+  valid.
+- Materialized every piece as a small, independently valid PM4 workspace that
+  preserves original object, revision, membership, operation, replica, and
+  branch-scoped alias identities. Existing native PM4 composition therefore
+  deduplicates dependencies already present in the recipient and rejects
+  immutable identity collisions without a special import path.
+- Separated semantic material, provenance/custody, and local machinery in the
+  capsule layout. Graph material lives in the piece database, the complete
+  dependency/source receipt lives under `provenance/`, and machinery, scratch,
+  projections, journal sidecars, unrelated objects, and resource bodies are not
+  carried.
+- Added bounded read-only piece previews to capsule inspection and receive
+  preflight, deterministic closure/capsule identities, exact-head source backup,
+  idempotent sharing, and cold validation before delivery.
+
 ## 4.1.0
 
 - Added deterministic PM4 semantic capsules and the LLM-oriented

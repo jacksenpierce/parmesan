@@ -16,6 +16,7 @@ from .store import SQLitePGXStore
 from .v4.resources import inspect_pre_v4_resource, inspect_registered_resource, register_pre_v4_resource
 from .v4 import V4Head
 from .v4.capsule import inspect_capsule, receive_capsule, share_managed_workspace
+from .v4.piece import plan_piece, share_piece
 from .v4.workspace import (
     compose_managed_workspaces,
     fork_managed_workspace,
@@ -257,6 +258,48 @@ def pm4_share(
         store = open_managed_workspace(workspace)
         return share_managed_workspace(
             workspace,
+            output,
+            expected_workspace_uuid=expected_workspace,
+            expected_head=V4Head(store.current_head().corpus_uuid, expected_snapshot, expected_sequence),
+        )
+    _emit_pm4(operation)
+
+
+@pm4_app.command("plan-piece")
+def pm4_plan_piece(
+    workspace: Path = typer.Argument(..., exists=True, file_okay=False),
+    roots: list[str] = typer.Option(..., "--root", help="Object UUID or globally unambiguous alias; repeat for multiple roots."),
+    expected_workspace: str = typer.Option(..., "--expected-workspace"),
+    expected_snapshot: str = typer.Option(..., "--expected-snapshot"),
+    expected_sequence: int = typer.Option(..., "--expected-sequence", min=0),
+) -> None:
+    """Plan a bounded semantic piece and its exact dependency closure without writing."""
+    def operation():
+        store = open_managed_workspace(workspace)
+        return plan_piece(
+            workspace,
+            roots,
+            expected_workspace_uuid=expected_workspace,
+            expected_head=V4Head(store.current_head().corpus_uuid, expected_snapshot, expected_sequence),
+        )
+    _emit_pm4(operation)
+
+
+@pm4_app.command("share-piece")
+def pm4_share_piece(
+    workspace: Path = typer.Argument(..., exists=True, file_okay=False),
+    roots: list[str] = typer.Option(..., "--root", help="Object UUID or globally unambiguous alias; repeat for multiple roots."),
+    output: Optional[Path] = typer.Option(None, "--output", "-o"),
+    expected_workspace: str = typer.Option(..., "--expected-workspace"),
+    expected_snapshot: str = typer.Option(..., "--expected-snapshot"),
+    expected_sequence: int = typer.Option(..., "--expected-sequence", min=0),
+) -> None:
+    """Share selected roots plus their deterministic structural and pointer dependency closure."""
+    def operation():
+        store = open_managed_workspace(workspace)
+        return share_piece(
+            workspace,
+            roots,
             output,
             expected_workspace_uuid=expected_workspace,
             expected_head=V4Head(store.current_head().corpus_uuid, expected_snapshot, expected_sequence),

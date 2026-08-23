@@ -1,8 +1,8 @@
 {
   "valid": true,
-  "version": "4.1.0",
-  "release_id": "72f76bcd-0c96-4532-8a19-2c7f2991c5a7",
-  "artifact_filename": "PARMESAN_v4_1_0.zip",
+  "version": "4.2.0",
+  "release_id": "41141a3e-9c36-4a30-a149-1d9321c6bcdb",
+  "artifact_filename": "PARMESAN_v4_2_0.zip",
   "checks": {
     "required_files": true,
     "release_metadata_consistency": {
@@ -40,7 +40,7 @@
         "markdown_artifact_filename": true,
         "markdown_wheel": true
       },
-      "file_count": 120
+      "file_count": 123
     },
     "m2_m3_default_resources": {
       "canonical_names": true,
@@ -125,14 +125,14 @@
     },
     "wheel_exists": true,
     "wheel_import": {
-      "version": "4.1.0",
-      "release_id": "72f76bcd-0c96-4532-8a19-2c7f2991c5a7",
-      "artifact_filename": "PARMESAN_v4_1_0.zip",
+      "version": "4.2.0",
+      "release_id": "41141a3e-9c36-4a30-a149-1d9321c6bcdb",
+      "artifact_filename": "PARMESAN_v4_2_0.zip",
       "core_tool_count": 31,
       "doctor_ready": true,
       "m2_packaged": true,
       "m3_packaged": true
     },
-    "tests": "........................................................................ [ 65%]\n......................................                                   [100%]"
+    "tests": "........................................................................ [ 62%]\n...........................................                              [100%]"
   }
 }
