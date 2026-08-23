@@ -1,35 +1,36 @@
-# Parmesan 4.1.0 package manifest
+# Parmesan 4.2.0 package manifest
 
-- Release ID: `72f76bcd-0c96-4532-8a19-2c7f2991c5a7`
-- Artifact filename: `PARMESAN_v4_1_0.zip`
-- Files: **120**
+- Release ID: `41141a3e-9c36-4a30-a149-1d9321c6bcdb`
+- Artifact filename: `PARMESAN_v4_2_0.zip`
+- Files: **123**
 - Core conversational tools: **31**
 - Total tools: **54**
 - Amazon Corpus bundled: **no**
-- Wheel: `dist/parmesan-4.1.0-py3-none-any.whl`
+- Wheel: `dist/parmesan-4.2.0-py3-none-any.whl`
 
 ## Inventory
 
 - `.github/workflows/tests.yml` — 295 bytes — `ce1266baa3d50d8ded5360d8a5bb5fc1789f1373866dc0915c6cc9e020ec3612`
 - `.gitignore` — 839 bytes — `817114ed6634dd594dc04225b0c70856918e7957c9bc41a0620e2ac39b12b50f`
 - `ARCHITECTURE.md` — 4,494 bytes — `26616021df3bfdca86b3ff66b6dab3c5c9591bcdaa149e289bfc74f42882f02c`
-- `CHANGELOG.md` — 12,652 bytes — `9a8eebbc50d380cb031572653434be54a92b9945687b55411eef6f97febbcc6d`
+- `CHANGELOG.md` — 14,058 bytes — `c272fe18c6794134b36b4368fa83b5e28182be213265505a092a9e5e8f647bff`
 - `CONTRIBUTING.md` — 4,157 bytes — `dd48746fe89de3df87beb411a4df2df1bc689f97034b7f41156f0d71204c36de`
 - `corpus-artifacts/construal-engineering-lab-v0.0.12/ANNOTATION.md` — 2,590 bytes — `9322b081cf3db7503530bd1d0f6ea88bb15ffea8dd0f1c5975f58a416ffb928f`
 - `corpus-artifacts/construal-engineering-lab-v0.0.12/lexicon-lab.pgx.txt` — 22,486 bytes — `480c7c514832a0f8558e164a6d1c881001a374cb762be533d82425f099ca13fb`
 - `corpus-artifacts/construal-engineering-lab-v0.0.12/PROVENANCE.json` — 893 bytes — `cd62cd884ff33c28d6a709b5f1a97b44a7bfac6efc2bb352023f5e4068c9d17c`
 - `corpus-artifacts/README.md` — 1,697 bytes — `2a3fae65e669e58f9377f705cb9248a7508b72eb49f9b60bfb02857773db0c5e`
-- `dist/parmesan-4.1.0-py3-none-any.whl` — 137,802 bytes — `376e9b13a28bde7d065a5d006abdc26ce79acc80d9fbb5db59536c3d82544ecd`
+- `dist/parmesan-4.2.0-py3-none-any.whl` — 146,144 bytes — `5e92a6034be4d666bf9f815d1405889a71a382ad941197c379accfa88e505e5e`
 - `docs/architecture/PARMESAN_4_COMPOSABLE_WORKSPACES.md` — 3,924 bytes — `e89dfe371119c220251dcf0bc979776459dd9ac0f557f0f422b32bb42c398bf2`
 - `docs/CONSTRUAL_ENGINEERING.md` — 7,973 bytes — `741b62814a11781884767e6191fdf29e91d1fd309cd43bf7682dc868a7a0d620`
 - `docs/CONSTRUAL_ENGINEERING_WITH_PARMESAN.md` — 20,905 bytes — `111da5a6efe494b5c180ff4708fd802d63dc5d9f70e6ddcc0beccb17c136a6f8`
 - `docs/CORPUS_OPERATIONS.md` — 3,167 bytes — `d9990fb26f2335f24caa5cbc50d2fc29aa709ad325596d0fabf379219c493f2e`
 - `docs/MIGRATING_TO_PARMESAN_4.md` — 2,091 bytes — `1c52ec3ec29deb1d7487750cfee9ad33866ae0506526b0b9c7e98f6ec4a3763d`
 - `docs/OPERATIONAL_PHILOSOPHY.md` — 7,703 bytes — `40cffadd1c7c0840b057aef1d89a10e4b59a552b85a66fe186c5ce0c491fdb6e`
-- `docs/PARMESAN_4_QUICKSTART.md` — 6,019 bytes — `e8db5872886307dcefcb1779ce41aa26cfe366a9c5bebe1bab0b23c622a00325`
+- `docs/PARMESAN_4_QUICKSTART.md` — 8,003 bytes — `fc6879f0131c4e9fb0cf418d8c8e3511ea503ceb11a088c8aa9fb9990b51df3e`
 - `docs/PGX_Traversal_4C_Guide/4C_MODEL_CONTEXT.md` — 8,999 bytes — `be950503973777c3cde374b7ba4d496968933910b523e044fe1710ea1069b9c3`
 - `docs/PGX_Traversal_4C_Guide/USING_PGX_TRAVERSAL_NOTATION_AND_EXPRESSIONS.md` — 16,890 bytes — `08dfc944923b0141672971776b999c2a9578b8a36fea36f44fe1f338297cebe7`
-- `docs/README.md` — 3,053 bytes — `0f4df3059b5653ceecd4e041be3599d2ef28676f5a5587e3b405e72f944312d8`
+- `docs/README.md` — 3,174 bytes — `3e50820d4095cb494495c9fda069a7cdfe29b5dd5c73848862745053dfac1d13`
+- `docs/SEMANTIC_CAPSULES.md` — 4,251 bytes — `2928b32d34005d387c9fbae9eea66090d7a24ae52d816f66e283cfdb16105275`
 - `examples/BARE_POINTER_SCOPE_TEST.sqlite` — 221,184 bytes — `a3379342194a64569ecdf7eb8d463f6e3e71dbfd8b37df89dd7cec24f9443fce`
 - `examples/CORPUS.toml` — 634 bytes — `021a8cbcc4985739fabed8e268db06144765105ff39ac7a251bd6c0636323e6a`
 - `examples/DIG_BARE_POINTER.pgx.txt` — 7,399 bytes — `c7942bde5f1a7fc889ba30b49c647ac0c7d83a73ce82343db66cdff4725a1816`
@@ -50,12 +51,12 @@
 - `maintenance/README.md` — 657 bytes — `2f1eb521a1f064deca6a11a1d37447a8db4299ac73f636816f3a99eae8df4c2a`
 - `maintenance/TOOL_CATALOG.json` — 63,654 bytes — `1f34a0e2a966515fddca08c9f5f99afb5e5a94fa0d762e06f6494c3114c85708`
 - `PARMESAN_LLM.py` — 2,359 bytes — `f155ddaeb55b44bbd52df96ef87e45aaf223b76b1e445d67be0e4facb5cc9a5d`
-- `pyproject.toml` — 847 bytes — `abe705aac8890112230200f4f6bbdbec6a98be32c3b51a721fb73c0a4fc5c109`
-- `README.md` — 11,582 bytes — `47fb9165e1f01f9316e858fe68553830636598fc8ab7bbe7428162e5ab0fb7ba`
-- `RELEASE.json` — 1,072 bytes — `452d01eb1d0d2100cd8a4ccd97c153eb55c4535774890886b4d400407de3c429`
-- `RELEASE.md` — 2,396 bytes — `635c33700791b93b0423c8358a7bbd4d7959ce58f6ff4d59bdf3fc3b2042d81e`
-- `RELEASE_MANIFEST.json` — 1,020 bytes — `28828b017a37057223f7ca8c6ed3ac6d4c19eef61b4f3d29b64fb0fe26f611ca`
-- `RELEASE_VALIDATION.json` — 4,409 bytes — `4d09e790733ab5e7940a03d88a995d394f41161c69c1e4127be1761cafc80460`
+- `pyproject.toml` — 847 bytes — `114101fab1cde7a185324a330359176bc11d5cfccfce4b0ffefebe5b00e9bc5b`
+- `README.md` — 12,706 bytes — `0e4a47b112fc8455d25067eed50bbe1e571837fcaeeb9bb6dd7d46b426bb8611`
+- `RELEASE.json` — 1,072 bytes — `830372344e6317abf1b3c5f68e2a03ad9c844bcef9be43649c519452d74f3428`
+- `RELEASE.md` — 2,396 bytes — `984aace72d2932cffa27540b5dd1514981e91818d3bcb7cae888a5c71b369d60`
+- `RELEASE_MANIFEST.json` — 1,020 bytes — `44951e8304d8b671d047753ee68a4f96c0cca22f6c0fed142b4ddf934987821e`
+- `RELEASE_VALIDATION.json` — 4,409 bytes — `e7aadf3dcde20c11032c5184887bda2a54a511f6e91abe6218933fc186e14afc`
 - `requirements.txt` — 54 bytes — `d37fdf77cf534d220e880a82cfe1fc67d0b9ab5752b6fdebcc101a52a0307e4e`
 - `scripts/build_catalogs.py` — 667 bytes — `be6ee10260d76b17553689c46c057b0f25104fdb56d62da7c3e76dd97ea52e5c`
 - `scripts/build_manifest.py` — 618 bytes — `b45747c066dedb15697c151b0068a697fc9ea24e0446d71e29cff28bf4827a45`
@@ -68,16 +69,16 @@
 - `scripts/rollback_database.py` — 838 bytes — `a6a41fc36f9b2f1496d9bc0fcb5d311248e04b088616c425718eca95fb74e19c`
 - `scripts/run_jsonl_server.py` — 106 bytes — `8488afba705ca44d4c2bd6e00acae628dbdecee91f41daa264da03b931f40435`
 - `scripts/validate_database.py` — 606 bytes — `c8028a54aa1055742c6842f8794e6cb4e6b67faa0906dc3290eb44d1375e02e2`
-- `scripts/validate_release.py` — 18,245 bytes — `0cc2fd6c20ced283f88f7fbc3d7cf3470aa0ffb375218f410d703ec579347bef`
+- `scripts/validate_release.py` — 18,300 bytes — `6488a2bae416a30bf3b2cd466a5dd7ebb4f687b81017dd111a93b205d71325e0`
 - `scripts/verify_package_manifest.py` — 3,771 bytes — `34c760962b2cc2702e579d6d2a25175906caa7bc023ead6c5ba77de460e439ac`
 - `src/parmesan/__init__.py` — 2,202 bytes — `806b988f804223c2a88c0acd4c5c0be549bba0bef0cd0688765b962a2425a125`
 - `src/parmesan/__main__.py` — 28 bytes — `c1c0ab2f83e31b9d6be7054aa8985ca093d32df1d6d3035b0f7d43ad43743162`
 - `src/parmesan/arcp_local.py` — 1,985 bytes — `2c5b8e9b70395d19de6ec4144eca8f84a549548b95305770eae73be4cb8b3e03`
 - `src/parmesan/authority.py` — 485 bytes — `5f3c2b2bf75d4822837308036ba4f3931e90cced19880eb383d17df618ae5ad6`
-- `src/parmesan/cli.py` — 19,691 bytes — `6444afc90305209edc886e1576b4fa9fad380585b0b99ecc0b616eb9d7d9cc72`
+- `src/parmesan/cli.py` — 21,710 bytes — `cc672a2fda62574ad19031e0ccc008a768734f388cc7c0080a784586cb88a252`
 - `src/parmesan/corpus.py` — 33,095 bytes — `6373bf5054298df4ce1c13e4f93ea1ebcaa89b8cad5a8b21316b31e6d81a82a5`
 - `src/parmesan/default_resources/__init__.py` — 62 bytes — `d5a1816617b3296d7036285a56e9ab52d7957ec0b31a8528fb35069018edaff8`
-- `src/parmesan/default_resources/M2_SEMANTIC_VIRTUAL_INFRASTRUCTURE.md` — 26,722 bytes — `4e16c4f06dcaa241a2f1acbd4a1a0564881f94ba0184f08c3a9d60c39f29ec7c`
+- `src/parmesan/default_resources/M2_SEMANTIC_VIRTUAL_INFRASTRUCTURE.md` — 26,726 bytes — `93dfafa393b88de37784d30431f2344791cc18801437b9b8a1a9810374a4a251`
 - `src/parmesan/default_resources/M3_VIEW_ALGEBRA.md` — 24,474 bytes — `687250ba92a3a41f5566c42cc29eda098ba674a90a1e790fcbea54f4bec3c17f`
 - `src/parmesan/errors.py` — 822 bytes — `726c882201573429146bdcc3a1e236a3963e89fc19c16f2d8330758bebcb9d9c`
 - `src/parmesan/identity.py` — 1,085 bytes — `d71e5fc783f346d6609b0132ab60d6d5077e1ee805b4b83d945ba46b13f7639d`
@@ -96,13 +97,14 @@
 - `src/parmesan/tool_contracts.py` — 34,256 bytes — `441b2d9676621955268df0247c6651093fab1dd3d14f3ec58113941bc0abd51f`
 - `src/parmesan/tools.py` — 31,833 bytes — `5891daae0b7af7a53cd599891c8d91e38e11a4db1097ac6a36740f105c851c25`
 - `src/parmesan/traversal.py` — 7,346 bytes — `db5ab6614fda4615a90918b40703824b0ab0cad342a1dbc7c5d0351b27ff6a71`
-- `src/parmesan/v4/__init__.py` — 1,106 bytes — `8021087a1d87b8692cf8a76b844ebaf59bb8d838869bdbbe108b37db7a425d6e`
-- `src/parmesan/v4/capsule.py` — 18,787 bytes — `f84ff8bed76ddf5cb32a66ad048935e8838d31f35eb3fb836b6c9ff89f4db9ef`
+- `src/parmesan/v4/__init__.py` — 1,190 bytes — `92a425fb679e89cc80bd41cfb28934432109131329e52bd86d908c7dc6a170ce`
+- `src/parmesan/v4/capsule.py` — 20,438 bytes — `499dc2484219027dc3aa2a27e017859479842d0c894460d789cce87cbf30a23b`
+- `src/parmesan/v4/piece.py` — 32,563 bytes — `5df86e8cf482fcc85a02a48a2c5fca284f73ff2d4d41379adfe59bfbee9ce7bb`
 - `src/parmesan/v4/resources.py` — 10,741 bytes — `e57aa1155e773047d626ec38bef27c99194721ec7057fde2476d970f92092060`
 - `src/parmesan/v4/schema.py` — 7,263 bytes — `3ef413390b0bcc371813101c3d32f5d9d693b68e4f7a4b7457ab4d4b98226c56`
 - `src/parmesan/v4/store.py` — 34,550 bytes — `4b678f2e2deb8da3ecb73fdb1eac3c9e5d8d90935802405f748d365eb5be862f`
-- `src/parmesan/v4/workspace.py` — 18,973 bytes — `2bab994e074f50f57fda7e6d44ebf8260eb3c23c21c1d48fe7595450a2bf522c`
-- `src/parmesan/version.py` — 208 bytes — `f0284f3a24967ed00e20e3cb28e7a8a8eef22b00ba02c7f20e3b7cb42aff1db3`
+- `src/parmesan/v4/workspace.py` — 19,065 bytes — `2fff71f3caa7220c67f2846cc1ec6d519b01b87c8c0890eac94452ae74fd4f87`
+- `src/parmesan/version.py` — 208 bytes — `9086126053bec222d83b30c8478b8facf126eea8b6ca9ebd207e3a8f5bf6f610`
 - `src/parmesan/workspace.py` — 32,262 bytes — `1df74ce0a3c9ac71e2f0a9adb100b8dad31cdaf7460e50abb4d8b4bd69310eb1`
 - `START_HERE.md` — 13,678 bytes — `678334a7357ff38d74be5c34a1cf954550e144006424970ecdf6c085bc9c91cb`
 - `tests/conftest.py` — 478 bytes — `21f3745061ec6f96addc6e1b812514b528dd94cb7398b7a733ec0c483591138d`
@@ -123,10 +125,11 @@
 - `tests/test_release_identity.py` — 4,556 bytes — `c7dd5f873b3760ac9bd131a34b4d3afe22f942f1b997ef0699108c6464060209`
 - `tests/test_traversal_expression_authoring.py` — 6,885 bytes — `4edd54600a890b79ec34115b31b8b6b2620d9d8dcacdca2cac9d4cc6feddef99`
 - `tests/test_traversal_tools.py` — 2,257 bytes — `b18436733e8711b4d29b70e02540895f3519231946c881d75beb881d590df92c`
-- `tests/test_v4_capsules.py` — 5,801 bytes — `e47fa03750e6d14ff75ec96e868a94c172fa7f2dc52542cd14050ad157b67a6e`
+- `tests/test_v4_capsules.py` — 5,951 bytes — `e22738b87682df4b4292321350d10439e767fbda419124cdf817b30fb9411a6e`
 - `tests/test_v4_composable_foundation.py` — 5,687 bytes — `6040312a941a8d03150820821134d89d2749406452214a15f3a2670d5bb630f2`
 - `tests/test_v4_legacy_resources.py` — 4,220 bytes — `41b7017da508a896e14e54a7a1c38611e191536e11314eb030f22cc8ba831c49`
 - `tests/test_v4_managed_workspaces.py` — 7,594 bytes — `6f7db5dbd6e5de7c6c9346ea4c3fd8bd956cdad961bfd78b3944b1d394197c4a`
+- `tests/test_v4_selective_capsules.py` — 10,313 bytes — `8898d5dc57f2d609c044c6c0eba632b7c78b8c99a24ce053424f0d90b300225b`
 - `tests/test_workspace_adoption.py` — 6,967 bytes — `4aac99e14928c47bfb2266150b94077550f6ca9cb0a1cd976c30b169464844a8`
 - `tests/test_workspace_handoffs.py` — 6,295 bytes — `bc058abfe159d068dcb01679eeeff63c1c5422485fb736e83893e6c491ff38b6`
 - `TOOL_CATALOG.json` — 205,598 bytes — `316e9e999204ae98a842d07b0a6b9e5666f6d7c84f7af03f530c1fd4320d19a3`

@@ -109,10 +109,59 @@ head is idempotent. `receive` rejects traversal paths, symbolic links, duplicate
 archive entries, undeclared files, altered bytes, and mismatched workspace,
 corpus, head, or semantic fingerprint.
 
-Capsule v1 is intentionally a complete-head handoff. It does not yet select a
-few graph roots or calculate the transitive closure of their node-pointer
-dependencies. Until that later format exists, use PM4 composition when two
-continued complete heads need to become lawful parents of a new workspace.
+## Tear off and share a semantic piece
+
+Start from `pm4 inspect`, then plan one or more roots without creating an
+artifact:
+
+```bash
+parmesan pm4 plan-piece my-workspace \
+  --root GRAPH_OR_NODE \
+  --expected-workspace WORKSPACE_UUID \
+  --expected-snapshot SNAPSHOT_UUID \
+  --expected-sequence SEQUENCE
+```
+
+The plan resolves each root as an object UUID or globally unambiguous alias,
+recursively expands graph memberships (including nested graphs), scans every
+included revision for Markdown pointer links, and repeats until the dependency
+closure is stable. Create the attachment only when the bounded plan is valid:
+
+```bash
+parmesan pm4 share-piece my-workspace \
+  --root GRAPH_OR_NODE \
+  --expected-workspace WORKSPACE_UUID \
+  --expected-snapshot SNAPSHOT_UUID \
+  --expected-sequence SEQUENCE
+```
+
+For portable references, prefer `[anchor](pm4://object/OBJECT_UUID)`. A raw UUID
+destination is also exact. A scheme-free destination such as `[anchor](NOTE1)`
+is treated as a semantic alias pointer and is accepted only when it resolves to
+one object. Missing and ambiguous semantic pointers stop publication. Web URLs,
+absolute/relative paths, fragments, and other explicitly nonlocal links remain
+external and are counted rather than copied.
+
+The ZIP contains a small valid PM4 workspace, not a loose row dump. Original
+object, revision, membership, operation, replica, and scoped-alias identities
+remain intact. The complete dependency/source ledger lives separately under
+`provenance/`; local machinery, projections, scratch files, SQLite journals,
+unrelated graph material, and registered-resource bodies are absent.
+
+The other conversation can inspect the bounded preview without writing, then
+receive and compose deliberately:
+
+```bash
+parmesan pm4 receive PIECE.zip
+parmesan pm4 receive PIECE.zip --output piece-workspace
+parmesan pm4 orient piece-workspace
+parmesan pm4 compose target-workspace piece-workspace --output joined-workspace
+parmesan pm4 orient joined-workspace
+```
+
+Composition deduplicates exact identities already present in the target and
+preserves branch-scoped aliases. It does not infer that merely homologous or
+similarly named nodes are identical. See [`SEMANTIC_CAPSULES.md`](SEMANTIC_CAPSULES.md).
 
 ## Working and publish modes
 

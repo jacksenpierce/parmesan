@@ -26,6 +26,8 @@ from .workspace import (
 CAPSULE_FORMAT = "parmesan-semantic-capsule/v1"
 CAPSULE_MANIFEST = "PARMESAN_CAPSULE.json"
 CAPSULE_KIND = "resource-thin-authority"
+PIECE_KIND = "selective-semantic-piece"
+SUPPORTED_CAPSULE_KINDS = {CAPSULE_KIND, PIECE_KIND}
 CAPSULE_NAMESPACE = uuid.UUID("2574354a-86d3-46cf-9f6d-afd9f639b2be")
 
 
@@ -188,7 +190,7 @@ def inspect_capsule(archive: str | Path) -> dict[str, Any]:
         errors: list[dict[str, Any]] = []
         if capsule.get("format") != CAPSULE_FORMAT:
             errors.append({"code": "unsupported_capsule_format", "value": capsule.get("format")})
-        if capsule.get("kind") != CAPSULE_KIND:
+        if capsule.get("kind") not in SUPPORTED_CAPSULE_KINDS:
             errors.append({"code": "unsupported_capsule_kind", "value": capsule.get("kind")})
         declared = capsule.get("files")
         if not isinstance(declared, list):
@@ -202,7 +204,8 @@ def inspect_capsule(archive: str | Path) -> dict[str, Any]:
         except Exception as exc:
             workspace_report = None
             errors.append({"code": "workspace_inspection_failed", "message": str(exc)})
-        if workspace_report is not None:
+        piece_details = None
+        if workspace_report is not None and capsule.get("kind") == CAPSULE_KIND:
             source = capsule.get("source")
             if not isinstance(source, dict):
                 source = {}
@@ -238,6 +241,15 @@ def inspect_capsule(archive: str | Path) -> dict[str, Any]:
                 errors.append({"code": "capsule_semantic_count_mismatch"})
             if not workspace_report["valid"]:
                 errors.append({"code": "capsule_workspace_invalid", "errors": workspace_report["errors"]})
+        elif workspace_report is not None and capsule.get("kind") == PIECE_KIND:
+            # Lazy import avoids making the shared archive primitives depend on
+            # the selective-capsule builder at module import time.
+            from .piece import inspect_piece_stage
+
+            piece_details = inspect_piece_stage(root, capsule, workspace_report)
+            errors.extend(piece_details.pop("errors"))
+            if not workspace_report["valid"]:
+                errors.append({"code": "capsule_workspace_invalid", "errors": workspace_report["errors"]})
         valid = not errors
         return {
             "valid": valid,
@@ -249,6 +261,7 @@ def inspect_capsule(archive: str | Path) -> dict[str, Any]:
             "contents": capsule.get("contents"),
             "resource_hydration": workspace_report.get("resource_hydration") if workspace_report else None,
             "orientation_required": bool(workspace_report and not workspace_report["orientation"]["ready"]),
+            "piece": piece_details,
             "errors": errors,
         }
 
@@ -380,11 +393,17 @@ def receive_capsule(archive: str | Path, output: str | Path | None = None) -> di
     if not inspection["valid"]:
         raise ValueError(f"capsule verification failed: {inspection['errors']}")
     if output is None:
+        action = (
+            "Inspect the bounded piece preview, then choose a new directory and run "
+            "`parmesan pm4 receive CAPSULE --output PIECE_WORKSPACE`."
+            if inspection["kind"] == PIECE_KIND
+            else "Choose a new workspace directory and run `parmesan pm4 receive CAPSULE --output WORKSPACE`."
+        )
         return {
             **inspection,
             "received": True,
             "materialized": False,
-            "next_action": "Choose a new workspace directory and run `parmesan pm4 receive CAPSULE --output WORKSPACE`.",
+            "next_action": action,
         }
     destination = Path(output).expanduser().resolve()
     if destination.exists():
@@ -403,6 +422,11 @@ def receive_capsule(archive: str | Path, output: str | Path | None = None) -> di
         if destination.exists():
             shutil.rmtree(destination)
         raise
+    next_action = (
+        f"Run `parmesan pm4 orient {destination}`, then compose this piece with a target workspace into a new output."
+        if inspection["kind"] == PIECE_KIND
+        else f"Run `parmesan pm4 orient {destination}` before semantic operations."
+    )
     return {
         **inspection,
         "received": True,
@@ -411,5 +435,5 @@ def receive_capsule(archive: str | Path, output: str | Path | None = None) -> di
         "head": workspace_report["head"],
         "resource_hydration": workspace_report["resource_hydration"],
         "orientation_required": True,
-        "next_action": f"Run `parmesan pm4 orient {destination}` before semantic operations.",
+        "next_action": next_action,
     }

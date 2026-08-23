@@ -5,6 +5,8 @@
 Start with [`PARMESAN_4_QUICKSTART.md`](PARMESAN_4_QUICKSTART.md) for managed
 workspace initialization, exact-head mutation, explicit operating modes, fork,
 composition, conflict inspection, and the pre-v4 resource migration boundary.
+For complete-head and selective graph sharing between conversations, read
+[`SEMANTIC_CAPSULES.md`](SEMANTIC_CAPSULES.md).
 
 ## Operating philosophy
 
